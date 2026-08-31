@@ -104,11 +104,37 @@
     </section>
 
     <section class="card" id="reserve-section" style="display:none">
-      <h3>رزرو آماده است</h3>
-      <p id="reserve-message"></p>
-      <a class="btn btn-primary" id="reserve-download" href="#" download="reservation_form.html">⬇ دانلود فرم رزرو</a>
-      <h4>مشخصات مسافران (برای تکمیل دستی فرم سایت)</h4>
+      <h3>رزرو</h3>
+      <p id="reserve-message" class="status"></p>
+
+      <!-- مرحله کپچا -->
+      <div id="reserve-captcha" style="display:none">
+        <p class="muted small">برای ادامه رزرو، کد امنیتی تصویر زیر را وارد کنید:</p>
+        <img id="reserve-captcha-img" alt="کپچا" style="max-width:220px;border:1px solid #ccc;border-radius:6px;background:#fff"/>
+        <div style="margin-top:8px">
+          <button class="btn btn-sm" id="btn-captcha-refresh" type="button">🔄 کپچای جدید</button>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <label>کد امنیتی:</label>
+          <input type="text" id="reserve-captcha-input" style="direction:ltr;text-align:center;max-width:160px" autocomplete="off"/>
+        </div>
+        <button class="btn btn-primary" id="btn-captcha-submit" type="button">ادامه رزرو</button>
+      </div>
+
+      <!-- مرحله پرداخت -->
+      <div id="reserve-payment" style="display:none">
+        <button class="btn btn-primary" id="btn-reserve-pay" type="button">ادامه به صفحه پرداخت</button>
+      </div>
+
+      <!-- خطا -->
+      <div id="reserve-error" class="alert alert-error" style="display:none"></div>
+
+      <h4 style="margin-top:12px">مشخصات مسافران (تکمیل خودکار در سایت)</h4>
       <table class="table" id="reserve-passengers"><tbody></tbody></table>
+
+      <p class="muted small" id="reserve-fallback" style="display:none">
+        اگر رزرو خودکار ناموفق بود، <a href="#" id="reserve-download" download="reservation_form.html">فرم رزرو را دانلود</a> کنید و در مرورگر خود باز کنید.
+      </p>
     </section>
   </main>
   <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
@@ -405,44 +431,202 @@
     reserve(btn.getAttribute('data-train'));
   });
 
-  /* ---------------- رزرو ---------------- */
+  /* ---------------- رزرو (چندمرحله‌ای: کپچا → اطلاعات مسافر → پرداخت) ---------------- */
+  const RESERVE_MAX_STEPS = 8;
+  let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
+
   async function reserve(trainNumber) {
-    setStatus('در حال ساخت فرم رزرو...', 'blue');
     const route = BilitFast.getRoute(ROUTE_ID);
     if (!route) { setStatus('مسیر یافت نشد.', 'red'); return; }
     const train = (route.foundTrains || []).find((t) => t['شماره قطار'] === trainNumber);
     if (!train) { setStatus('قطار یافت نشد (لیست قطارها را دوباره جستجو کنید).', 'red'); return; }
-    const payload = {
+
+    reserveCtx = {
+      token: null,
+      train,
       fields: getFields(),
       passengers: getPassengers(),
-      train,
-      cookies: BilitFast.getCookies(),
+      steps: 0,
+      captchaImageUrl: null,
+      formHtml: null,
     };
 
-    let data;
+    $('reserve-section').style.display = 'block';
+    renderReservePassengers(reserveCtx.passengers);
+    hideReserveAll();
+    $('reserve-message').textContent = 'در حال شروع رزرو...';
+    setStatus('در حال شروع رزرو...', 'blue');
+    saveRouteState({ status: 'در حال رزرو...', statusColor: 'blue' });
+
+    await reserveStart();
+  }
+
+  async function reserveStart() {
+    const data = await callReserve({
+      action: 'start',
+      fields: reserveCtx.fields,
+      passengers: reserveCtx.passengers,
+      train: reserveCtx.train,
+      cookies: BilitFast.getCookies(),
+    });
+    handleReserveStep(data);
+  }
+
+  async function reserveSubmit(captcha) {
+    const data = await callReserve({
+      action: 'submit',
+      stateToken: reserveCtx.token,
+      captcha,
+      passengers: reserveCtx.passengers,
+    });
+    handleReserveStep(data);
+  }
+
+  async function callReserve(payload) {
     try {
-      data = await BilitFast.apiReserve(payload);
+      return await BilitFast.apiReserve(payload);
     } catch (err) {
-      setStatus('خطا در ارتباط با سرور هنگام رزرو: ' + (err && err.message ? err.message : err), 'red');
+      return { ok: false, error: 'خطا در ارتباط با سرور هنگام رزرو: ' + (err && err.message ? err.message : err) };
+    }
+  }
+
+  function handleReserveStep(data) {
+    if (!data || !data.ok) {
+      showReserveError((data && data.error) || 'خطا در رزرو');
       return;
     }
-    if (!data.ok) {
-      setStatus(data.error || 'خطا در رزرو', 'red');
+    if (data.stateToken) reserveCtx.token = data.stateToken;
+    if (data.captchaImageUrl) reserveCtx.captchaImageUrl = data.captchaImageUrl;
+    if (data.formHtml) reserveCtx.formHtml = data.formHtml;
+
+    reserveCtx.steps++;
+    if (reserveCtx.steps > RESERVE_MAX_STEPS) {
+      showReserveError('رزرو بیش از حد انتظار طول کشید. از فرم دانلودی (پایین صفحه) استفاده کنید.');
       return;
     }
 
-    $('reserve-section').style.display = 'block';
-    $('reserve-message').textContent = 'فایل فرم رزرو آماده است. آن را دانلود و در مرورگر باز کنید تا به صفحه رزرو سایت هدایت شوید.';
-    const blob = new Blob([data.formHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = $('reserve-download');
-    a.href = url;
-    $('reserve-passengers').querySelector('tbody').innerHTML = (payload.passengers || []).map((p) =>
-      `<tr><td>${esc(p.quota_type)}</td><td>${esc(p.national_code||'')}</td><td>${esc(p.first_name||'')}</td><td>${esc(p.last_name||'')}</td></tr>`
-    ).join('');
-    setStatus('رزرو آماده است — فرم را دانلود کنید.', 'green');
-    saveRouteState({ status: 'رزرو آماده است', statusColor: 'green' });
+    switch (data.step) {
+      case 'captcha':
+        showReserveCaptcha(data);
+        break;
+      case 'passenger_form':
+        // فرم اطلاعات مسافر دریافت شد → ارسال خودکار با داده‌های تکمیل‌شده
+        $('reserve-message').textContent = data.message || 'تکمیل خودکار اطلاعات مسافر...';
+        setStatus('در حال تکمیل اطلاعات مسافر...', 'blue');
+        renderDiagnosticsFromReserve(data);
+        reserveSubmit(null);
+        break;
+      case 'payment':
+        showReservePayment(data);
+        break;
+      case 'success':
+        $('reserve-message').textContent = data.message || '✅ رزرو با موفقیت انجام شد.';
+        setStatus('✅ رزرو انجام شد', 'green');
+        if (data.paymentUrl) showReservePayment(data);
+        break;
+      case 'login_required':
+        showReserveError(data.message || 'نیاز به ورود. در صفحه «ورود» کوکی‌ها را همگام‌سازی کنید.');
+        break;
+      case 'no_capacity':
+        showReserveError(data.message || 'ظرفیت این قطار تکمیل شده است.');
+        break;
+      default:
+        showReserveError('مرحله ناشناخته از سامانه: ' + (data.step || '—'));
+    }
   }
+
+  function hideReserveAll() {
+    $('reserve-captcha').style.display = 'none';
+    $('reserve-payment').style.display = 'none';
+    $('reserve-error').style.display = 'none';
+    $('reserve-fallback').style.display = 'none';
+  }
+
+  function showReserveError(msg) {
+    hideReserveAll();
+    $('reserve-message').textContent = 'رزرو ناموفق بود.';
+    $('reserve-error').style.display = 'block';
+    $('reserve-error').textContent = msg;
+    $('reserve-fallback').style.display = 'block';
+    setupFallbackDownload();
+    setStatus(msg, 'red');
+    saveRouteState({ status: 'رزرو ناموفق', statusColor: 'red' });
+  }
+
+  function showReserveCaptcha(data) {
+    hideReserveAll();
+    $('reserve-message').textContent = data.message || 'برای ادامه، کد امنیتی را وارد کنید.';
+    $('reserve-captcha').style.display = 'block';
+    $('reserve-captcha-input').value = '';
+    loadCaptchaImage(data.captchaImageUrl);
+    setStatus('کد امنیتی (کپچا) را وارد کنید', 'blue');
+  }
+
+  async function loadCaptchaImage(url) {
+    const img = $('reserve-captcha-img');
+    img.src = '';
+    if (!url) return;
+    const data = await callReserve({ action: 'captcha-image', captchaImageUrl: url, stateToken: reserveCtx.token });
+    if (data && data.ok && data.dataUri) {
+      img.src = data.dataUri;
+    } else {
+      img.alt = 'دریافت کپچا ناموفق';
+    }
+  }
+
+  function showReservePayment(data) {
+    hideReserveAll();
+    $('reserve-message').textContent = data.message || 'رزرو تأیید شد. برای پرداخت ادامه دهید.';
+    $('reserve-payment').style.display = 'block';
+    const btn = $('btn-reserve-pay');
+    btn.onclick = () => {
+      if (data.paymentUrl) {
+        window.open(data.paymentUrl, '_blank');
+      } else {
+        showReserveError('آدرس پرداخت یافت نشد.');
+      }
+    };
+    setStatus('آماده پرداخت', 'green');
+    saveRouteState({ status: 'آماده پرداخت', statusColor: 'green' });
+  }
+
+  function renderReservePassengers(passengers) {
+    $('reserve-passengers').querySelector('tbody').innerHTML = (passengers || []).map((p) =>
+      `<tr><td>${esc(p.quota_type)}</td><td>${esc(p.national_code||'')}</td><td>${esc(p.birth_day||'')}/${esc(p.birth_month||'')}/${esc(p.birth_year||'')}</td><td>${esc(p.first_name||'')}</td><td>${esc(p.last_name||'')}</td></tr>`
+    ).join('');
+  }
+
+  function setupFallbackDownload() {
+    if (!reserveCtx.formHtml) return;
+    const blob = new Blob([reserveCtx.formHtml], { type: 'text/html' });
+    $('reserve-download').href = URL.createObjectURL(blob);
+  }
+
+  function renderDiagnosticsFromReserve(data) {
+    if (!data.diagnostics) return;
+    const names = data.diagnostics.inputs ? data.diagnostics.inputs.map((i) => i.name + '(' + i.type + ')').join('، ') : '';
+    if (names) {
+      $('reserve-message').textContent = (data.message || '') + ' — فیلدهای فرم: ' + names;
+    }
+  }
+
+  // رویدادهای کپچا
+  $('btn-captcha-submit').addEventListener('click', () => {
+    const captcha = $('reserve-captcha-input').value.trim();
+    if (!captcha) { $('reserve-captcha-input').focus(); return; }
+    $('btn-captcha-submit').disabled = true;
+    setStatus('در حال ارسال کپچا...', 'blue');
+    reserveSubmit(captcha);
+  });
+  $('btn-captcha-refresh').addEventListener('click', () => {
+    // درخواست دوباره تصویر (با cache-buster)
+    const url = reserveCtx.captchaImageUrl;
+    if (url) {
+      const sep = url.includes('?') ? '&' : '?';
+      loadCaptchaImage(url + sep + '_=' + Date.now());
+    }
+  });
+
   window.reserve = reserve;
 
   /* ---------------- شروع ---------------- */

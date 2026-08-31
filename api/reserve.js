@@ -1,24 +1,45 @@
-// api/reserve.js — ساخت فرم رزرو (پورت از perform_reservation)
-const { buildReserveForm } = require('../lib/core');
+// api/reserve.js — جریان چندمرحله‌ای رزرو (شروع / ارسال کپچا و اطلاعات / تصویر کپچا)
+const {
+  startReservation,
+  submitReservation,
+  fetchCaptchaImage,
+} = require('../lib/reserve');
+
+function readBody(req) {
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body || '{}'); }
+    catch (e) { return {}; }
+  }
+  return req.body || {};
+}
 
 module.exports = async (req, res) => {
-  if (req.method !== 'POST') {
-    res.status(405).json({ ok: false, error: 'Method Not Allowed' });
-    return;
-  }
-  const body = (typeof req.body === 'string') ? JSON.parse(req.body || '{}') : (req.body || {});
+  const body = readBody(req);
+  const action = body.action || (req.query && req.query.action) || 'start';
+
   try {
-    const result = buildReserveForm({
-      fields: body.fields,
-      passengers: body.passengers,
-      train: body.train,
-    });
-    if (!result.ok) {
-      res.status(400).json(result);
-      return;
+    if (action === 'start') {
+      const result = await startReservation(body);
+      return respond(res, result);
     }
-    res.status(200).json(result);
+
+    if (action === 'submit') {
+      const result = await submitReservation(body);
+      return respond(res, result);
+    }
+
+    if (action === 'captcha-image') {
+      const result = await fetchCaptchaImage(body.captchaImageUrl, body.stateToken);
+      return respond(res, result);
+    }
+
+    return respond(res, { ok: false, error: 'action ناشناخته: ' + action });
   } catch (e) {
-    res.status(500).json({ ok: false, error: e && e.message ? e.message : String(e) });
+    return respond(res, { ok: false, error: (e && e.message) ? e.message : String(e) }, 500);
   }
 };
+
+function respond(res, payload, status) {
+  const code = status || (payload && payload.ok ? 200 : 400);
+  res.status(code).json(payload);
+}

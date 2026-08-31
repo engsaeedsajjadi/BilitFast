@@ -23,5 +23,30 @@
   "login_action": "Login",
   "login_user_field": "user",
   "login_pass_field": "pass",
-  "login_success_marker": ""
+  "login_success_marker": "",
+
+  "reservation": {
+    "captcha_img_selectors": [
+      "img[src*='captcha']",
+      "img[src*='kcaptcha']",
+      "img[src*='kaptcha']",
+      "img[src*='Captcha']",
+      "img[src*='KCaptcha']",
+      "img[src*='security']"
+    ],
+    "captcha_input_hints": ["captcha", "kaptcha", "captchacode", "code", "securitycode"],
+    "login_markers": ["ورود به سامانه", "شناسه:", "UserAut.php", "گذرواژه"],
+    "payment_markers": ["درگاه پرداخت", "شاپرک", "shaparak", "به پرداخت", "سداد", "زرین‌پال", "درگاه بانک"],
+    "success_markers": ["رزرو با موفقیت", "کد رهگیری", "موفقیت آمیز", "شماره سفارش"],
+    "captcha_error_markers": ["کپچا اشتباه", "کد امنیتی اشتباه", "کپچا صحیح", "کد وارد شده صحیح نیست", "اشتباه است"],
+    "no_capacity_markers": ["ظرفیت تکمیل", "موجودی کافی نیست", "اتمام ظرفیت"],
+    "passenger_field_hints": {
+      "national_code": ["meli", "codemeli", "national", "nationalcode", "nc", "shomare", "code_melli", "codem"],
+      "birth_day": ["day", "rooz", "ruz", "bd", "birthd", "tavalod_day"],
+      "birth_month": ["month", "mah", "bm", "birthm", "tavalod_month"],
+      "birth_year": ["year", "sal", "by", "birthy", "tavalod_year"],
+      "first_name": ["fname", "firstname", "name", "nam", "fn"],
+      "last_name": ["lname", "lastname", "family", "fam", "khanvad", "surname", "ln"]
+    }
+  }
 }
