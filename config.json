@@ -1,0 +1,24 @@
+{
+  "base_url": "https://safirrail.ir",
+  "search_url": "/etrain/searchWagn.php",
+  "reserve_url": "/etrain/TresV.php",
+  "refresh_interval": 5,
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
+  "content_type": "application/x-www-form-urlencoded",
+  "accept": "*/*",
+  "train_row_selector": "tr[name='srvc']",
+  "train_number_selector": "td:nth-child(3)",
+  "departure_time_selector": "td:nth-child(8)",  # اصلاح شد
+  "capacity_selector": "td:nth-child(9)",      # درست شد (موجودی)
+  "departure_date_selector": "td:nth-child(7)",  # **تاریخ حرکت (اضافه شد)**
+
+  "availability_selector": "td:nth-child(9)",
+  "price_selector": "td:nth-child(10)",         # اصلاح شد
+  "coupe_selector": "td:nth-child(4)",          # اصلاح شد (عنوان واگن)
+  "company_selector": "td:nth-child(2) > div", # اضافه شد (شرکت ریلی)
+  "srvc_checkbox_selector": "input[name='srvc']",
+  "firefox_exe_path": r"C:\Program Files\Mozilla Firefox\firefox.exe",
+  "firefox_profile_path": r"C:\Users\pc\AppData\Roaming\Mozilla\Firefox\Profiles\zj4ctpkj.selenium_profile",
+  "max_routes": 10,
+  "rate_limit_base_interval": 2
+}
