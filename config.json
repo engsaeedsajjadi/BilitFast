@@ -8,17 +8,20 @@
   "accept": "*/*",
   "train_row_selector": "tr[name='srvc']",
   "train_number_selector": "td:nth-child(3)",
-  "departure_time_selector": "td:nth-child(8)",  # اصلاح شد
-  "capacity_selector": "td:nth-child(9)",      # درست شد (موجودی)
-  "departure_date_selector": "td:nth-child(7)",  # **تاریخ حرکت (اضافه شد)**
-
+  "departure_time_selector": "td:nth-child(8)",
+  "capacity_selector": "td:nth-child(9)",
+  "departure_date_selector": "td:nth-child(7)",
   "availability_selector": "td:nth-child(9)",
-  "price_selector": "td:nth-child(10)",         # اصلاح شد
-  "coupe_selector": "td:nth-child(4)",          # اصلاح شد (عنوان واگن)
-  "company_selector": "td:nth-child(2) > div", # اضافه شد (شرکت ریلی)
+  "price_selector": "td:nth-child(10)",
+  "coupe_selector": "td:nth-child(4)",
+  "company_selector": "td:nth-child(2) > div",
   "srvc_checkbox_selector": "input[name='srvc']",
-  "firefox_exe_path": r"C:\Program Files\Mozilla Firefox\firefox.exe",
-  "firefox_profile_path": r"C:\Users\pc\AppData\Roaming\Mozilla\Firefox\Profiles\zj4ctpkj.selenium_profile",
   "max_routes": 10,
-  "rate_limit_base_interval": 2
+  "rate_limit_base_interval": 2,
+
+  "login_url": "/fa/UserAut.php",
+  "login_action": "Login",
+  "login_user_field": "user",
+  "login_pass_field": "pass",
+  "login_success_marker": ""
 }

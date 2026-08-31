@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}وضعیت مجوز — Bilit Fast{% endblock %}
+
+{% block content %}
+<section class="card narrow">
+  <h2>وضعیت مجوز</h2>
+  {% if message %}
+    <div class="alert {% if error %}alert-error{% else %}alert-success{% endif %}">{{ message }}</div>
+  {% endif %}
+
+  {% if trial.state == 'activated' %}
+    <div class="alert alert-success">✅ برنامه به صورت دائمی فعال شده است.</div>
+    <a class="btn btn-primary" href="{{ url_for('index') }}">ورود به برنامه</a>
+  {% elif trial.state == 'expired' %}
+    <p>دوره آزمایشی شما به پایان رسیده است. برای فعال‌سازی دائمی، کد فعال‌سازی را وارد کنید:</p>
+    <form method="post">
+      <input type="hidden" name="action" value="activate">
+      <div class="field">
+        <label>کد فعال‌سازی:</label>
+        <input type="text" name="code" required>
+      </div>
+      <button class="btn btn-primary" type="submit">فعال‌سازی</button>
+    </form>
+  {% elif trial.state == 'not_started' %}
+    <p>آیا مایل به شروع دوره آزمایشی ۲ روزه هستید؟</p>
+    <form method="post">
+      <input type="hidden" name="action" value="start">
+      <button class="btn btn-primary" type="submit">شروع دوره آزمایشی</button>
+    </form>
+  {% else %}
+    <div class="alert alert-success">دوره آزمایشی فعال است.</div>
+    <a class="btn btn-primary" href="{{ url_for('index') }}">ورود به برنامه</a>
+  {% endif %}
+</section>
+{% endblock %}

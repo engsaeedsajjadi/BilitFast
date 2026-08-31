@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}تنظیمات — Bilit Fast{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>تنظیمات</h2>
+  <form method="post">
+    <div class="form-grid">
+      <div class="field">
+        <label>بازه تازه‌سازی جستجو (ثانیه):</label>
+        <input type="number" name="refresh_interval" value="{{ config.get('refresh_interval', 5) }}" min="1">
+      </div>
+      <div class="field">
+        <label>حداکثر تعداد مسیر:</label>
+        <input type="number" name="max_routes" value="{{ config.get('max_routes', 10) }}" min="1">
+      </div>
+      <div class="field">
+        <label>بازه پایه محدودسازی نرخ (ثانیه):</label>
+        <input type="number" step="0.1" name="rate_limit_base_interval" value="{{ config.get('rate_limit_base_interval', 0.5) }}" min="0">
+      </div>
+    </div>
+
+    <h3>تنظیمات ورود به سامانه</h3>
+    <div class="form-grid">
+      <div class="field">
+        <label>آدرس ورود (مسیر):</label>
+        <input type="text" name="login_url" value="{{ config.get('login_url', '/fa/UserAut.php') }}">
+      </div>
+      <div class="field">
+        <label>اکشن ورود:</label>
+        <input type="text" name="login_action" value="{{ config.get('login_action', 'Login') }}">
+      </div>
+      <div class="field">
+        <label>نام فیلد شناسه:</label>
+        <input type="text" name="login_user_field" value="{{ config.get('login_user_field', 'user') }}">
+      </div>
+      <div class="field">
+        <label>نام فیلد گذرواژه:</label>
+        <input type="text" name="login_pass_field" value="{{ config.get('login_pass_field', 'pass') }}">
+      </div>
+      <div class="field">
+        <label>نشانگر موفقیت ورود (متن داخل صفحه):</label>
+        <input type="text" name="login_success_marker" value="{{ config.get('login_success_marker', '') }}" placeholder="مثلاً: خروج">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">ذخیره تنظیمات</button>
+  </form>
+</section>
+{% endblock %}
