@@ -24,7 +24,12 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'submit') {
-      const result = await submitReservation(body);
+      const result = await submitReservation({
+        stateToken: body.stateToken,
+        captcha: body.captcha,
+        passengers: body.passengers,
+        phone: body.phone,
+      });
       return respond(res, result);
     }
 

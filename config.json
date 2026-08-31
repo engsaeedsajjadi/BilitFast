@@ -41,12 +41,15 @@
     "captcha_error_markers": ["کپچا اشتباه", "کد امنیتی اشتباه", "کپچا صحیح", "کد وارد شده صحیح نیست", "اشتباه است"],
     "no_capacity_markers": ["ظرفیت تکمیل", "موجودی کافی نیست", "اتمام ظرفیت"],
     "passenger_field_hints": {
-      "national_code": ["meli", "codemeli", "national", "nationalcode", "nc", "shomare", "code_melli", "codem"],
-      "birth_day": ["day", "rooz", "ruz", "bd", "birthd", "tavalod_day"],
-      "birth_month": ["month", "mah", "bm", "birthm", "tavalod_month"],
-      "birth_year": ["year", "sal", "by", "birthy", "tavalod_year"],
-      "first_name": ["fname", "firstname", "name", "nam", "fn"],
-      "last_name": ["lname", "lastname", "family", "fam", "khanvad", "surname", "ln"]
-    }
+      "national_code": ["pid", "meli", "codemeli", "national", "nationalcode", "nc", "shomare", "code_melli", "codem"],
+      "birth_day": ["ruz", "rooz", "day", "bd", "birthd", "tavalod_day", "roz"],
+      "birth_month": ["mah", "month", "bm", "birthm", "tavalod_month"],
+      "birth_year": ["sal", "year", "by", "birthy", "tavalod_year"],
+      "first_name": ["fn", "fname", "firstname", "name", "nam"],
+      "last_name": ["ln", "lname", "lastname", "family", "fam", "khanvad", "surname"],
+      "phone": ["phone", "mobile", "tel", "cell", "shomare"]
+    },
+    "field_index_regex": "^([a-zA-Z_]+?)(\\d+)$",
+    "wagon_field": "wagon"
   }
 }

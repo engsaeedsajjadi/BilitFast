@@ -78,6 +78,10 @@
         <tbody></tbody>
       </table>
       <button class="btn btn-sm" id="btn-add-row">➕ افزودن ردیف</button>
+      <div class="field" style="margin-top:10px">
+        <label>شماره همراه (برای رزرو):</label>
+        <input type="text" id="phone" placeholder="09xxxxxxxxx" style="direction:ltr;max-width:200px" autocomplete="tel"/>
+      </div>
     </section>
 
     <section class="card">
@@ -446,6 +450,7 @@
       train,
       fields: getFields(),
       passengers: getPassengers(),
+      phone: $('phone').value.trim(),
       steps: 0,
       captchaImageUrl: null,
       formHtml: null,
@@ -478,6 +483,7 @@
       stateToken: reserveCtx.token,
       captcha,
       passengers: reserveCtx.passengers,
+      phone: reserveCtx.phone,
     });
     handleReserveStep(data);
   }
