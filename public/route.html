@@ -125,9 +125,10 @@
         <button class="btn btn-primary" id="btn-captcha-submit" type="button">ادامه رزرو</button>
       </div>
 
-      <!-- مرحله پرداخت -->
+      <!-- مرحله پرداخت (فقط اگر مرورگر بازشدن خودکار را مسدود کند) -->
       <div id="reserve-payment" style="display:none">
-        <button class="btn btn-primary" id="btn-reserve-pay" type="button">ادامه به صفحه پرداخت</button>
+        <p class="muted small">اگر صفحه پرداخت به‌صورت خودکار باز نشد، روی دکمه زیر کلیک کنید:</p>
+        <a class="btn btn-primary" id="btn-reserve-pay" href="#" target="_blank" rel="noopener">ادامه به صفحه پرداخت</a>
       </div>
 
       <!-- خطا -->
@@ -516,13 +517,15 @@
 
     switch (data.step) {
       case 'captcha':
-        showReserveCaptcha(data);
+        // حل خودکار کپچا در پس‌زمینه (بدون نمایش UI، مگر در صورت شکست)
+        $('reserve-message').textContent = 'در حال حل خودکار کپچا...';
+        setStatus('در حال حل خودکار کپچا...', 'blue');
+        autoSolveLoop(data.captchaImageUrl);
         break;
       case 'passenger_form':
         // فرم اطلاعات مسافر دریافت شد → ارسال خودکار با داده‌های تکمیل‌شده
         $('reserve-message').textContent = data.message || 'تکمیل خودکار اطلاعات مسافر...';
         setStatus('در حال تکمیل اطلاعات مسافر...', 'blue');
-        renderDiagnosticsFromReserve(data);
         reserveSubmit(null);
         break;
       case 'payment':
@@ -564,13 +567,12 @@
 
   function showReserveCaptcha(data) {
     hideReserveAll();
-    $('reserve-message').textContent = data.message || 'برای ادامه، کد امنیتی را وارد کنید.';
+    $('reserve-message').textContent = 'حل خودکار کپچا ناموفق بود. لطفاً کد امنیتی را وارد کنید:';
     $('reserve-captcha').style.display = 'block';
     $('reserve-captcha-input').value = '';
-    loadCaptchaImage(data.captchaImageUrl);
-    setStatus('کد امنیتی (کپچا) را وارد کنید', 'blue');
-    // تلاش خودکار حل کپچا (در پس‌زمینه؛ کاربر همچنان می‌تواند دستی وارد کند)
-    autoSolveLoop(data.captchaImageUrl);
+    const imgUrl = (data && data.captchaImageUrl) || reserveCtx.captchaImageUrl;
+    if (imgUrl) loadCaptchaImage(imgUrl);
+    setStatus('کد امنیتی (کپچا) را دستی وارد کنید', 'orange');
   }
 
   async function loadCaptchaImage(url) {
@@ -640,10 +642,10 @@
       }
     }
 
-    // تلاش‌های خودکار تمام شد → واگذار به کاربر
+    // تلاش‌های خودکار تمام شد → واگذار به کاربر (نمایش فرم دستی کپچا)
     autoSolving = false;
     $('btn-captcha-submit').disabled = false;
-    setStatus('حل خودکار کپچا ناموفق بود؛ لطفاً کد را دستی وارد کنید.', 'orange');
+    showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl });
   }
 
   async function refreshCaptchaImage() {
@@ -656,18 +658,29 @@
 
   function showReservePayment(data) {
     hideReserveAll();
-    $('reserve-message').textContent = data.message || 'رزرو تأیید شد. برای پرداخت ادامه دهید.';
-    $('reserve-payment').style.display = 'block';
-    const btn = $('btn-reserve-pay');
-    btn.onclick = () => {
-      if (data.paymentUrl) {
-        window.open(data.paymentUrl, '_blank');
-      } else {
-        showReserveError('آدرس پرداخت یافت نشد.');
-      }
-    };
-    setStatus('آماده پرداخت', 'green');
+    $('reserve-message').textContent = data.message || 'رزرو تأیید شد؛ در حال انتقال به صفحه پرداخت...';
+    setStatus('انتقال به صفحه پرداخت...', 'green');
     saveRouteState({ status: 'آماده پرداخت', statusColor: 'green' });
+    openPaymentWindow(data.paymentUrl);
+  }
+
+  // بازکردن صفحه پرداخت در تب جدید (فقط در پایان رزرو)
+  function openPaymentWindow(url) {
+    if (!url) {
+      showReserveError('آدرس پرداخت یافت نشد.');
+      return;
+    }
+    const win = window.open(url, '_blank', 'noopener');
+    if (!win) {
+      // مرورگر بازشدن خودکار را مسدود کرد → نمایش لینک fallback برای کلیک دستی
+      $('reserve-payment').style.display = 'block';
+      const a = $('btn-reserve-pay');
+      a.href = url;
+      $('reserve-message').textContent = 'رزرو تأیید شد. مرورگر بازشدن خودکار را مسدود کرد؛ روی دکمه زیر کلیک کنید:';
+      setStatus('برای ادامه، روی دکمه پرداخت کلیک کنید', 'orange');
+    } else {
+      $('reserve-message').textContent = 'رزرو تأیید شد و صفحه پرداخت در تب جدید باز شد.';
+    }
   }
 
   function renderReservePassengers(passengers) {
