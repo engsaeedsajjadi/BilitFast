@@ -109,7 +109,9 @@
       const data = await res.json();
       if (data.ok && data.cookies && data.cookies.length) {
         BilitFast.setCookies(data.cookies);
-        resultEl.textContent = '✅ ' + data.count + ' کوکی از ' + (source === 'chrome' ? 'Chrome' : 'Firefox') + ' همگام‌سازی و ذخیره شد.';
+        let msg = '✅ ' + data.count + ' کوکی همگام‌سازی و ذخیره شد.';
+        if (data.notes && data.notes.length) msg += ' (هشدار: ' + data.notes.join(' ') + ')';
+        resultEl.textContent = msg;
         document.getElementById('cookie-input').value = data.cookies.join('; ');
       } else {
         resultEl.textContent = data.error || 'کوکی‌ای یافت نشد.';

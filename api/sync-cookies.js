@@ -7,11 +7,19 @@ module.exports = async (req, res) => {
   const source = (req.query && req.query.source) || 'all';
   try {
     const all = [];
+    const notes = [];
+
     if (source === 'all' || source === 'firefox') {
       all.push(...(await readFirefoxCookies()));
     }
     if (source === 'all' || source === 'chrome') {
-      all.push(...(await readChromeCookies()));
+      try {
+        all.push(...(await readChromeCookies()));
+      } catch (e) {
+        // اگر Chrome در دسترس نبود (مثلاً کلید ویندوز)، فقط یادداشت ثبت می‌کنیم
+        // تا Firefox (در صورت وجود) همچنان برگردانده شود.
+        notes.push(e && e.message ? e.message : String(e));
+      }
     }
 
     // حذف تکراری‌ها (بر اساس نام کوکی)
@@ -25,11 +33,12 @@ module.exports = async (req, res) => {
     if (!cookies.length) {
       res.status(200).json({
         ok: false,
-        error: 'کوکی safirrail.ir یافت نشد. ابتدا در مرورگر (Firefox یا Chrome) وارد سایت صفیر ریل شوید و سپس دوباره همگام‌سازی کنید.',
+        error: 'کوکی safirrail.ir یافت نشد. ابتدا در مرورگر (Firefox یا Chrome) وارد سایت صفیر ریل شوید و سپس دوباره همگام‌سازی کنید.' +
+          (notes.length ? ' نکته: ' + notes.join(' ') : ''),
       });
       return;
     }
-    res.status(200).json({ ok: true, cookies, count: cookies.length });
+    res.status(200).json({ ok: true, cookies, count: cookies.length, notes: notes.length ? notes : undefined });
   } catch (e) {
     res.status(500).json({ ok: false, error: (e && e.message) ? e.message : String(e) });
   }
