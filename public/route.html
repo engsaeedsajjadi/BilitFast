@@ -134,6 +134,9 @@
       <!-- خطا -->
       <div id="reserve-error" class="alert alert-error" style="display:none"></div>
 
+      <!-- خلاصه رزرو و قیمت -->
+      <div id="reserve-summary" style="display:none"></div>
+
       <h4 style="margin-top:12px">مشخصات مسافران (تکمیل خودکار در سایت)</h4>
       <table class="table" id="reserve-passengers"><tbody></tbody></table>
 
@@ -542,6 +545,9 @@
       case 'no_capacity':
         showReserveError(data.message || 'ظرفیت این قطار تکمیل شده است.');
         break;
+      case 'idempotency_blocked':
+        showReserveError(data.message || 'عملیات قبلاً به مرحله پرداخت رسیده است.');
+        break;
       default:
         showReserveError('مرحله ناشناخته از سامانه: ' + (data.step || '—'));
     }
@@ -552,6 +558,7 @@
     $('reserve-payment').style.display = 'none';
     $('reserve-error').style.display = 'none';
     $('reserve-fallback').style.display = 'none';
+    $('reserve-summary').style.display = 'none';
   }
 
   function showReserveError(msg) {
@@ -658,10 +665,41 @@
 
   function showReservePayment(data) {
     hideReserveAll();
+    renderBookingSummary(data);
     $('reserve-message').textContent = data.message || 'رزرو تأیید شد؛ در حال انتقال به صفحه پرداخت...';
     setStatus('انتقال به صفحه پرداخت...', 'green');
     saveRouteState({ status: 'آماده پرداخت', statusColor: 'green' });
     openPaymentWindow(data.paymentUrl);
+  }
+
+  // نمایش خلاصه رزرو + اعتبارسنجی قیمت قبل از پرداخت
+  function renderBookingSummary(data) {
+    const el = $('reserve-summary');
+    const b = data.booking;
+    let html = '';
+    if (b) {
+      const rows = [
+        ['مسیر', (b.origin || '') + ' ← ' + (b.destination || '')],
+        ['تاریخ', b.date || ''],
+        ['ساعت', b.time || ''],
+        ['قطار', b.train_number || ''],
+        ['نوع', b.train_type || ''],
+        ['شرکت', b.company || ''],
+        ['مسافران', b.passengers || 0],
+      ];
+      html = '<table class="table"><tbody>' + rows.map((r) =>
+        `<tr><th>${esc(r[0])}</th><td>${esc(r[1])}</td></tr>`).join('') + '</tbody></table>';
+    }
+    // قیمت و اعتبارسنجی
+    if (data.totalPrice !== null && data.totalPrice !== undefined) {
+      html += '<p class="muted small"><b>مبلغ قابل پرداخت:</b> ' + esc(String(data.totalPrice)) +
+        ' ریال' + (data.expectedPrice ? ' (مبلغ مرحله جستجو: ' + esc(String(data.expectedPrice)) + ' ریال)' : '') + '</p>';
+      if (data.priceCheck && data.priceCheck.verified && !data.priceCheck.ok) {
+        html += '<p class="alert alert-error">⚠️ ' + esc(data.priceCheck.message) + '</p>';
+      }
+    }
+    if (html) { el.style.display = 'block'; el.innerHTML = html; }
+    else { el.style.display = 'none'; el.innerHTML = ''; }
   }
 
   // بازکردن صفحه پرداخت در تب جدید (فقط در پایان رزرو)

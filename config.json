@@ -40,6 +40,8 @@
     "success_markers": ["رزرو با موفقیت", "کد رهگیری", "موفقیت آمیز", "شماره سفارش"],
     "captcha_error_markers": ["کپچا اشتباه", "کد امنیتی اشتباه", "کپچا صحیح", "کد وارد شده صحیح نیست", "اشتباه است"],
     "no_capacity_markers": ["ظرفیت تکمیل", "موجودی کافی نیست", "اتمام ظرفیت"],
+    "total_price_markers": ["مبلغ قابل پرداخت", "جمع کل", "مبلغ کل", "قابل پرداخت", "مبلغ نهایی"],
+    "price_tolerance": 0,
     "passenger_field_hints": {
       "national_code": ["pid", "meli", "codemeli", "national", "nationalcode", "nc", "shomare", "code_melli", "codem"],
       "birth_day": ["ruz", "rooz", "day", "bd", "birthd", "tavalod_day", "roz"],
