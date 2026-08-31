@@ -51,5 +51,15 @@
     },
     "field_index_regex": "^([a-zA-Z_]+?)(\\d+)$",
     "wagon_field": "wagon"
+  },
+
+  "captcha": {
+    "auto_solve": true,
+    "max_attempts": 5,
+    "min_confidence": 30,
+    "min_length": 3,
+    "max_length": 8,
+    "whitelist": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+    "psm": 7
   }
 }

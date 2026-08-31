@@ -10,8 +10,11 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
     "cheerio": "^1.0.0",
     "jalaali-js": "^1.2.6",
-    "sql.js": "^1.14.2"
+    "jimp": "^0.22.12",
+    "sql.js": "^1.14.2",
+    "tesseract.js": "^7.0.0"
   }
 }

@@ -437,7 +437,10 @@
 
   /* ---------------- رزرو (چندمرحله‌ای: کپچا → اطلاعات مسافر → پرداخت) ---------------- */
   const RESERVE_MAX_STEPS = 8;
+  const CAPTCHA_MAX_AUTO_ATTEMPTS = 5; // حداکثر تلاش خودکار حل کپچا
   let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
+  let autoSolveAttempts = 0;
+  let autoSolving = false;
 
   async function reserve(trainNumber) {
     const route = BilitFast.getRoute(ROUTE_ID);
@@ -566,6 +569,8 @@
     $('reserve-captcha-input').value = '';
     loadCaptchaImage(data.captchaImageUrl);
     setStatus('کد امنیتی (کپچا) را وارد کنید', 'blue');
+    // تلاش خودکار حل کپچا (در پس‌زمینه؛ کاربر همچنان می‌تواند دستی وارد کند)
+    autoSolveLoop(data.captchaImageUrl);
   }
 
   async function loadCaptchaImage(url) {
@@ -578,6 +583,75 @@
     } else {
       img.alt = 'دریافت کپچا ناموفق';
     }
+  }
+
+  /* --- حل خودکار کپچا (OCR) با تلاش مجدد و fallback دستی --- */
+  async function autoSolveLoop(captchaImageUrl) {
+    if (autoSolving) return;
+    autoSolving = true;
+    autoSolveAttempts = 0;
+    $('btn-captcha-submit').disabled = true;
+
+    let currentUrl = captchaImageUrl;
+
+    while (autoSolveAttempts < CAPTCHA_MAX_AUTO_ATTEMPTS) {
+      autoSolveAttempts++;
+      setStatus('حل خودکار کپچا (تلاش ' + autoSolveAttempts + '/' + CAPTCHA_MAX_AUTO_ATTEMPTS + ')...', 'blue');
+
+      const solved = await callReserve({
+        action: 'solve-captcha',
+        captchaImageUrl: currentUrl,
+        stateToken: reserveCtx.token,
+      });
+
+      if (solved && solved.ok && solved.text) {
+        $('reserve-captcha-input').value = solved.text;
+        setStatus('کپچای خوانده‌شده: ' + solved.text + ' — در حال ارسال...', 'blue');
+        const resp = await callReserve({
+          action: 'submit',
+          stateToken: reserveCtx.token,
+          captcha: solved.text,
+          passengers: reserveCtx.passengers,
+          phone: reserveCtx.phone,
+        });
+
+        if (resp && resp.ok) {
+          // به‌روزرسانی token (پاسخ submit حاوی state جدید است)
+          if (resp.stateToken) reserveCtx.token = resp.stateToken;
+
+          if (resp.step !== 'captcha') {
+            // موفق شد (پرداخت/فرم مسافر/موفقیت)
+            autoSolving = false;
+            $('btn-captcha-submit').disabled = false;
+            handleReserveStep(resp);
+            return;
+          }
+          // کپچا اشتباه بود → کپچای جدید از همان پاسخ
+          if (resp.captchaImageUrl) {
+            currentUrl = resp.captchaImageUrl;
+            reserveCtx.captchaImageUrl = resp.captchaImageUrl;
+            await loadCaptchaImage(currentUrl);
+          }
+        }
+      } else if (solved && !solved.ok) {
+        // OCR نامطمئن → کپچای جدید
+        const refreshed = await refreshCaptchaImage();
+        if (refreshed) { currentUrl = refreshed; reserveCtx.captchaImageUrl = refreshed; }
+      }
+    }
+
+    // تلاش‌های خودکار تمام شد → واگذار به کاربر
+    autoSolving = false;
+    $('btn-captcha-submit').disabled = false;
+    setStatus('حل خودکار کپچا ناموفق بود؛ لطفاً کد را دستی وارد کنید.', 'orange');
+  }
+
+  async function refreshCaptchaImage() {
+    if (!reserveCtx.captchaImageUrl) return null;
+    const sep = reserveCtx.captchaImageUrl.includes('?') ? '&' : '?';
+    const newUrl = reserveCtx.captchaImageUrl + sep + '_=' + Date.now();
+    await loadCaptchaImage(newUrl);
+    return newUrl;
   }
 
   function showReservePayment(data) {
