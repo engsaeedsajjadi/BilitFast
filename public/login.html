@@ -42,11 +42,14 @@
     <section class="card narrow">
       <h3>همگام‌سازی خودکار کوکی (پیشنهادی)</h3>
       <p class="muted small">
-        اگر در مرورگر <b>Firefox</b> وارد سایت <code>safirrail.ir</code> شده باشید، با زدن دکمه زیر،
-        کوکی‌های ورود به‌صورت خودکار از پروفایل Firefox خوانده و به برنامه منتقل می‌شود
+        اگر در مرورگر وارد سایت <code>safirrail.ir</code> شده باشید، با زدن دکمه زیر،
+        کوکی‌های ورود به‌صورت خودکار از پروفایل مرورگر خوانده و به برنامه منتقل می‌شود
         (دقیقاً مثل نسخه دسکتاپی).
       </p>
-      <button class="btn btn-primary" id="btn-sync-cookies">🔄 همگام‌سازی کوکی از Firefox</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btn-sync-firefox">🔄 از Firefox</button>
+        <button class="btn btn-primary" id="btn-sync-chrome">🔄 از Chrome</button>
+      </div>
       <div id="sync-result" class="muted small" style="margin-top:8px"></div>
     </section>
 
@@ -97,18 +100,16 @@
     }
   });
 
-  // همگام‌سازی خودکار کوکی از Firefox
-  document.getElementById('btn-sync-cookies').addEventListener('click', async () => {
-    const btn = document.getElementById('btn-sync-cookies');
+  // همگام‌سازی خودکار کوکی از مرورگر (Firefox / Chrome)
+  async function syncCookies(source) {
     const resultEl = document.getElementById('sync-result');
-    btn.disabled = true;
-    resultEl.textContent = 'در حال خواندن کوکی‌های Firefox...';
+    resultEl.textContent = 'در حال خواندن کوکی‌های مرورگر...';
     try {
-      const res = await fetch('/api/sync-cookies');
+      const res = await fetch('/api/sync-cookies?source=' + source);
       const data = await res.json();
       if (data.ok && data.cookies && data.cookies.length) {
         BilitFast.setCookies(data.cookies);
-        resultEl.textContent = '✅ ' + data.count + ' کوکی از Firefox همگام‌سازی و ذخیره شد.';
+        resultEl.textContent = '✅ ' + data.count + ' کوکی از ' + (source === 'chrome' ? 'Chrome' : 'Firefox') + ' همگام‌سازی و ذخیره شد.';
         document.getElementById('cookie-input').value = data.cookies.join('; ');
       } else {
         resultEl.textContent = data.error || 'کوکی‌ای یافت نشد.';
@@ -116,8 +117,9 @@
     } catch (e) {
       resultEl.textContent = 'خطا در همگام‌سازی: ' + (e && e.message ? e.message : e);
     }
-    btn.disabled = false;
-  });
+  }
+  document.getElementById('btn-sync-firefox').addEventListener('click', () => syncCookies('firefox'));
+  document.getElementById('btn-sync-chrome').addEventListener('click', () => syncCookies('chrome'));
 
   // ذخیره کوکی‌های چسبانده‌شده
   function parseCookieString(s) {
