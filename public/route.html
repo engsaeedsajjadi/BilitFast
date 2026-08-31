@@ -378,33 +378,58 @@
     setStatus('جستجو متوقف شد', 'red');
   });
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
   function renderFound(trains) {
     if (!trains.length) { $('found-section').style.display = 'none'; return; }
     $('found-section').style.display = 'block';
     $('found-table').querySelector('tbody').innerHTML = trains.map((t) => `
       <tr>
-        <td>${t['شماره قطار']}</td>
-        <td>${t['ساعت حرکت']}</td>
-        <td>${t['قیمت']}</td>
-        <td>${t['نوع کوپه']}</td>
-        <td>${t['ظرفیت']}</td>
-        <td><button class="btn btn-sm btn-primary" onclick="reserve(${JSON.stringify(t['شماره قطار'])})">انتخاب</button></td>
+        <td>${esc(t['شماره قطار'])}</td>
+        <td>${esc(t['ساعت حرکت'])}</td>
+        <td>${esc(t['قیمت'])}</td>
+        <td>${esc(t['نوع کوپه'])}</td>
+        <td>${esc(t['ظرفیت'])}</td>
+        <td><button class="btn btn-sm btn-primary" data-train="${esc(t['شماره قطار'])}">انتخاب</button></td>
       </tr>`).join('');
   }
 
+  // اتصال رویداد انتخاب (delegation — با کلیک روی هر دکمه «انتخاب»)
+  $('found-table').querySelector('tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-train]');
+    if (!btn) return;
+    reserve(btn.getAttribute('data-train'));
+  });
+
   /* ---------------- رزرو ---------------- */
   async function reserve(trainNumber) {
+    setStatus('در حال ساخت فرم رزرو...', 'blue');
     const route = BilitFast.getRoute(ROUTE_ID);
+    if (!route) { setStatus('مسیر یافت نشد.', 'red'); return; }
     const train = (route.foundTrains || []).find((t) => t['شماره قطار'] === trainNumber);
-    if (!train) { alert('قطار یافت نشد.'); return; }
+    if (!train) { setStatus('قطار یافت نشد (لیست قطارها را دوباره جستجو کنید).', 'red'); return; }
     const payload = {
       fields: getFields(),
       passengers: getPassengers(),
       train,
       cookies: BilitFast.getCookies(),
     };
-    const data = await BilitFast.apiReserve(payload);
-    if (!data.ok) { alert(data.error || 'خطا در رزرو'); return; }
+
+    let data;
+    try {
+      data = await BilitFast.apiReserve(payload);
+    } catch (err) {
+      setStatus('خطا در ارتباط با سرور هنگام رزرو: ' + (err && err.message ? err.message : err), 'red');
+      return;
+    }
+    if (!data.ok) {
+      setStatus(data.error || 'خطا در رزرو', 'red');
+      return;
+    }
 
     $('reserve-section').style.display = 'block';
     $('reserve-message').textContent = 'فایل فرم رزرو آماده است. آن را دانلود و در مرورگر باز کنید تا به صفحه رزرو سایت هدایت شوید.';
@@ -413,8 +438,9 @@
     const a = $('reserve-download');
     a.href = url;
     $('reserve-passengers').querySelector('tbody').innerHTML = (payload.passengers || []).map((p) =>
-      `<tr><td>${p.quota_type}</td><td>${p.national_code||''}</td><td>${p.first_name||''}</td><td>${p.last_name||''}</td></tr>`
+      `<tr><td>${esc(p.quota_type)}</td><td>${esc(p.national_code||'')}</td><td>${esc(p.first_name||'')}</td><td>${esc(p.last_name||'')}</td></tr>`
     ).join('');
+    setStatus('رزرو آماده است — فرم را دانلود کنید.', 'green');
     saveRouteState({ status: 'رزرو آماده است', statusColor: 'green' });
   }
   window.reserve = reserve;
