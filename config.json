@@ -2,7 +2,7 @@
   "base_url": "https://safirrail.ir",
   "search_url": "/etrain/searchWagn.php",
   "reserve_url": "/etrain/TresV.php",
-  "refresh_interval": 5,
+  "refresh_interval": 3,
   "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
   "content_type": "application/x-www-form-urlencoded",
   "accept": "*/*",

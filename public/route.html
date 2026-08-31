@@ -49,7 +49,7 @@
           </div>
         </div>
         <div class="field">
-          <label>شماره قطار (اختیاری):</label>
+          <label>شماره قطار (اختیاری — پایش یک قطار خاص):</label>
           <input type="text" id="train_number">
         </div>
       </div>
@@ -120,6 +120,27 @@
 
   const $ = (id) => document.getElementById(id);
   const CITIES = {};
+  const MAX_PASSENGERS = 6;       // حداکثر مسافر قابل تعریف (طبق درخواست کاربر)
+  const POLL_INTERVAL_MS = 3000;  // جستجو هر 3 ثانیه
+
+  /* ---------------- نوتیفیکیشن مرورگر ---------------- */
+  let notifAllowed = false;
+  function requestNotifyPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') { notifAllowed = true; return; }
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then((p) => { notifAllowed = (p === 'granted'); });
+    }
+  }
+  function notifyFound(count, trainNumber) {
+    if (!notifAllowed || !('Notification' in window)) return;
+    const msg = trainNumber
+      ? 'قطار ' + trainNumber + ' با ظرفیت کافی یافت شد!'
+      : count + ' قطار با ظرفیت کافی یافت شد!';
+    try {
+      new Notification('🚆 Bilit Fast — ظرفیت یافت شد', { body: msg });
+    } catch (e) { /* ignore */ }
+  }
 
   // دریافت لیست شهرها از سمت سرور (از طریق API جستجو یا endpoint جداگانه)
   async function loadCities() {
@@ -176,7 +197,15 @@
   $('btn-next-day').addEventListener('click', () => { $('date').value = BilitFast.shiftJalaliDate($('date').value, 1); updateTitle(); });
 
   /* ---------------- جدول مسافران ---------------- */
+  function passengerCount() {
+    return $('passengers-table').querySelector('tbody').rows.length;
+  }
+
   function addPassengerRow(data) {
+    if (passengerCount() >= MAX_PASSENGERS) {
+      alert('حداکثر ' + MAX_PASSENGERS + ' مسافر مجاز است.');
+      return;
+    }
     data = data || { quota_type: 'بزرگسال' };
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -278,6 +307,7 @@
       });
       stopPolling();
       renderFound(data.trains);
+      notifyFound(data.trains.length, getFields().train_number || null);
     } else {
       setStatus('هیچ قطاری با ظرفیت کافی یافت نشد.', 'orange');
       saveRouteState({ status: 'هیچ قطاری با ظرفیت کافی یافت نشد.', statusColor: 'orange' });
@@ -286,7 +316,7 @@
 
   function startPolling() {
     if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(doOneAttempt, 5000);
+    pollTimer = setInterval(doOneAttempt, POLL_INTERVAL_MS);
   }
   function stopPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -298,7 +328,17 @@
       setStatus('فرمت تاریخ اشتباه است یا ورودی‌ها ناقص‌اند.', 'red');
       return;
     }
-    saveRouteState({ fields: f, passengers: getPassengers(), running: true, status: 'جستجو آغاز شد...', statusColor: 'blue', foundTrains: [] });
+    const passengers = getPassengers();
+    if (passengers.length < 1) {
+      setStatus('حداقل یک مسافر تعریف کنید.', 'red');
+      return;
+    }
+    if (passengers.length > MAX_PASSENGERS) {
+      setStatus('حداکثر ' + MAX_PASSENGERS + ' مسافر مجاز است.', 'red');
+      return;
+    }
+    requestNotifyPermission();
+    saveRouteState({ fields: f, passengers, running: true, status: 'جستجو آغاز شد...', statusColor: 'blue', foundTrains: [] });
     $('btn-start').disabled = true;
     $('btn-stop').disabled = false;
     $('found-section').style.display = 'none';
