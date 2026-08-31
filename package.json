@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "cheerio": "^1.0.0",
-    "jalaali-js": "^1.2.6"
+    "jalaali-js": "^1.2.6",
+    "sql.js": "^1.14.2"
   }
 }

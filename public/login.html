@@ -40,7 +40,18 @@
     </section>
 
     <section class="card narrow">
-      <h3>ورود با چسباندن کوکی (پیشنهادی)</h3>
+      <h3>همگام‌سازی خودکار کوکی (پیشنهادی)</h3>
+      <p class="muted small">
+        اگر در مرورگر <b>Firefox</b> وارد سایت <code>safirrail.ir</code> شده باشید، با زدن دکمه زیر،
+        کوکی‌های ورود به‌صورت خودکار از پروفایل Firefox خوانده و به برنامه منتقل می‌شود
+        (دقیقاً مثل نسخه دسکتاپی).
+      </p>
+      <button class="btn btn-primary" id="btn-sync-cookies">🔄 همگام‌سازی کوکی از Firefox</button>
+      <div id="sync-result" class="muted small" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card narrow">
+      <h3>ورود با چسباندن دستی کوکی</h3>
       <p class="muted small">
         چون ورود خودکار ممکن است با کپچا مسدود شود، مطمئن‌ترین راه این است که در مرورگر خود وارد
         <code>safirrail.ir</code> شوید و کوکی‌های آن را اینجا جای‌گذاری کنید. برای این کار:
@@ -84,6 +95,28 @@
     } else {
       showAlert(data.error || data.message || 'ورود ناموفق بود.', false);
     }
+  });
+
+  // همگام‌سازی خودکار کوکی از Firefox
+  document.getElementById('btn-sync-cookies').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-sync-cookies');
+    const resultEl = document.getElementById('sync-result');
+    btn.disabled = true;
+    resultEl.textContent = 'در حال خواندن کوکی‌های Firefox...';
+    try {
+      const res = await fetch('/api/sync-cookies');
+      const data = await res.json();
+      if (data.ok && data.cookies && data.cookies.length) {
+        BilitFast.setCookies(data.cookies);
+        resultEl.textContent = '✅ ' + data.count + ' کوکی از Firefox همگام‌سازی و ذخیره شد.';
+        document.getElementById('cookie-input').value = data.cookies.join('; ');
+      } else {
+        resultEl.textContent = data.error || 'کوکی‌ای یافت نشد.';
+      }
+    } catch (e) {
+      resultEl.textContent = 'خطا در همگام‌سازی: ' + (e && e.message ? e.message : e);
+    }
+    btn.disabled = false;
   });
 
   // ذخیره کوکی‌های چسبانده‌شده
