@@ -98,6 +98,11 @@
       </table>
     </section>
 
+    <section class="card" id="diag-section" style="display:none">
+      <h3>جزئیات جستجو (تشخیص)</h3>
+      <div id="diag-content" class="muted small"></div>
+    </section>
+
     <section class="card" id="reserve-section" style="display:none">
       <h3>رزرو آماده است</h3>
       <p id="reserve-message"></p>
@@ -307,12 +312,29 @@
       });
       stopPolling();
       renderFound(data.trains);
+      renderDiagnostics(data);
       notifyFound(data.trains.length, getFields().train_number || null);
     } else {
       const msg = data.note || 'هیچ قطاری با ظرفیت کافی یافت نشد.';
       setStatus(msg, 'orange');
       saveRouteState({ status: msg, statusColor: 'orange' });
+      renderDiagnostics(data);
     }
+  }
+
+  function renderDiagnostics(data) {
+    const el = $('diag-content');
+    if (!data.diag) { $('diag-section').style.display = 'none'; return; }
+    $('diag-section').style.display = 'block';
+    let html = '<p><b>وضعیت نشست:</b> ' +
+      (data.sessionOk ? '✅ کوکی سشن (PHPSESSID) ارسال شد' : '❌ کوکی سشن (PHPSESSID) ارسال نشده') +
+      ' | <b>تعداد کل قطارها:</b> ' + data.diag.totalRows + '</p>';
+    if (data.diag.trains && data.diag.trains.length) {
+      html += '<p><b>موجودی همه قطارها (شماره قطار → موجودی):</b></p><p style="direction:ltr;text-align:left">';
+      html += data.diag.trains.map((t) => t.num + ':' + t.avail).join(' ، ');
+      html += '</p>';
+    }
+    el.innerHTML = html;
   }
 
   function startPolling() {

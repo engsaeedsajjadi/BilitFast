@@ -57,20 +57,21 @@
       <h3>ورود با چسباندن دستی کوکی</h3>
       <p class="muted small">
         چون ورود خودکار ممکن است با کپچا مسدود شود، مطمئن‌ترین راه این است که در مرورگر خود وارد
-        <code>safirrail.ir</code> شوید و کوکی‌های آن را اینجا جای‌گذاری کنید. برای این کار:
+        <code>safirrail.ir</code> شوید و کوکی‌های آن را اینجا جای‌گذاری کنید.
       </p>
-      <ol class="muted small" style="padding-right:18px">
-        <li>در مرورگر وارد <code>safirrail.ir</code> شوید و لاگین کنید.</li>
-        <li>کلید F12 را بزنید → تب <b>Application</b> (یا Console) → بخش <b>Cookies</b> → دامنه <code>safirrail.ir</code>.</li>
-        <li>در تب Console دستور زیر را بزنید و خروجی را کپی کنید:
-          <br><code>document.cookie</code></li>
-        <li>خروجی را در کادر زیر جای‌گذاری و ذخیره کنید.</li>
-      </ol>
+      <div class="alert alert-error" style="font-size:12px">
+        ⚠️ <b>مهم:</b> کوکی سشن (<code>PHPSESSID</code>) معمولاً <b>HttpOnly</b> است و دستور
+        <code>document.cookie</code> آن را نشان نمی‌دهد! برای گرفتن کامل کوکی‌ها از یکی از این دو روش استفاده کنید:
+        <br>۱) دکمه «همگام‌سازی از Firefox/Chrome» بالا (بهترین روش — کوکی HttpOnly را هم می‌خواند).
+        <br>۲) در تب <b>Application → Cookies → safirrail.ir</b> مقدار <code>PHPSESSID</code> را دستی کپی کنید و به‌صورت
+        <code style="direction:ltr;display:inline-block">PHPSESSID=مقدار</code> در کادر زیر قرار دهید.
+      </div>
       <div class="field">
         <label>کوکی‌ها (مثلاً: PHPSESSID=...; other=...):</label>
         <textarea id="cookie-input" rows="3" style="font-family:monospace;direction:ltr;text-align:left"></textarea>
       </div>
       <button class="btn btn-primary" id="btn-save-cookies">ذخیره کوکی‌ها</button>
+      <div id="cookie-warn" class="muted small" style="margin-top:6px"></div>
     </section>
   </main>
   <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
@@ -134,7 +135,23 @@
     const arr = parseCookieString(raw);
     BilitFast.setCookies(arr);
     showAlert('✅ ' + arr.length + ' کوکی ذخیره شد.', true);
+    updateCookieWarn();
   });
+
+  // هشدار اگر کوکی سشن (PHPSESSID) وجود نداشته باشد
+  function updateCookieWarn() {
+    const cookies = BilitFast.getCookies();
+    const warnEl = document.getElementById('cookie-warn');
+    const hasSession = cookies.some((c) => /PHPSESSID/i.test(c.split('=')[0]));
+    if (!hasSession) {
+      warnEl.innerHTML = '❌ کوکی سشن <code>PHPSESSID</code> در کوکی‌های ذخیره‌شده یافت نشد. ' +
+        'بدون آن، جستجو ظرفیت واقعی (مخصوصاً مسیر مشهد→تهران) را نشان نمی‌دهد.';
+      warnEl.style.color = '#c0392b';
+    } else {
+      warnEl.innerHTML = '✅ کوکی سشن (PHPSESSID) موجود است.';
+      warnEl.style.color = '#27ae60';
+    }
+  }
 
   // نمایش کوکی‌های ذخیره‌شده فعلی
   (function () {
@@ -142,6 +159,7 @@
     if (existing && existing.length) {
       document.getElementById('cookie-input').value = existing.join('; ');
     }
+    updateCookieWarn();
   })();
   </script>
 </body>
