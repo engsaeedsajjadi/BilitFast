@@ -36,7 +36,27 @@
         </div>
         <button class="btn btn-primary" type="submit">ورود</button>
       </form>
-      <p class="muted small">در صورت بروز خطا در ورود، نام فیلدها و آدرس ورود را در «تنظیمات» بررسی کنید.</p>
+      <p class="muted small">در صورت بروز خطا در ورود (مثلاً کپچا)، از روش «چسباندن کوکی» پایین استفاده کنید.</p>
+    </section>
+
+    <section class="card narrow">
+      <h3>ورود با چسباندن کوکی (پیشنهادی)</h3>
+      <p class="muted small">
+        چون ورود خودکار ممکن است با کپچا مسدود شود، مطمئن‌ترین راه این است که در مرورگر خود وارد
+        <code>safirrail.ir</code> شوید و کوکی‌های آن را اینجا جای‌گذاری کنید. برای این کار:
+      </p>
+      <ol class="muted small" style="padding-right:18px">
+        <li>در مرورگر وارد <code>safirrail.ir</code> شوید و لاگین کنید.</li>
+        <li>کلید F12 را بزنید → تب <b>Application</b> (یا Console) → بخش <b>Cookies</b> → دامنه <code>safirrail.ir</code>.</li>
+        <li>در تب Console دستور زیر را بزنید و خروجی را کپی کنید:
+          <br><code>document.cookie</code></li>
+        <li>خروجی را در کادر زیر جای‌گذاری و ذخیره کنید.</li>
+      </ol>
+      <div class="field">
+        <label>کوکی‌ها (مثلاً: PHPSESSID=...; other=...):</label>
+        <textarea id="cookie-input" rows="3" style="font-family:monospace;direction:ltr;text-align:left"></textarea>
+      </div>
+      <button class="btn btn-primary" id="btn-save-cookies">ذخیره کوکی‌ها</button>
     </section>
   </main>
   <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
@@ -65,6 +85,27 @@
       showAlert(data.error || data.message || 'ورود ناموفق بود.', false);
     }
   });
+
+  // ذخیره کوکی‌های چسبانده‌شده
+  function parseCookieString(s) {
+    return s.split(';').map((x) => x.trim()).filter((x) => x);
+  }
+
+  document.getElementById('btn-save-cookies').addEventListener('click', () => {
+    const raw = document.getElementById('cookie-input').value.trim();
+    if (!raw) { showAlert('کوکی‌ای وارد نشده است.', false); return; }
+    const arr = parseCookieString(raw);
+    BilitFast.setCookies(arr);
+    showAlert('✅ ' + arr.length + ' کوکی ذخیره شد.', true);
+  });
+
+  // نمایش کوکی‌های ذخیره‌شده فعلی
+  (function () {
+    const existing = BilitFast.getCookies();
+    if (existing && existing.length) {
+      document.getElementById('cookie-input').value = existing.join('; ');
+    }
+  })();
   </script>
 </body>
 </html>

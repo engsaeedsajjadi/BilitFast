@@ -309,8 +309,9 @@
       renderFound(data.trains);
       notifyFound(data.trains.length, getFields().train_number || null);
     } else {
-      setStatus('هیچ قطاری با ظرفیت کافی یافت نشد.', 'orange');
-      saveRouteState({ status: 'هیچ قطاری با ظرفیت کافی یافت نشد.', statusColor: 'orange' });
+      const msg = data.note || 'هیچ قطاری با ظرفیت کافی یافت نشد.';
+      setStatus(msg, 'orange');
+      saveRouteState({ status: msg, statusColor: 'orange' });
     }
   }
 
