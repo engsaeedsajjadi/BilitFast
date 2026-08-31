@@ -2,7 +2,10 @@
   "name": "bilitfast",
   "version": "1.0.0",
   "private": true,
-  "description": "Bilit Fast — وب‌اپ رزرو بلیت قطار (نسخه serverless برای Vercel)",
+  "description": "Bilit Fast — وب‌اپ رزرو بلیت قطار",
+  "scripts": {
+    "start": "node dev-server.js"
+  },
   "engines": {
     "node": ">=18"
   },
