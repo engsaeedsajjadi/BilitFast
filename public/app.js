@@ -96,7 +96,12 @@ const BilitFast = (function () {
   }
 
   /* ---------------- تاریخ شمسی (با jalaali) ---------------- */
-  function jalali() { return window.jalaali; }
+  function jalali() {
+    if (!window.jalaali) {
+      throw new Error('کتابخانه jalaali.min.js بارگذاری نشده است. (خطای اسکریپت)');
+    }
+    return window.jalaali;
+  }
   function todayJalali() {
     const j = jalali();
     const now = new Date();
