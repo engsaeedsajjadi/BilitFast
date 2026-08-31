@@ -45,6 +45,34 @@ cd web
 
 سپس در مرورگر: http://127.0.0.1:5000
 
+## استقرار (Deploy)
+
+این برنامه یک سرور Flask طولانی‌مدت است (جستجوی پس‌زمینه با thread و polling مداوم)،
+بنابراین **روی Vercel/Netlify (serverless) کار نمی‌کند**. از یک هاست پایتون استفاده کنید:
+
+### Render.com (پیشنهادی)
+1. ریپو را در Render «New + → Blueprint» اضافه کنید (فایل `render.yaml` موجود است) یا سرویس Web Service با `runtime: python` بسازید.
+2. دستورها به‌صورت خودکار تنظیم می‌شوند:
+   - **Build:** `pip install -r requirements.txt`
+   - **Start:** `gunicorn --chdir web --bind 0.0.0.0:$PORT app:app`
+
+### Railway
+- از «Deploy from GitHub repo» استفاده کنید (فایل `Procfile` و `requirements.txt` موجود است).
+
+### Fly.io / Docker
+- فایل `Dockerfile` موجود است:
+  ```bash
+  fly launch
+  # یا
+  docker build -t bilitfast . && docker run -p 5000:5000 bilitfast
+  ```
+
+### ⚠️ نکته درباره ذخیره‌سازی وضعیت
+`trial.json` و `state.json` روی دیسک سرویس ذخیره می‌شوند. در پلن‌های رایگان Render/Railway
+دیسک **موقتی (ephemeral)** است و با هر ری‌استارت/ری‌دپلوی پاک می‌شود (دوره آزمایشی و
+مسیرهای ذخیره‌شده از بین می‌روند). برای ماندگاری، یک **Persistent Disk** (در Render) یا
+**Volume** (در Railway/Fly) به مسیر پروژه متصل کنید.
+
 ## نکات مهم
 
 ### ۱. ورود به سامانه
