@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تنظیمات — Bilit Fast</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="login.html">ورود</a>
+        <a href="settings.html">تنظیمات</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2>تنظیمات</h2>
+      <p class="muted">
+        این مقادیر از فایل <code>config.json</code> خوانده می‌شوند و در زمان استقرار (deploy)
+        همراه با پروژه باندل می‌شوند. چون Vercel فایل‌سیستم فقط‌خواندنی دارد، برای تغییر
+        باید <code>config.json</code> را در ریپو ویرایش و دوباره دیپلوی کنید.
+      </p>
+      <pre id="config-preview">در حال بارگذاری...</pre>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="app.js"></script>
+  <script>
+  async function loadConfig() {
+    const res = await fetch('/api/config');
+    const data = await res.json();
+    document.getElementById('config-preview').textContent = JSON.stringify(data, null, 2);
+  }
+  loadConfig();
+  </script>
+</body>
+</html>

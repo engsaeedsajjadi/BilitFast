@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مسیر — Bilit Fast</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="login.html">ورود</a>
+        <a href="settings.html">تنظیمات</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <div class="route-header">
+        <h2>تنظیمات مسیر <span id="route-title"></span></h2>
+        <a class="btn btn-sm" href="index.html">بازگشت به مسیرها</a>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>مبدا:</label>
+          <select id="from_city"></select>
+        </div>
+        <div class="field">
+          <label>مقصد:</label>
+          <select id="to_city"></select>
+        </div>
+        <div class="field">
+          <label>تاریخ (شمسی):</label>
+          <input type="text" id="date" placeholder="1405/06/09">
+        </div>
+        <div class="field">
+          <label>جنسیت:</label>
+          <div class="radio-group">
+            <label><input type="radio" name="gender" value="عادی" checked> عادی</label>
+            <label><input type="radio" name="gender" value="برادران"> برادران</label>
+            <label><input type="radio" name="gender" value="خواهران"> خواهران</label>
+          </div>
+        </div>
+        <div class="field">
+          <label>شماره قطار (اختیاری):</label>
+          <input type="text" id="train_number">
+        </div>
+      </div>
+
+      <div class="date-buttons">
+        <button class="btn btn-sm" id="btn-prev-day">روز قبل</button>
+        <button class="btn btn-sm" id="btn-next-day">روز بعد</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>مشخصات مسافران</h3>
+      <table class="table" id="passengers-table">
+        <thead>
+          <tr>
+            <th>نوع سهمیه</th>
+            <th>کد ملی</th>
+            <th>روز تولد</th>
+            <th>ماه تولد</th>
+            <th>سال تولد</th>
+            <th>نام</th>
+            <th>نام خانوادگی</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <button class="btn btn-sm" id="btn-add-row">➕ افزودن ردیف</button>
+    </section>
+
+    <section class="card">
+      <div class="search-controls">
+        <button class="btn btn-primary" id="btn-start">شروع جستجو</button>
+        <button class="btn btn-danger" id="btn-stop" disabled>لغو جستجو</button>
+      </div>
+      <div id="status" class="status">آماده</div>
+    </section>
+
+    <section class="card" id="found-section" style="display:none">
+      <h3>قطارهای یافت‌شده</h3>
+      <table class="table" id="found-table">
+        <thead>
+          <tr><th>شماره قطار</th><th>ساعت حرکت</th><th>قیمت</th><th>نوع کوپه</th><th>ظرفیت</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card" id="reserve-section" style="display:none">
+      <h3>رزرو آماده است</h3>
+      <p id="reserve-message"></p>
+      <a class="btn btn-primary" id="reserve-download" href="#" download="reservation_form.html">⬇ دانلود فرم رزرو</a>
+      <h4>مشخصات مسافران (برای تکمیل دستی فرم سایت)</h4>
+      <table class="table" id="reserve-passengers"><tbody></tbody></table>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="jalaali.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+  const params = new URLSearchParams(window.location.search);
+  const ROUTE_ID = parseInt(params.get('id'), 10);
+  if (!ROUTE_ID || !BilitFast.getRoute(ROUTE_ID)) {
+    document.body.innerHTML = '<div class="container"><div class="card"><h2>مسیر یافت نشد.</h2><a class="btn btn-primary" href="index.html">بازگشت</a></div></div>';
+    throw new Error('route not found');
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const CITIES = {};
+
+  // دریافت لیست شهرها از سمت سرور (از طریق API جستجو یا endpoint جداگانه)
+  async function loadCities() {
+    // شهرها در config/cities سمت سرور است؛ برای انتخاب مبدا/مقصد،
+    // لیست را از یک endpoint سبک می‌گیریم (که در api/cities ارائه می‌شود).
+    const res = await fetch('/api/cities');
+    const data = await res.json();
+    const selectFrom = $('from_city'), selectTo = $('to_city');
+    for (const name of data.cities) {
+      CITIES[name] = true;
+      const o1 = document.createElement('option'); o1.value = name; o1.textContent = name;
+      const o2 = document.createElement('option'); o2.value = name; o2.textContent = name;
+      selectFrom.appendChild(o1); selectTo.appendChild(o2);
+    }
+    // اعمال فیلدهای ذخیره‌شده
+    const route = BilitFast.getRoute(ROUTE_ID);
+    if (route) applyFields(route.fields);
+  }
+
+  function getFields() {
+    const gender = document.querySelector('input[name="gender"]:checked');
+    return {
+      from_city: $('from_city').value,
+      to_city: $('to_city').value,
+      date: $('date').value.trim(),
+      gender: gender ? gender.value : 'عادی',
+      train_number: $('train_number').value.trim(),
+    };
+  }
+
+  function applyFields(f) {
+    if (!f) return;
+    if (f.from_city) $('from_city').value = f.from_city;
+    if (f.to_city) $('to_city').value = f.to_city;
+    if (f.date) $('date').value = f.date;
+    if (f.gender) {
+      const r = document.querySelector('input[name="gender"][value="' + f.gender + '"]');
+      if (r) r.checked = true;
+    }
+    if (f.train_number) $('train_number').value = f.train_number;
+  }
+
+  function updateTitle() {
+    const f = getFields();
+    let t = f.from_city + ' به ' + f.to_city + ' - تاریخ ' + f.date;
+    if (f.train_number) t += ' - قطار ' + f.train_number;
+    $('route-title').textContent = t;
+    document.title = t + ' — Bilit Fast';
+  }
+  ['from_city','to_city','date','train_number'].forEach((id) => $(id).addEventListener('input', updateTitle));
+  document.querySelectorAll('input[name="gender"]').forEach((r) => r.addEventListener('change', updateTitle));
+
+  $('btn-prev-day').addEventListener('click', () => { $('date').value = BilitFast.shiftJalaliDate($('date').value, -1); updateTitle(); });
+  $('btn-next-day').addEventListener('click', () => { $('date').value = BilitFast.shiftJalaliDate($('date').value, 1); updateTitle(); });
+
+  /* ---------------- جدول مسافران ---------------- */
+  function addPassengerRow(data) {
+    data = data || { quota_type: 'بزرگسال' };
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><select class="quota-select">
+        <option value="بزرگسال" ${data.quota_type==='بزرگسال'?'selected':''}>بزرگسال</option>
+        <option value="خردسال" ${data.quota_type==='خردسال'?'selected':''}>خردسال</option>
+        <option value="کودک" ${data.quota_type==='کودک'?'selected':''}>کودک</option>
+        <option value="اتباع" ${data.quota_type==='اتباع'?'selected':''}>اتباع</option>
+      </select></td>
+      <td><input class="col-national" value="${data.national_code||''}" placeholder="کد ملی"></td>
+      <td><input class="col-day" value="${data.birth_day||''}" placeholder="روز"></td>
+      <td><input class="col-month" value="${data.birth_month||''}" placeholder="ماه"></td>
+      <td><input class="col-year" value="${data.birth_year||''}" placeholder="سال"></td>
+      <td><input class="col-name" value="${data.first_name||''}" placeholder="نام"></td>
+      <td><input class="col-family" value="${data.last_name||''}" placeholder="نام خانوادگی"></td>
+      <td><button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()">حذف</button></td>
+    `;
+    $('passengers-table').querySelector('tbody').appendChild(tr);
+    const select = tr.querySelector('.quota-select');
+    select.addEventListener('change', () => applyQuota(tr));
+    applyQuota(tr);
+  }
+
+  function applyQuota(tr) {
+    const qt = tr.querySelector('.quota-select').value;
+    const inputs = tr.querySelectorAll('input');
+    if (qt === 'اتباع') {
+      inputs[0].placeholder = 'شماره گذرنامه';
+      for (let i = 1; i <= 3; i++) inputs[i].disabled = true;
+    } else {
+      inputs[0].placeholder = 'کد ملی';
+      for (let i = 1; i <= 3; i++) inputs[i].disabled = false;
+    }
+  }
+
+  function getPassengers() {
+    const rows = [...$('passengers-table').querySelector('tbody').rows];
+    return rows.map((tr) => {
+      const qt = tr.querySelector('.quota-select').value;
+      const inputs = tr.querySelectorAll('input');
+      return {
+        quota_type: qt,
+        national_code: inputs[0].value,
+        birth_day: inputs[1].value,
+        birth_month: inputs[2].value,
+        birth_year: inputs[3].value,
+        first_name: inputs[4].value,
+        last_name: inputs[5].value,
+      };
+    });
+  }
+
+  $('btn-add-row').addEventListener('click', () => addPassengerRow());
+
+  /* ---------------- جستجو (حلقه polling سمت کلاینت) ---------------- */
+  let pollTimer = null;
+
+  function saveRouteState(patch) {
+    const route = BilitFast.getRoute(ROUTE_ID);
+    if (!route) return;
+    Object.assign(route, patch);
+    BilitFast.upsertRoute(route);
+  }
+
+  function setStatus(text, color) {
+    const el = $('status');
+    el.textContent = text;
+    el.style.color = color;
+  }
+
+  async function doOneAttempt() {
+    const route = BilitFast.getRoute(ROUTE_ID);
+    if (!route || !route.running) return;
+    const payload = {
+      fields: getFields(),
+      passengers: getPassengers(),
+      cookies: BilitFast.getCookies(),
+    };
+    let data;
+    try {
+      data = await BilitFast.apiSearch(payload);
+    } catch (e) {
+      setStatus('خطا در ارتباط با سرور', 'red');
+      return;
+    }
+    if (!data.ok) {
+      setStatus(data.error || 'خطا', 'red');
+      saveRouteState({ status: data.error || 'خطا', statusColor: 'red' });
+      return;
+    }
+    if (data.trains && data.trains.length) {
+      setStatus('قطار یافت شد!', 'green');
+      saveRouteState({
+        searchData: data.searchData,
+        foundTrains: data.trains,
+        status: 'قطار یافت شد!',
+        statusColor: 'green',
+        running: false,
+      });
+      stopPolling();
+      renderFound(data.trains);
+    } else {
+      setStatus('هیچ قطاری با ظرفیت کافی یافت نشد.', 'orange');
+      saveRouteState({ status: 'هیچ قطاری با ظرفیت کافی یافت نشد.', statusColor: 'orange' });
+    }
+  }
+
+  function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(doOneAttempt, 5000);
+  }
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  $('btn-start').addEventListener('click', () => {
+    const f = getFields();
+    if (!f.from_city || !f.to_city || !BilitFast.isValidJalaliDate(f.date)) {
+      setStatus('فرمت تاریخ اشتباه است یا ورودی‌ها ناقص‌اند.', 'red');
+      return;
+    }
+    saveRouteState({ fields: f, passengers: getPassengers(), running: true, status: 'جستجو آغاز شد...', statusColor: 'blue', foundTrains: [] });
+    $('btn-start').disabled = true;
+    $('btn-stop').disabled = false;
+    $('found-section').style.display = 'none';
+    setStatus('جستجو آغاز شد...', 'blue');
+    doOneAttempt();          // اولین تلاش فوری
+    startPolling();
+  });
+
+  $('btn-stop').addEventListener('click', () => {
+    stopPolling();
+    saveRouteState({ running: false, status: 'جستجو متوقف شد', statusColor: 'red' });
+    $('btn-start').disabled = false;
+    $('btn-stop').disabled = true;
+    setStatus('جستجو متوقف شد', 'red');
+  });
+
+  function renderFound(trains) {
+    if (!trains.length) { $('found-section').style.display = 'none'; return; }
+    $('found-section').style.display = 'block';
+    $('found-table').querySelector('tbody').innerHTML = trains.map((t) => `
+      <tr>
+        <td>${t['شماره قطار']}</td>
+        <td>${t['ساعت حرکت']}</td>
+        <td>${t['قیمت']}</td>
+        <td>${t['نوع کوپه']}</td>
+        <td>${t['ظرفیت']}</td>
+        <td><button class="btn btn-sm btn-primary" onclick="reserve(${JSON.stringify(t['شماره قطار'])})">انتخاب</button></td>
+      </tr>`).join('');
+  }
+
+  /* ---------------- رزرو ---------------- */
+  async function reserve(trainNumber) {
+    const route = BilitFast.getRoute(ROUTE_ID);
+    const train = (route.foundTrains || []).find((t) => t['شماره قطار'] === trainNumber);
+    if (!train) { alert('قطار یافت نشد.'); return; }
+    const payload = {
+      fields: getFields(),
+      passengers: getPassengers(),
+      train,
+      cookies: BilitFast.getCookies(),
+    };
+    const data = await BilitFast.apiReserve(payload);
+    if (!data.ok) { alert(data.error || 'خطا در رزرو'); return; }
+
+    $('reserve-section').style.display = 'block';
+    $('reserve-message').textContent = 'فایل فرم رزرو آماده است. آن را دانلود و در مرورگر باز کنید تا به صفحه رزرو سایت هدایت شوید.';
+    const blob = new Blob([data.formHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = $('reserve-download');
+    a.href = url;
+    $('reserve-passengers').querySelector('tbody').innerHTML = (payload.passengers || []).map((p) =>
+      `<tr><td>${p.quota_type}</td><td>${p.national_code||''}</td><td>${p.first_name||''}</td><td>${p.last_name||''}</td></tr>`
+    ).join('');
+    saveRouteState({ status: 'رزرو آماده است', statusColor: 'green' });
+  }
+  window.reserve = reserve;
+
+  /* ---------------- شروع ---------------- */
+  (function init() {
+    const route = BilitFast.getRoute(ROUTE_ID);
+    loadCities();
+    // بارگذاری مسافران ذخیره‌شده
+    const pass = route && route.passengers ? route.passengers : [];
+    if (pass.length) pass.forEach((p) => addPassengerRow(p));
+    else addPassengerRow();
+    // بازیابی وضعیت جاری
+    if (route && route.status) setStatus(route.status, route.statusColor || 'black');
+    if (route && route.running) {
+      $('btn-start').disabled = true;
+      $('btn-stop').disabled = false;
+      startPolling();
+    }
+    if (route && route.foundTrains && route.foundTrains.length) renderFound(route.foundTrains);
+    updateTitle();
+  })();
+  </script>
+</body>
+</html>

@@ -1,6 +1,0 @@
-Flask>=3.0
-requests>=2.31
-lxml>=4.9
-cssselect>=1.1
-jdatetime>=4.1
-gunicorn>=21.2

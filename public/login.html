@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ورود — Bilit Fast</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="login.html">ورود</a>
+        <a href="settings.html">تنظیمات</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card narrow">
+      <h2>ورود به سامانه صفیر ریل</h2>
+      <p class="muted">برای انجام رزرو، ابتدا با حساب صفیر ریل خود وارد شوید.</p>
+      <div id="alert" style="display:none"></div>
+      <form id="login-form">
+        <div class="field">
+          <label>شناسه (نام کاربری):</label>
+          <input type="text" id="username" required autocomplete="username">
+        </div>
+        <div class="field">
+          <label>گذرواژه:</label>
+          <input type="password" id="password" required autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" type="submit">ورود</button>
+      </form>
+      <p class="muted small">در صورت بروز خطا در ورود، نام فیلدها و آدرس ورود را در «تنظیمات» بررسی کنید.</p>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="app.js"></script>
+  <script>
+  function showAlert(msg, ok) {
+    const el = document.getElementById('alert');
+    el.style.display = 'block';
+    el.className = 'alert ' + (ok ? 'alert-success' : 'alert-error');
+    el.textContent = msg;
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
+    const data = await BilitFast.apiLogin(username, password);
+    btn.disabled = false;
+    if (data.ok) {
+      BilitFast.setCookies(data.cookies || []);
+      showAlert(data.message || 'ورود موفقیت‌آمیز بود.', true);
+    } else {
+      showAlert(data.error || data.message || 'ورود ناموفق بود.', false);
+    }
+  });
+  </script>
+</body>
+</html>

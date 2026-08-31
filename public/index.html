@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bilit Fast — مسیرها</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+        <span class="brand-sub">سامانه خرید بلیط قطار</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="login.html">ورود</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="trial.html">وضعیت مجوز</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card toolbar">
+      <button class="btn btn-primary" id="btn-add-route">➕ افزودن مسیر جدید</button>
+      <button class="btn btn-danger" id="btn-close-all">✖ بستن همه مسیرها</button>
+      <span id="trial-badge" class="badge"></span>
+    </section>
+
+    <section class="card">
+      <h2>مسیرهای جستجو</h2>
+      <table class="table" id="routes-table">
+        <thead>
+          <tr>
+            <th>route_id</th>
+            <th>مبدا</th>
+            <th>مقصد</th>
+            <th>تاریخ</th>
+            <th>شماره قطار</th>
+            <th>ظرفیت جستجو</th>
+            <th>وضعیت</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="empty-row"><td colspan="8">هیچ مسیری تعریف نشده است.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="app.js"></script>
+  <script>
+  const STATUS_COLORS = {
+    'gray': '#999', 'black': '#333', 'red': '#c0392b', 'orange': '#e67e22',
+    'green': '#27ae60', 'blue': '#2980b9'
+  };
+
+  function renderRoutes() {
+    const routes = BilitFast.loadRoutes();
+    const tbody = document.querySelector('#routes-table tbody');
+    if (!routes.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">هیچ مسیری تعریف نشده است.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = routes.map((r) => {
+      const status = r.status || 'در انتظار جستجو';
+      const color = STATUS_COLORS[r.statusColor] || '#333';
+      const cap = (r.searchData && r.searchData.passCnt) || '';
+      return `
+        <tr data-id="${r.id}">
+          <td>${r.id}</td>
+          <td>${r.fields.from_city || '-'}</td>
+          <td>${r.fields.to_city || '-'}</td>
+          <td>${r.fields.date || '-'}</td>
+          <td>${r.fields.train_number || '-'}</td>
+          <td>${cap}</td>
+          <td><span style="color:${color}">●</span> ${status}</td>
+          <td>
+            <button class="btn btn-sm" onclick="openRoute(${r.id})">باز کردن</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteRoute(${r.id})">حذف</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  function refresh() {
+    // کنترل دوره آزمایشی
+    const ts = BilitFast.trialState();
+    if (ts.state === 'expired') { window.location.href = 'trial.html'; return; }
+    const badge = document.getElementById('trial-badge');
+    badge.textContent = ts.message;
+    badge.className = 'badge badge-' + ts.state;
+    renderRoutes();
+  }
+
+  function openRoute(id) {
+    window.open('route.html?id=' + id, '_blank');
+  }
+
+  function deleteRoute(id) {
+    if (!confirm('مسیر ' + id + ' حذف شود؟')) return;
+    BilitFast.removeRoute(id);
+    renderRoutes();
+  }
+
+  document.getElementById('btn-add-route').addEventListener('click', () => {
+    const ts = BilitFast.trialState();
+    if (ts.state === 'not_started') { window.location.href = 'trial.html'; return; }
+    const id = BilitFast.nextRouteId();
+    BilitFast.upsertRoute({
+      id,
+      fields: { from_city: 'تهران', to_city: 'مشهد', date: BilitFast.todayJalali(), gender: 'عادی', train_number: '' },
+      passengers: [{ quota_type: 'بزرگسال', national_code: '', birth_day: '1', birth_month: '1', birth_year: '1370', first_name: '', last_name: '' }],
+      searchData: null,
+      status: 'در انتظار جستجو',
+      statusColor: 'gray',
+      running: false,
+      foundTrains: [],
+    });
+    openRoute(id);
+    renderRoutes();
+  });
+
+  document.getElementById('btn-close-all').addEventListener('click', () => {
+    const routes = BilitFast.loadRoutes();
+    routes.forEach((r) => { r.running = false; r.status = 'جستجو متوقف شد'; r.statusColor = 'red'; });
+    BilitFast.saveRoutes(routes);
+    renderRoutes();
+  });
+
+  refresh();
+  setInterval(refresh, 3000);
+  </script>
+</body>
+</html>

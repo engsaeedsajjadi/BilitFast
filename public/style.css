@@ -82,6 +82,7 @@ body {
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .table {
   width: 100%;
@@ -124,7 +125,7 @@ body {
 .radio-group { display: flex; gap: 16px; align-items: center; padding-top: 8px; }
 .radio-group label { display: flex; gap: 4px; align-items: center; }
 
-.route-header { display: flex; align-items: center; justify-content: space-between; }
+.route-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .route-header h2 { margin: 0; }
 
 .date-buttons { margin: 14px 0; display: flex; gap: 8px; }
@@ -157,3 +158,5 @@ body {
   font-size: 13px;
   padding: 20px;
 }
+
+pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; direction: ltr; text-align: left; }
