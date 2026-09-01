@@ -769,6 +769,7 @@
     lines.push('step: ' + (data.step || '—'));
     lines.push('agentState: ' + (data.agentState || '—'));
     lines.push('finalUrl: ' + (data.finalUrl || '—'));
+    lines.push('httpStatus: ' + (data.httpStatus != null ? data.httpStatus : '—'));
 
     if (data.classification) {
       lines.push('classification.type: ' + (data.classification.type || '—'));
