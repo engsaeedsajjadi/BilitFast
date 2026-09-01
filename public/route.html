@@ -134,6 +134,12 @@
       <!-- خطا -->
       <div id="reserve-error" class="alert alert-error" style="display:none"></div>
 
+      <!-- تشخیص فرم (برای رفع اشکال؛ نام فیلدهای واقعی صفحه را نشان می‌دهد) -->
+      <details id="reserve-diagnostics" style="display:none;margin-top:10px">
+        <summary style="cursor:pointer" class="muted small">🔍 جزئیات تشخیص فرم (نام فیلدهای صفحه)</summary>
+        <pre id="reserve-diagnostics-body" class="muted small" style="direction:ltr;text-align:left;background:#f7f7f7;padding:8px;border-radius:6px;overflow:auto;max-height:260px"></pre>
+      </details>
+
       <!-- خلاصه رزرو و قیمت -->
       <div id="reserve-summary" style="display:none"></div>
 
@@ -511,6 +517,7 @@
     if (data.stateToken) reserveCtx.token = data.stateToken;
     if (data.captchaImageUrl) reserveCtx.captchaImageUrl = data.captchaImageUrl;
     if (data.formHtml) reserveCtx.formHtml = data.formHtml;
+    renderReserveDiagnostics(data);
 
     reserveCtx.steps++;
     if (reserveCtx.steps > RESERVE_MAX_STEPS) {
@@ -739,6 +746,40 @@
     if (names) {
       $('reserve-message').textContent = (data.message || '') + ' — فیلدهای فرم: ' + names;
     }
+  }
+
+  // نمایش جزئیات تشخیص فرم (نام فیلدها، فرم‌ها، وضعیت‌ها) برای رفع اشکال
+  function renderReserveDiagnostics(data) {
+    const el = $('reserve-diagnostics');
+    const body = $('reserve-diagnostics-body');
+    if (!data || !data.diagnostics) { el.style.display = 'none'; return; }
+
+    const lines = [];
+    lines.push('step: ' + (data.step || '—'));
+    lines.push('agentState: ' + (data.agentState || '—'));
+    lines.push('finalUrl: ' + (data.finalUrl || '—'));
+    if (data.flags) lines.push('flags: ' + JSON.stringify(data.flags));
+
+    const d = data.diagnostics;
+    if (d.forms && d.forms.length) {
+      d.forms.forEach((f, i) => {
+        lines.push('form[' + i + '] action=' + (f.action || '') + ' method=' + (f.method || ''));
+        lines.push('  fieldNames: ' + (f.fieldNames || []).join(', '));
+      });
+    } else {
+      lines.push('forms: (هیچ فرمی یافت نشد)');
+    }
+    if (d.inputs && d.inputs.length) {
+      lines.push('inputs: ' + d.inputs.map((x) => x.name + ':' + x.type).join(', '));
+    } else {
+      lines.push('inputs: (هیچ ورودی‌ای یافت نشد)');
+    }
+    if (d.images && d.images.length) {
+      lines.push('images: ' + d.images.filter((s) => s).join(', '));
+    }
+
+    body.textContent = lines.join('\n');
+    el.style.display = 'block';
   }
 
   // رویدادهای کپچا
