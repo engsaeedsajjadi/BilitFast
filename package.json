@@ -4,7 +4,8 @@
   "private": true,
   "description": "Bilit Fast — وب‌اپ رزرو بلیت قطار",
   "scripts": {
-    "start": "node dev-server.js"
+    "start": "node dev-server.js",
+    "test": "node test/classification.test.js"
   },
   "engines": {
     "node": ">=18"

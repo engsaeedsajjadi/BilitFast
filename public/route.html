@@ -555,6 +555,19 @@
       case 'idempotency_blocked':
         showReserveError(data.message || 'عملیات قبلاً به مرحله پرداخت رسیده است.');
         break;
+      case 'intermediate_step':
+        // مرحله میانی ناشناخته → نمایش تشخیص و توقف موقت (ارسال خودکار انجام نمی‌شود)
+        hideReserveAll();
+        $('reserve-message').textContent = data.message || 'مرحله میانی دریافت شد.';
+        setStatus('مرحله میانی — جزئیات را در «تشخیص» ببینید', 'orange');
+        saveRouteState({ status: 'مرحله میانی (توقف)', statusColor: 'orange' });
+        break;
+      case 'unknown':
+        // صفحه ناشناخته → نمایش خطای تشخیصی + ساختار صفحه
+        hideReserveAll();
+        $('reserve-message').textContent = data.message || 'ساختار صفحه ناشناخته است.';
+        showReserveError(data.message || 'ساختار صفحه با مراحل شناخته‌شده مطابقت ندارد. جزئیات را در «تشخیص» ببینید.');
+        break;
       default:
         showReserveError('مرحله ناشناخته از سامانه: ' + (data.step || '—'));
     }
@@ -741,14 +754,12 @@
   }
 
   function renderDiagnosticsFromReserve(data) {
-    if (!data.diagnostics) return;
-    const names = data.diagnostics.inputs ? data.diagnostics.inputs.map((i) => i.name + '(' + i.type + ')').join('، ') : '';
-    if (names) {
-      $('reserve-message').textContent = (data.message || '') + ' — فیلدهای فرم: ' + names;
-    }
+    // نمایش کامل تشخیص (مرحله، finalUrl، تعداد فرم/ورودی، action/method،
+    // نام/نوع ورودی‌ها، و نشانگرهای captcha/login/payment/success/no-capacity)
+    renderReserveDiagnostics(data);
   }
 
-  // نمایش جزئیات تشخیص فرم (نام فیلدها، فرم‌ها، وضعیت‌ها) برای رفع اشکال
+  // نمایش جزئیات تشخیص فرم (نام فیلدها، فرم‌ها، وضعیت‌ها، طبقه‌بندی) برای رفع اشکال
   function renderReserveDiagnostics(data) {
     const el = $('reserve-diagnostics');
     const body = $('reserve-diagnostics-body');
@@ -758,24 +769,55 @@
     lines.push('step: ' + (data.step || '—'));
     lines.push('agentState: ' + (data.agentState || '—'));
     lines.push('finalUrl: ' + (data.finalUrl || '—'));
-    if (data.flags) lines.push('flags: ' + JSON.stringify(data.flags));
+
+    if (data.classification) {
+      lines.push('classification.type: ' + (data.classification.type || '—'));
+      lines.push('classification.confidence: ' + (data.classification.confidence || 0));
+      if (data.classification.evidence && data.classification.evidence.length) {
+        lines.push('classification.evidence: ' + data.classification.evidence.join(', '));
+      }
+    }
+
+    if (data.flags) {
+      lines.push('detected.login: ' + (!!data.flags.loginRequired));
+      lines.push('detected.payment: ' + (!!data.flags.isPayment));
+      lines.push('detected.success: ' + (!!data.flags.isSuccess));
+      lines.push('detected.noCapacity: ' + (!!data.flags.noCapacity));
+      lines.push('detected.captchaImage: ' + (!!data.flags.hasCaptchaImage));
+    }
 
     const d = data.diagnostics;
+    lines.push('formCount: ' + (d.formCount || 0));
+    lines.push('inputCount: ' + (d.inputCount || 0));
+
     if (d.forms && d.forms.length) {
       d.forms.forEach((f, i) => {
         lines.push('form[' + i + '] action=' + (f.action || '') + ' method=' + (f.method || ''));
         lines.push('  fieldNames: ' + (f.fieldNames || []).join(', '));
+        if (f.hiddenFieldNames && f.hiddenFieldNames.length) lines.push('  hidden: ' + f.hiddenFieldNames.join(', '));
+        if (f.selectNames && f.selectNames.length) lines.push('  selects: ' + f.selectNames.join(', '));
+        if (f.buttonNames && f.buttonNames.length) lines.push('  buttons: ' + f.buttonNames.join(', '));
       });
     } else {
       lines.push('forms: (هیچ فرمی یافت نشد)');
     }
+
     if (d.inputs && d.inputs.length) {
       lines.push('inputs: ' + d.inputs.map((x) => x.name + ':' + x.type).join(', '));
     } else {
       lines.push('inputs: (هیچ ورودی‌ای یافت نشد)');
     }
+
     if (d.images && d.images.length) {
       lines.push('images: ' + d.images.filter((s) => s).join(', '));
+    }
+
+    if (d.markers) {
+      lines.push('markers: ' + JSON.stringify(d.markers));
+    }
+
+    if (d.significantText) {
+      lines.push('pageText: ' + d.significantText);
     }
 
     body.textContent = lines.join('\n');
