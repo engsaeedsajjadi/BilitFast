@@ -1,6 +1,6 @@
 // تست‌های طبقه‌بندی فرم بر اساس DOM (بدون حدس/پیش‌فرض passenger_form)
 // اجرا: node test/classification.test.js
-const { analyzeHtml } = require('../lib/reserve');
+const { analyzeHtml, needsAjaxCaptcha, mergeAjaxAnalysis, mapPassengerFields } = require('../lib/reserve');
 
 const BASE = 'https://safirrail.ir/etrain/TresV.php';
 let failures = 0;
@@ -86,6 +86,28 @@ test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}"
   <input type="hidden" name="from" value="1"/>
   <button type="submit">ادامه</button>
 </form></body></html>`, { type: 'unknown', confidence: 0 });
+
+// (9) ادغام AJAX: پوسته JS-رندر (phone + price) + پاسخ captchaAjax (کپچا + مسافر) → captcha
+{
+  const shell = analyzeHtml(`<form action="" method="post" name="mainFrm">
+    <input type="text" name="phone"/><input type="text" name="ticPrice" value="1"/>
+    <input type="hidden" name="adis" value="A"/><input type="hidden" name="ajaxResponse" value=""/>
+    <script>document.getElementById("captcha").innerHTML = x;</script>
+  </form>`, BASE);
+  const ajax = analyzeHtml(`<form action="TresV.php" method="post" name="mainFrm">
+    <input type="hidden" name="srvc" value="TOKEN"/><input type="hidden" name="captchaId" value="c1"/>
+    <input type="text" name="Ksubmit" id="Ksubmit"/><img id="captchaImg" src="data:image/png;base64,xx"/>
+    <input type="text" id="pid0"/><input type="text" id="ruz0"/><input type="text" id="mah0"/>
+    <input type="text" id="sal0"/><input type="text" id="fn0"/><input type="text" id="ln0"/>
+  </form>`, 'https://safirrail.ir/etrain/captchaAjax.php');
+  const okNeed = needsAjaxCaptcha(shell) === true;
+  const merged = mergeAjaxAnalysis(shell, ajax);
+  const okCls = merged.classification.type === 'captcha';
+  const fields = merged.passengerFields.map((f) => f.effName).join(',');
+  const okFields = fields === 'phone,pid0,ruz0,mah0,sal0,fn0,ln0';
+  console.log((okNeed && okCls && okFields ? 'PASS' : 'FAIL') + '  ادغام AJAX (کپچا + مسافر) → captcha  (need=' + okNeed + ' cls=' + merged.classification.type + ' fields=' + fields + ')');
+  if (!(okNeed && okCls && okFields)) failures++;
+}
 
 console.log('');
 if (failures) {

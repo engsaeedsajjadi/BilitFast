@@ -36,6 +36,7 @@
     ],
     "captcha_input_hints": ["captcha", "kaptcha", "captchacode", "code", "securitycode"],
     "captcha_input_names": ["Ksubmit", "captcha_code", "security_code"],
+    "captcha_ajax_url": "/etrain/captchaAjax.php",
     "login_markers": ["ورود به سامانه", "شناسه:", "UserAut.php", "گذرواژه"],
     "payment_markers": ["درگاه پرداخت", "شاپرک", "shaparak", "به پرداخت", "سداد", "زرین‌پال", "درگاه بانک"],
     "success_markers": ["رزرو با موفقیت", "کد رهگیری", "موفقیت آمیز", "شماره سفارش"],
@@ -52,7 +53,7 @@
       "last_name": ["ln", "lname", "lastname", "family", "fam", "khanvad", "surname"],
       "phone": ["phone", "mobile", "tel", "cell", "shomare"]
     },
-    "non_passenger_field_hints": ["rfood", "foodp", "ret_foodp", "retfood", "food", "radiogroup", "retsrvc", "adis", "ajaxresponse", "totalprice"],
+    "non_passenger_field_hints": ["rfood", "foodp", "ret_foodp", "retfood", "food", "radiogroup", "retsrvc", "adis", "ajaxresponse", "totalprice", "ticprice", "price", "btn"],
     "field_index_regex": "^([a-zA-Z_]+?)(\\d+)$",
     "wagon_field": "wagon"
   },
