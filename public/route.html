@@ -804,9 +804,13 @@
     }
 
     if (d.inputs && d.inputs.length) {
-      lines.push('inputs: ' + d.inputs.map((x) => x.name + ':' + x.type).join(', '));
+      lines.push('inputs: ' + d.inputs.map((x) => x.name + ':' + x.type + (x.id ? '(id=' + x.id + ')' : '')).join(', '));
     } else {
       lines.push('inputs: (هیچ ورودی‌ای یافت نشد)');
+    }
+
+    if (d.captchaRefs && d.captchaRefs.length) {
+      lines.push('captchaRefs: ' + d.captchaRefs.join(', '));
     }
 
     if (d.images && d.images.length) {

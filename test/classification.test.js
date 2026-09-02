@@ -56,7 +56,21 @@ test('نشانگر ورود → login', `<html><body><form action="/fa/UserAut.p
 // (6) نشانگر موفقیت → success
 test('نشانگر موفقیت → success', `<html><body><p>رزرو با موفقیت انجام شد. کد رهگیری: 12345</p></body></html>`, { type: 'success', confidence: 0.95 });
 
-// (7) فقط فیلد hidden + دکمه → unknown (هرگز passenger_form)
+// (7) فرم مسافر با id به‌جای name (ساختار واقعی TresV.php صفیر ریل) → passenger
+test('فرم مسافر با id (pid0/ruz0/... + phone) → passenger', `<html><body><form action="${BASE}" method="post">
+  <input type="text" name="phone" id="phone"/>
+  <input type="text" id="pid0"/>
+  <input type="text" id="ruz0"/>
+  <input type="text" id="mah0"/>
+  <input type="text" id="sal0"/>
+  <input type="text" id="fn0"/>
+  <input type="text" id="ln0"/>
+  <input type="hidden" name="totalPrice" value="15200000"/>
+  <input type="hidden" name="adis" value="x"/>
+  <input type="hidden" name="ajaxResponse" value=""/>
+</form></body></html>`, { type: 'passenger' });
+
+// (8) فقط فیلد hidden + دکمه → unknown (هرگز passenger_form)
 test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}" method="post">
   <input type="hidden" name="srvc" value="S370"/>
   <input type="hidden" name="from" value="1"/>
