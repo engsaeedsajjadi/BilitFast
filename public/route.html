@@ -813,6 +813,20 @@
       lines.push('captchaRefs: ' + d.captchaRefs.join(', '));
     }
 
+    if (d.handlers && d.handlers.length) {
+      lines.push('onclick/onchange handlers:');
+      d.handlers.forEach((h) => lines.push('  ' + h.tag + '[' + h.type + '] name=' + h.name + ' id=' + h.id + ' onclick="' + h.onclick + '" onchange="' + h.onchange + '"'));
+    }
+
+    if (d.endpoints && d.endpoints.length) {
+      lines.push('endpoints: ' + d.endpoints.join(', '));
+    }
+
+    if (d.scripts && d.scripts.length) {
+      lines.push('scripts (' + d.scripts.length + '):');
+      d.scripts.forEach((s, i) => lines.push('  <script[' + i + ']> ' + s));
+    }
+
     if (d.images && d.images.length) {
       lines.push('images: ' + d.images.filter((s) => s).join(', '));
     }
