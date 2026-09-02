@@ -47,6 +47,16 @@ test('تصویر کپچا + ورودی → captcha', `<html><body><form action="
   <input type="text" name="captcha_code"/>
 </form></body></html>`, { type: 'captcha', confidence: 0.9 });
 
+// (3b) کپچای data-URI + ورودی Ksubmit (ساختار واقعی TresV.php) → captcha
+test('کپچای data-URI + Ksubmit → captcha', `<html><body><form action="TresV.php" method="post" name="mainFrm">
+  <input type="text" name="Ksubmit" id="Ksubmit"/>
+  <img id="captchaImg" src="data:image/png;base64,iVBORw0KGgo="/>
+  <input type="hidden" name="captchaId" value="cap123"/>
+  <input type="text" id="pid0"/><input type="text" id="ruz0"/><input type="text" id="mah0"/>
+  <input type="text" id="sal0"/><input type="text" id="fn0"/><input type="text" id="ln0"/>
+  <input type="text" name="phone"/>
+</form></body></html>`, { type: 'captcha', confidence: 0.9 });
+
 // (4) نشانگر پرداخت → payment
 test('نشانگر پرداخت → payment', `<html><body><form action="https://shaparak.ir/pay/x" method="post"></form><p>درگاه پرداخت</p></body></html>`, { type: 'payment', confidence: 0.9 });
 
