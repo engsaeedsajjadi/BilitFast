@@ -19,8 +19,8 @@
   "max_routes": 10,
   "rate_limit_base_interval": 2,
 
-  "login_url": "/fa/UserAut.php",
-  "login_action": "Login",
+  "login_form_url": "/fa/UserAut.php",
+  "login_process_url": "/fa/Login/process.php",
   "login_user_field": "user",
   "login_pass_field": "pass",
   "login_success_marker": "",

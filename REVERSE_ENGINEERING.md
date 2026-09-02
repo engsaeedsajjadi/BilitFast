@@ -7,14 +7,19 @@
 
 ## مرحله ۰ — ورود به سامانه (اجباری برای رزرو)
 
-- **URL:** `https://safirrail.ir/fa/UserAut.php`
-- **فیلدها:** `شناسه` (نام کاربری) و `گذرواژه` (رمز عبور)
+- **فرم ورود:** `fa/UserAut.php` (دارای فیلد مخفی `SiteIdValue` + دکمه submit `sublogin`)
+- **endpoint ورود (POST):** `fa/Login/process.php` (action فرم = `../fa/Login/process.php`)
+- **فیلدها:** `user` (شناسه), `pass` (گذرواژه), `sublogin` (دکمه), `SiteIdValue` (مخفی)
 - **نتیجه:** کوکی نشست `PHPSESSID` (HttpOnly)
 - ثبت‌نام: `fa/UserAut.php?Action=Register` (دارای کپچای `kcaptcha`)
 - فراموشی گذرواژه: `fa/UserAut.php?Action=ForgotPassword`
 
 **نکته حیاتی:** بدون نشست معتبر، `TresV.php` (حتی با پارامترهای کامل رزرو)
-صفحه «ورود به سامانه» را برمی‌گرداند. بنابراین رزرو **بدون ورود ممکن نیست**.
+صفحه «ورود به سامانه» را برمی‌گرداند (نه redirect). بنابراین رزرو **بدون ورود ممکن نیست**.
+
+> پیاده‌سازی: `lib/core.js → login()` ابتدا فرم ورود را GET می‌کند تا
+> `SiteIdValue`/`sublogin` و کوکی نشست را از خود فرم بخواند (بدون حدس)، سپس
+> POST به `fa/Login/process.php` می‌کند.
 
 ---
 
@@ -87,6 +92,13 @@ shahed, child, infant, forien, passCnt, srvc
 - **ورودی کد:** `Ksubmit` (فیلد متنی).
 - **شناسه کپچا:** `captchaId` (مخفی) — همراه کد حل‌شده باید ارسال شود.
 - **پاسخ AJAX:** `ajaxResponse` (مخفی).
+
+### هندلرهای جاوااسکریپت صفحه رزرو (از onclick/onchange واقعی)
+
+- `printmsg()` — نمایش پیام (خطا/هشدار)
+- `chkForm()` / `chkForm2()` — اعتبارسنجی و ارسال فرم (احتمالاً یکی برای
+  ارسال نهایی و دیگری برای بازگشت/سفارش غذا)
+- endpoint جانبی: `cancleTick.php` (انصراف از بلیت)
 
 > بنابراین جریان واقعی: فرم مسافر + کپچا را یک‌باره پر و ارسال می‌کنیم
 > (POST به TresV.php). برنامه این صفحه را `captcha` طبقه‌بندی می‌کند تا
