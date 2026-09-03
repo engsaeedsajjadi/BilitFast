@@ -83,6 +83,20 @@
         <input type="checkbox" id="debug-toggle"> نمایش پنل‌های تشخیص (حالت توسعه)
       </label>
     </section>
+
+    <section class="card">
+      <h3>روش حل کپچا</h3>
+      <p class="muted small">
+        <b>خودکار:</b> برنامه با مدل اختصاصی و OCR کپچا را حل می‌کند و در صورت
+        شکست، به شما واگذار می‌کند. <b>دستی:</b> هیچ تلاش خودکار و رفرش خودکاری
+        انجام نمی‌شود و همیشه خودتان کد را وارد می‌کنید. این انتخاب در صفحه
+        مسیر (روی کارت کپچا) هم قابل تغییر است.
+      </p>
+      <div class="radio-group">
+        <label><input type="radio" name="settings-captcha-mode" value="auto"> 🤖 خودکار</label>
+        <label><input type="radio" name="settings-captcha-mode" value="manual"> ✋ دستی</label>
+      </div>
+    </section>
   </main>
   <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
 
@@ -105,6 +119,12 @@
   const debugToggle = document.getElementById('debug-toggle');
   debugToggle.checked = BilitFast.isDebugMode();
   debugToggle.addEventListener('change', () => BilitFast.setDebugMode(debugToggle.checked));
+
+  // روش حل کپچا (همگام با انتخاب صفحه مسیر)
+  document.querySelectorAll('input[name="settings-captcha-mode"]').forEach((r) => {
+    r.checked = (r.value === BilitFast.getCaptchaMode());
+    r.addEventListener('change', () => BilitFast.setCaptchaMode(r.value));
+  });
 
   /* ---------------- بخش اطلاع‌رسانی ---------------- */
   let currentUser = null;

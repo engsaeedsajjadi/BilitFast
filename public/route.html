@@ -117,10 +117,20 @@
 
       <!-- مرحله کپچا -->
       <div id="reserve-captcha" style="display:none">
-        <p class="muted small">برای ادامه رزرو، کد امنیتی تصویر زیر را وارد کنید:</p>
+        <div class="field" style="margin-bottom:10px;padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">
+          <label style="font-weight:600">روش حل کپچا:</label>
+          <div class="radio-group">
+            <label><input type="radio" name="captcha-mode" value="auto"> 🤖 خودکار (مدل + OCR)</label>
+            <label><input type="radio" name="captcha-mode" value="manual"> ✋ دستی (توسط شما)</label>
+          </div>
+          <p class="muted small" id="captcha-mode-hint" style="margin:6px 0 0"></p>
+        </div>
+        <p class="muted small">کد امنیتی تصویر زیر را وارد کنید:</p>
         <img id="reserve-captcha-img" alt="کپچا" style="max-width:220px;border:1px solid #ccc;border-radius:6px;background:#fff"/>
-        <div style="margin-top:8px">
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-sm" id="btn-captcha-refresh" type="button">🔄 کپچای جدید</button>
+          <button class="btn btn-sm" id="btn-captcha-auto-now" type="button">🤖 حل خودکار همین کپچا</button>
+          <button class="btn btn-sm btn-danger" id="btn-captcha-stop-auto" type="button">⏹ توقف حل خودکار</button>
         </div>
         <div class="field" style="margin-top:8px">
           <label>کد امنیتی:</label>
@@ -640,16 +650,18 @@
 
     switch (data.step) {
       case 'captcha':
-        // تصویر کپچا را بلافاصله برای حل دستی نمایش می‌دهیم، و هم‌زمان
-        // حل خودکار (OCR) را در پس‌زمینه اجرا می‌کنیم. اگر OCR موفق شد
-        // خودکار ارسال می‌شود؛ در غیر این صورت کاربر تصویر را دیده و دستی حل می‌کند.
+        // رفتار بر اساس «روش حل کپچا» که کاربر انتخاب کرده است:
+        // خودکار → حلقه حل خودکار اجرا می‌شود؛ دستی → فقط نمایش برای کاربر.
+        applyCaptchaModeUI();
         if (data.captchaError) {
-          // کپچای قبلی اشتباه بود → کپچای جدید را برای ورود دستی نشان بده
-          // (بدون اجرای دوباره‌ی حل خودکار که کاربر را گیج می‌کند)
+          // کپچای قبلی اشتباه بود → کپچای جدید از سرور رسیده است
           showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, wrongCaptcha: true });
-        } else {
+          if (BilitFast.getCaptchaMode() === 'auto') autoSolveLoop(data.captchaImageUrl);
+        } else if (BilitFast.getCaptchaMode() === 'auto') {
           showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true });
           autoSolveLoop(data.captchaImageUrl);
+        } else {
+          showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: false });
         }
         break;
       case 'passenger_form':
@@ -726,7 +738,7 @@
     } else if (auto) {
       $('reserve-message').textContent = 'کد امنیتی تصویر زیر را وارد کنید (در حال حل خودکار در پس‌زمینه...):';
     } else {
-      $('reserve-message').textContent = 'لطفاً کد امنیتی تصویر زیر را وارد کنید:';
+      $('reserve-message').textContent = 'حالت دستی: لطفاً کد امنیتی تصویر زیر را وارد کنید (رفرش خودکار انجام نمی‌شود):';
     }
     $('reserve-captcha').style.display = 'block';
     $('reserve-captcha-input').value = '';
@@ -752,6 +764,50 @@
       img.alt = 'دریافت کپچا ناموفق';
     }
   }
+
+  /* --- انتخاب روش حل کپچا (خودکار/دستی) ---
+   * خودکار: برنامه با مدل اختصاصی/OCR تلاش می‌کند (رفتار قبلی).
+   * دستی: حلقه خودکار اصلاً اجرا نمی‌شود؛ کاربر کد را وارد می‌کند و در صورت
+   * نیاز می‌تواند با یک دکمه، حل خودکارِ همان کپچا را درخواست دهد. */
+  function applyCaptchaModeUI() {
+    const mode = BilitFast.getCaptchaMode();
+    document.querySelectorAll('input[name="captcha-mode"]').forEach((r) => {
+      r.checked = (r.value === mode);
+    });
+    const hint = $('captcha-mode-hint');
+    if (hint) {
+      hint.textContent = (mode === 'auto')
+        ? 'برنامه ابتدا خودش کپچا را حل می‌کند؛ هر لحظه می‌توانید کد را دستی وارد کنید (حل خودکار متوقف می‌شود).'
+        : 'کپچا فقط با ورود شما حل می‌شود و رفرش خودکار انجام نمی‌شود؛ در صورت نیاز «حل خودکار همین کپچا» را بزنید.';
+    }
+    const stopBtn = $('btn-captcha-stop-auto');
+    const autoNowBtn = $('btn-captcha-auto-now');
+    if (stopBtn) stopBtn.style.display = (mode === 'auto') ? '' : 'none';
+    if (autoNowBtn) autoNowBtn.style.display = (mode === 'manual') ? '' : 'none';
+  }
+
+  document.querySelectorAll('input[name="captcha-mode"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      BilitFast.setCaptchaMode(r.value);
+      if (r.value === 'manual') {
+        autoSolveStop = true; // توقف فوری حلقه خودکارِ در حال اجرا
+        if (autoSolving) setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
+      }
+      applyCaptchaModeUI();
+    });
+  });
+
+  $('btn-captcha-auto-now').addEventListener('click', () => {
+    if (autoSolving) return;
+    autoSolveStop = false;
+    setStatus('حل خودکار کپچای فعلی شروع شد...', 'blue');
+    autoSolveLoop(reserveCtx.captchaImageUrl);
+  });
+
+  $('btn-captcha-stop-auto').addEventListener('click', () => {
+    autoSolveStop = true;
+    setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
+  });
 
   /* --- حل خودکار کپچا (OCR) با تلاش مجدد تا حداکثر، و واگذاری دستی در پایان --- */
   async function autoSolveLoop(captchaImageUrl) {
@@ -1094,6 +1150,7 @@
     // بارگذاری تنظیمات سرور (فاصله جستجو و تعداد تلاش کپچا) — ناهمزمان و بدون
     // ایجاد تأخیر در صفحه؛ مقادیر پیش‌فرض تا آماده‌شدن تنظیمات استفاده می‌شوند.
     BilitFast.loadSharedConfig();
+    applyCaptchaModeUI();
     // کنترل مجوز (مانند صفحه مسیرها): فقط در صورت انقضای قطعی هدایت می‌شود.
     BilitFast.fetchLicenseState().then((ts) => {
       if (ts.state === 'expired') window.location.href = 'trial.html';

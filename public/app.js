@@ -244,6 +244,20 @@ const BilitFast = (function () {
     try { localStorage.setItem('bilitfast_debug', on ? '1' : '0'); } catch (e) { /* ignore */ }
   }
 
+  /* ---------------- روش حل کپچا (خودکار/دستی) ---------------- */
+  /** انتخاب کاربر اولویت دارد؛ وگرنه پیش‌فرض از تنظیمات سرور (captcha.auto_solve). */
+  function getCaptchaMode() {
+    try {
+      const saved = localStorage.getItem('bilitfast_captcha_mode');
+      if (saved === 'auto' || saved === 'manual') return saved;
+    } catch (e) { /* ignore */ }
+    const c = (sharedConfig && sharedConfig.captcha) || {};
+    return (c.auto_solve === false) ? 'manual' : 'auto';
+  }
+  function setCaptchaMode(m) {
+    try { localStorage.setItem('bilitfast_captcha_mode', (m === 'manual') ? 'manual' : 'auto'); } catch (e) { /* ignore */ }
+  }
+
   /* ---------------- API ---------------- */
   async function apiSearch(payload) {
     const res = await fetch('/api/search', {
@@ -286,6 +300,7 @@ const BilitFast = (function () {
     // تنظیمات
     loadSharedConfig, getPollIntervalMs, getCaptchaMaxAttempts,
     isDebugMode, setDebugMode,
+    getCaptchaMode, setCaptchaMode,
     // API پایه
     apiSearch, apiReserve, apiLogin,
   };
