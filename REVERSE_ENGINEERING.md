@@ -82,25 +82,38 @@ shahed, child, infant, forien, passCnt, srvc
   وضعیت رزرو هستند که سرور با نشست (PHPSESSID) پیگیری می‌کند؛ پارامترهای رزرو
   در اینجا دوباره ارسال نمی‌شوند.
 
-### کپچا (به‌صورت AJAX — نه داخل HTML)
+### کپچا (به‌صورت client-side — نه تصویر، نه captchaAjax)
 
-صفحه اولیه کپچا ندارد؛ با جاوااسکریپت و POST به `etrain/captchaAjax.php`
-کپچا گرفته و تزریق می‌شود. **پاسخ این endpoint یک HTML نیست** بلکه یک رشته
-متنی به این شکل است:
+بررسی اسکریپت‌های inline صفحه رزرو (از لاگ واقعی کاربر) نشان می‌دهد کپچای
+این صفحه **متنی و client-side** است، نه تصویری:
 
+```js
+function generate() {
+  document.getElementById("Ksubmit").value = "";
+  captcha = document.getElementById("image");
+  var uniquechar = "";
+  var randomchar = "0123456789";   // مجموعه‌کاراکتر (در لاگ ماسک شده بود)
+  for (i = 1; i < 6; i++) {
+    uniquechar += randomchar.charAt(Math.random() * randomchar.length);
+  }
+  captcha.innerHTML = uniquechar;   // متن تصادفی ۵کاراکتری در #image نمایش داده می‌شود
+}
 ```
-<captchaId>@<base64 تصویر PNG>
-مثال: 152092113@iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAYAAABpYH0B...
-```
 
-- بخش اول = `captchaId` (شناسه کپچا — باید همراه کد حل‌شده ارسال شود).
-- بخش دوم = خود تصویر کپچا (base64 PNG) → `data:image/png;base64,...`.
-- **ورودی کد کپچا:** `Ksubmit` (فیلد متنی — با JS تزریق می‌شود).
-- **شناسه کپچا در فرم:** فیلد مخفی `captchaId`.
+- **کپچا** = رشته تصادفی ۵کاراکتری که در `#image` به‌صورت **متن** نمایش داده
+  می‌شود و کاربر آن را در `#Ksubmit` دوباره تایپ می‌کند.
+- **اعتبارسنجی client-side:** `chkForm()` / `setPayment(isok)` — اگر کپچا
+  درست باشد `paymentTbl` (جدول پرداخت) نمایش داده می‌شود؛ در غیر این صورت
+  `alert('عبارت امنیتی صحیح نمیباشد')`.
+- **توابع ناشناخته (در فایل .js خارجی):** `chkForm`, `chkForm2`, `setRadio`,
+  `calcPrice`, `makePOSTRequest` در اسکریپت‌های inline تعریف نشده‌اند — در
+  فایل‌های `.js` خارجی هستند که باید fetch شوند (diagnostics اکنون
+  `externalScripts`/`jsRefs` را ثبت می‌کند).
 
-> پیاده‌سازی: `lib/reserve.js → parseCaptchaAjaxResponse()` رشته
-> `captchaId@base64` را تجزیه می‌کند و `mergeCaptchaAjax()` تصویر + `captchaId`
-> را به تحلیل اضافه کرده و صفحه را `captcha` طبقه‌بندی می‌کند.
+> ⚠️ نتیجه: `captchaAjax.php` احتمالاً مربوط به **این صفحه نیست** (در
+> endpoints/scripts صفحه رزرو ارجاعی به آن نیست). OCR هم ابزار درستی برای
+> این مرحله نیست چون کپچا تصویری نیست. باید فایل .js خارجی که `chkForm` و
+> مکانیزم ارسال فرم را تعریف می‌کند پیدا و بررسی شود.
 
 ### هندلرهای جاوااسکریپت صفحه رزرو (از onclick/onchange واقعی)
 

@@ -827,6 +827,13 @@
       d.scripts.forEach((s, i) => lines.push('  <script[' + i + ']> ' + s));
     }
 
+    if (d.externalScripts && d.externalScripts.length) {
+      lines.push('externalScripts (' + d.externalScripts.length + '): ' + d.externalScripts.join(', '));
+    }
+    if (d.jsRefs && d.jsRefs.length) {
+      lines.push('jsRefs: ' + d.jsRefs.join(', '));
+    }
+
     if (d.images && d.images.length) {
       lines.push('images: ' + d.images.filter((s) => s).join(', '));
     }
