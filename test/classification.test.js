@@ -152,6 +152,33 @@ test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}"
   if (!ok) failures++;
 }
 
+// (12) دکمه‌ها (type=button/submit، نام خالی یا srchC) نباید فیلد مسافر شوند
+//      — این باگ باعث می‌شد کد ملی/تاریخ تولد به نام دکمه‌ها نسبت داده شود
+//        و بدنه POST خراب شود (خطای 101 سرور).
+{
+  const page = analyzeHtml(`<form action="TresV.php" method="post" name="mainFrm">
+    <input type="text" name="Ksubmit" id="Ksubmit"/>
+    <input type="hidden" name="captchaId" value="c1"/>
+    <input type="button" onclick="captchaNew();"/>
+    <input type="submit" name="srchC" id="srchC"/>
+    <input type="button" onclick="document.location='index.php';"/>
+    <input type="hidden" name="srvc" value="TOKEN"/>
+    <input type="hidden" name="passCnt" value="1"/>
+  </form>`, 'https://safirrail.ir/etrain/TresV-auth.php');
+  const pf = page.passengerFields.map((f) => f.effName);
+  const ok = pf.length === 0;
+  console.log((ok ? 'PASS' : 'FAIL') + '  دکمه‌ها فیلد مسافر نشوند  (passengerFields=' + pf.join(',') + ')');
+  if (!ok) failures++;
+}
+
+// (13) استخراج پیام خطای سرور از alert (مثل 101-متاسفانه...)
+{
+  const page = analyzeHtml(`<html><body><script>alert('101-متاسفانه ارائه سرویس رفت درخواست شده امکان‌پذیر نمی‌باشد');document.location='index.php'</script></body></html>`, 'https://safirrail.ir/etrain/TresV.php');
+  const ok = page.serverMessages.length > 0 && /101/.test(page.serverMessages[0]);
+  console.log((ok ? 'PASS' : 'FAIL') + '  استخراج alert سرور  (serverMessages=' + JSON.stringify(page.serverMessages) + ')');
+  if (!ok) failures++;
+}
+
 console.log('');
 if (failures) {
   console.log(failures + ' تست شکست خورد');

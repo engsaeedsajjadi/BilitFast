@@ -848,6 +848,10 @@
       lines.push('endpoints: ' + d.endpoints.join(', '));
     }
 
+    if (d.serverMessages && d.serverMessages.length) {
+      lines.push('serverMessages: ' + d.serverMessages.join(' | '));
+    }
+
     if (d.scripts && d.scripts.length) {
       lines.push('scripts (' + d.scripts.length + '):');
       d.scripts.forEach((s, i) => lines.push('  <script[' + i + ']> ' + s));
