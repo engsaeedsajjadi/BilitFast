@@ -269,6 +269,21 @@ test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}"
   if (!ok) failures++;
 }
 
+// (19) استخراج آدرس ریدایرکت درگاه پرداخت (document.location به شاپرک)
+{
+  const page = analyzeHtml(`<html><body>
+    <p>انتقال به درگاه بانکی ...</p>
+    <script>document.location="https://pec.shaparak.ir/NewIPG/?Token=402417684543694";</script>
+  </body></html>`, 'https://safirrail.ir/etrain/VerifyTck.php');
+  const okRedirect = page.redirectUrl === 'https://pec.shaparak.ir/NewIPG/?Token=402417684543694';
+  // ریدایرکت نسبی (index.php) نباید به‌عنوان redirectUrl ثبت شود
+  const err = analyzeHtml(`<html><body><script>alert('101-x');document.location='index.php';</script></body></html>`, BASE);
+  const okNoRelative = err.redirectUrl === null;
+  const ok = okRedirect && okNoRelative;
+  console.log((ok ? 'PASS' : 'FAIL') + '  استخراج redirectUrl درگاه پرداخت  (redirectUrl=' + page.redirectUrl + ' noRelative=' + okNoRelative + ')');
+  if (!ok) failures++;
+}
+
 console.log('');
 if (failures) {
   console.log(failures + ' تست شکست خورد');

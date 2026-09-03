@@ -860,6 +860,10 @@
       lines.push('endpoints: ' + d.endpoints.join(', '));
     }
 
+    if (d.redirectUrl) {
+      lines.push('redirectUrl: ' + d.redirectUrl);
+    }
+
     if (d.serverMessages && d.serverMessages.length) {
       lines.push('serverMessages: ' + d.serverMessages.join(' | '));
     }
