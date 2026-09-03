@@ -78,6 +78,14 @@
     "min_length": 3,
     "max_length": 8,
     "whitelist": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-    "psm": 7
+    "psm": 7,
+    "force_digits": true,
+
+    "advanced_preprocess": true,
+    "max_variants": 5,
+    "max_ocr_passes": 10,
+    "early_exit_confidence": 75,
+    "deskew": true,
+    "segmentation": true
   }
 }
