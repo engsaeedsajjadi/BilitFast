@@ -558,6 +558,10 @@
       case 'no_capacity':
         showReserveError(data.message || 'ظرفیت این قطار تکمیل شده است.');
         break;
+      case 'error':
+        // خطای قطعی سرور (مثل 101/1000) — رزرو رد شده؛ صفحه پرداخت باز نمی‌شود.
+        showReserveError(data.message || 'سامانه این رزرو را رد کرد.');
+        break;
       case 'idempotency_blocked':
         showReserveError(data.message || 'عملیات قبلاً به مرحله پرداخت رسیده است.');
         break;

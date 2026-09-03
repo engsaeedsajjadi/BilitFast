@@ -201,6 +201,57 @@ test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}"
   if (!ok) failures++;
 }
 
+// (15) خطای قطعی سرور (alert + ریدایرکت) باید «error» باشد نه payment،
+//      حتی اگر صفحه متن «انتقال به درگاه بانکی» را هم داشته باشد.
+{
+  const page = analyzeHtml(`<html><body>
+    <p>انتقال به درگاه بانکی ...</p>
+    <script>alert('متاسفانه ارائه سرویس درخواست شده امکانپذیر نمیباشد - 1000');document.location='index.php'</script>
+  </body></html>`, 'https://safirrail.ir/etrain/VerifyTck.php');
+  const okCls = page.classification.type === 'error';
+  const okMsg = page.serverMessages[0] && /1000/.test(page.serverMessages[0]);
+  const okNoFalse = page.serverMessages.every((m) => !/عبارت امنیتی/.test(m));
+  const ok = okCls && okMsg && okNoFalse;
+  console.log((ok ? 'PASS' : 'FAIL') + '  خطای 1000 → error (نه payment)  (cls=' + page.classification.type + ' serverMessages=' + JSON.stringify(page.serverMessages) + ')');
+  if (!ok) failures++;
+}
+
+// (16) فرم مسافر سالم نباید serverMessages کاذب («عبارت امنیتی صحیح نمیباشد» از
+//      تعریف تابع setPayment) داشته باشد.
+{
+  const page = analyzeHtml(`<form action="VerifyTck.php" method="post" name="mainFrm">
+    <input type="text" id="pid0"/><input type="text" id="ruz0"/><input type="text" id="mah0"/>
+    <input type="text" id="sal0"/><input type="text" id="fn0"/><input type="text" id="ln0"/>
+    <input type="text" name="phone"/>
+    <script>function setPayment(isok){ if(!isok){ alert('عبارت امنیتی صحیح نمیباشد'); } }</script>
+  </form>`, 'https://safirrail.ir/etrain/TresV.php');
+  const okCls = page.classification.type === 'passenger';
+  const okNoServerError = page.serverMessages.length === 0 && page.serverError === false;
+  const ok = okCls && okNoServerError;
+  console.log((ok ? 'PASS' : 'FAIL') + '  صفحه مسافر سالم بدون serverMessages کاذب  (cls=' + page.classification.type + ' serverMessages=' + JSON.stringify(page.serverMessages) + ')');
+  if (!ok) failures++;
+}
+
+// (17) formFieldValues باید همه فیلدها (hidden/text/radio/checkbox انتخاب‌شده) را بگیرد
+{
+  const page = analyzeHtml(`<form action="VerifyTck.php" method="post" name="mainFrm">
+    <input type="hidden" name="adis" value="860118957"/>
+    <input type="text" name="ticPrice" value="7600000"/>
+    <input type="radio" name="RadioGroup2" value="1" checked/>
+    <input type="radio" name="RadioGroup2" value="2"/>
+    <input type="text" id="pid0"/><input type="text" id="ruz0"/><input type="text" id="mah0"/>
+    <input type="text" id="sal0"/><input type="text" id="fn0"/><input type="text" id="ln0"/>
+    <input type="text" name="phone"/>
+  </form>`, 'https://safirrail.ir/etrain/TresV.php');
+  const fv = page.formFieldValues || {};
+  const okHidden = fv.adis === '860118957';
+  const okText = fv.ticPrice === '7600000';
+  const okRadio = fv.RadioGroup2 === '1';
+  const ok = okHidden && okText && okRadio;
+  console.log((ok ? 'PASS' : 'FAIL') + '  formFieldValues (hidden/text/radio)  (adis=' + fv.adis + ' ticPrice=' + fv.ticPrice + ' RadioGroup2=' + fv.RadioGroup2 + ')');
+  if (!ok) failures++;
+}
+
 console.log('');
 if (failures) {
   console.log(failures + ' تست شکست خورد');
