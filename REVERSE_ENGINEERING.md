@@ -60,13 +60,16 @@ shahed, child, infant, forien, passCnt, srvc
 
 ## مرحله ۲ — انتخاب قطار → رزرو
 
-- **انتقال:** `goTres()` (دکمه تأیید صفحه نتایج) → فرم را به `etrain/TresV.php`
-  می‌فرستد. یعنی `goTres()` دقیقاً همان صفحه‌ای را باز می‌کند که **۱۳ فیلدِ
-  مرحله میانی** را تولید می‌کند.
-- **ارسال:** GET به `etrain/TresV.php` با همان پارامترهای جستجو + `srvc` + `departureTrain`.
-- **با نشست معتبر:** صفحه خلاصه «شرکت … سفر رفت: به … جنسیت … نوع قطار …»
-  که یک فرم دارد (۱۳ ورودی = فیلدهای مخفی وضعیت + انتخاب واگن/کوپه + دکمه تأیید).
+- **انتقال:** `goTres()` (دکمه تأیید صفحه نتایج) → `document.mainFrm.action="TresV-auth.php"`
+  و submit (POST). یعنی صفحه رزرو با **POST به `etrain/TresV-auth.php`** باز می‌شود،
+  نه GET به TresV.php.
+- **فیلدهای ارسالی (mainFrm صفحه نتایج، ۱۵ فیلد):**
+  `from, to, groupWay, pathWay, fromd, tod, sex, wagon, adult, shahed, child, infant, forien, passCnt, srvc`.
+- **با نشست معتبر:** صفحه کامل رزرو (جدول مسافر pid/ruz/mah/sal/fn/ln + کپچا + قیمت).
 - **بدون نشست:** صفحه ورود (مرحله ۰).
+
+> ⚠️ GET به TresV.php فقط صفحه **ناقص** (بدون فیلد مسافر؛ «جنسیت: -» و
+> «نوع قطار: -» خالی) برمی‌گرداند. نقطه ورود صحیح TresV-auth.php (POST) است.
 
 ---
 
@@ -135,24 +138,43 @@ function generate() {
 
 ---
 
-## مرحله ۴ — پرداخت
+## مرحله ۴ — تأیید رزرو → پرداخت
 
+- **تأیید رزرو:** `chkForm()` (دکمه «ادامه/تأیید» صفحه رزرو):
+  ۱) اعتبارسنجی client-side: همه مسافران `pid{i}` (کد ملی) و `fn{i}` (نام)
+     پر شده باشند؛ `chkPhone()` (موبایل با `09` شروع و ≥ ۱۱ رقم).
+  ۲) `document.mainFrm.action="VerifyTck.php"` و submit (POST).
+- **انصراف/بازگشت:** `chkForm2()` → `document.mainFrm.action="index.php"`.
+- **پاسخ VerifyTck.php:** صفحه پرداخت.
 - **فرم پرداخت:** `<form action="/NewIPG/ProcessPayment" method="post" id="PayForm">`
-- **انصراف:** `<form action="/NewIPG/CancelPayment" method="post" id="CancelPaymentForm">`
+- **انصراف پرداخت:** `<form action="/NewIPG/CancelPayment" method="post" id="CancelPaymentForm">`
 - درگاه جدید بانک (NewIPG) است؛ انتقال با POST (نه URL ساده).
 
 ---
 
-## مرحله ۶ — پرداخت
-
-- هدایت به درگاه بانک (شاپرک/درگاه پرداخت). فقط اینجا پنجره جدید برای کاربر باز می‌شود.
-
----
-
-## خلاصه ترتیب کامل
+## خلاصه ترتیب کامل (تأییدشده از raja.js)
 
 ```
-ورود (UserAut.php) → جستجو (searchWagn.php GET) → انتخاب قطار
-→ TresV.php (GET + srvc) → انتخاب واگن/کوپه (میانی) → کپچا (kcaptcha)
-→ اطلاعات مسافر (pid/ruz/mah/sal/fn/ln + phone) → تأیید → پرداخت (درگاه بانک)
+ورود (UserAut.php → Login/process.php POST) → جستجو (searchWagn.php) → انتخاب قطار
+→ goTres(): POST TresV-auth.php (۱۵ فیلد) → صفحه رزرو (مسافر + کپچا)
+→ captchaNew(): POST captchaAjax.php → «captchaId@base64PNG» → captchaImg.src
+→ getInfo(): POST ajaxpid.php (pid+bdate) → «name,family» (اتوفیل نام از کد ملی)
+→ chkForm(): POST VerifyTck.php → صفحه پرداخت → NewIPG/ProcessPayment
 ```
+
+### توابع کلیدی raja.js (کامل)
+
+- `goTres()` → POST `TresV-auth.php` (ورود به صفحه رزرو)
+- `chkForm()` → POST `VerifyTck.php` (تأیید رزرو)
+- `chkForm2()` → POST `index.php` (انصراف)
+- `captchaNew()` → POST `captchaAjax.php` → `captchaId@base64` (کپچای تصویری)
+- `getInfo(i)` → POST `ajaxpid.php` با `pid=...&bdate=سال+ماه+روز` → پاسخ `name,family`
+- `chkPhone()` → موبایل باید `09` شروع و ≥ ۱۱ رقم
+- `calcPrice()` → محاسبه foodPrice/totalPrice (مقادیر food به‌صورت `id@price`)
+- `setRadio(1|2)` → جدول مسافر (۱=کد ملی، ۲=گذرنامه برای اتباع)
+- `NMask()` → فقط ارقام
+- `unLockTicket()`/`cancleTick.php` → انصراف بلیت (روی unload هم صدا می‌شود)
+- `makePOSTRequest()` (در ajaxOut.js) → ارسال AJAX؛ پاسخ در `ajaxResponse` (hidden) قرار می‌گیرد
+
+> فیلدهای مسافر: `pid{i}, ruz{i}, mah{i}, sal{i}, fn{i}, ln{i}` برای i=0..19،
+> plus `phone`, `food{i}`, `rfood{i}`. مقدار food به‌صورت `id@price` است.
