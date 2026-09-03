@@ -116,6 +116,42 @@ test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}"
   if (!(okNull && okNullEmpty)) failures++;
 }
 
+// (10) صفحه کپچای واقعی TresV-auth.php (Ksubmit + captchaId + captchaImg خالی)
+//      → needsAjaxCaptcha درست → ادغام captchaAjax → captcha
+{
+  const page = analyzeHtml(`<form action="TresV.php" method="post" name="mainFrm">
+    <input type="text" name="Ksubmit" id="Ksubmit"/>
+    <input type="hidden" name="ajaxResponse" id="ajaxResponse"/>
+    <input type="hidden" name="captchaId" id="captchaId"/>
+    <input type="button" onclick="captchaNew();"/>
+    <img id="captchaImg" src=""/>
+    <input type="hidden" name="srvc" value="TOKEN"/>
+    <input type="hidden" name="passCnt" value="1"/>
+    <input type="hidden" name="from" value="1"/>
+    <input type="hidden" name="to" value="191"/>
+    <script>captchaNew();</script>
+  </form>`, 'https://safirrail.ir/etrain/TresV-auth.php');
+  const okAction = page.mainFormAction === 'TresV.php';
+  const okInput = page.captchaInputName === 'Ksubmit';
+  const okNeed = needsAjaxCaptcha(page) === true;
+  const merged = mergeCaptchaAjax(page, parseCaptchaAjaxResponse('9@iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='));
+  const okCls = merged.classification.type === 'captcha';
+  const ok = okAction && okInput && okNeed && okCls;
+  console.log((ok ? 'PASS' : 'FAIL') + '  صفحه کپچای TresV-auth.php → captcha  (action=' + page.mainFormAction + ' input=' + page.captchaInputName + ' need=' + okNeed + ' cls=' + merged.classification.type + ')');
+  if (!ok) failures++;
+}
+
+// (11) absoluteUrl (قبلاً تعریف‌نشده بود → ReferenceError در جریان رزرو)
+{
+  const { absoluteUrl } = require('../lib/reserve');
+  const a1 = absoluteUrl('https://safirrail.ir/etrain/TresV.php', 'https://safirrail.ir/x') === 'https://safirrail.ir/etrain/TresV.php';
+  const a2 = absoluteUrl('TresV.php', 'https://safirrail.ir/etrain/captchaAjax.php') === 'https://safirrail.ir/etrain/TresV.php';
+  const a3 = absoluteUrl('/NewIPG/ProcessPayment', 'https://safirrail.ir/etrain/VerifyTck.php') === 'https://safirrail.ir/NewIPG/ProcessPayment';
+  const ok = a1 && a2 && a3;
+  console.log((ok ? 'PASS' : 'FAIL') + '  absoluteUrl (absolute/relative/root-relative)');
+  if (!ok) failures++;
+}
+
 console.log('');
 if (failures) {
   console.log(failures + ' تست شکست خورد');
