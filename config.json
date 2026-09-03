@@ -81,6 +81,10 @@
     "psm": 7,
     "force_digits": true,
 
+    "use_custom_model": true,
+    "model_path": "models/captcha-model.json",
+    "model_min_char_conf": 0.75,
+
     "advanced_preprocess": true,
     "max_variants": 5,
     "max_ocr_passes": 10,

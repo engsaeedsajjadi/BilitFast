@@ -487,6 +487,24 @@
   let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
   let autoSolving = false;
   let autoSolveStop = false;
+  let lastCaptchaAttempt = null; // { text, source: 'manual'|'ocr' } — برای حلقه یادگیری
+
+  /* --- حلقه یادگیری مدل کپچا ---
+   * وقتی کپچایی (دستی یا با OCR) حل شد و سرور عبور از مرحله کپچا را تأیید
+   * کرد، تصویر + متن همان کپچا به‌عنوان نمونه برچسب‌خورده واقعی ثبت می‌شود
+   * تا بعداً مدل با آن بازآموزی شود. بهترین تلاش است و هرگز جریان را مختل نمی‌کند. */
+  function reportCaptchaSample(attempt) {
+    try {
+      const src = $('reserve-captcha-img').src;
+      if (!src || !/^data:image/i.test(src)) return;
+      if (!/^\d{3,8}$/.test(attempt.text || '')) return;
+      fetch('/api/learn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'captcha-sample', image: src, text: attempt.text, source: attempt.source }),
+      }).catch(() => {});
+    } catch (e) { /* ignore */ }
+  }
 
   async function reserve(trainNumber) {
     const route = BilitFast.getRoute(ROUTE_ID);
@@ -549,6 +567,11 @@
     if (!data || !data.ok) {
       showReserveError((data && data.error) || 'خطا در رزرو');
       return;
+    }
+    // حلقه یادگیری: عبور از مرحله کپچا یعنی متن ارسال‌شده درست بوده است
+    if (lastCaptchaAttempt && data.step !== 'captcha') {
+      reportCaptchaSample(lastCaptchaAttempt);
+      lastCaptchaAttempt = null;
     }
     if (data.stateToken) reserveCtx.token = data.stateToken;
     if (data.captchaImageUrl) reserveCtx.captchaImageUrl = data.captchaImageUrl;
@@ -719,6 +742,7 @@
 
           if (resp.step !== 'captcha') {
             // موفق شد (پرداخت/فرم مسافر/موفقیت/خطا)
+            lastCaptchaAttempt = { text: solved.text, source: 'ocr' };
             autoSolving = false;
             handleReserveStep(resp);
             return;
@@ -997,6 +1021,7 @@
     const captcha = $('reserve-captcha-input').value.trim();
     if (!captcha) { $('reserve-captcha-input').focus(); return; }
     autoSolveStop = true;  // توقف حل خودکار در صورت ارسال دستی
+    lastCaptchaAttempt = { text: captcha, source: 'manual' };
     $('btn-captcha-submit').disabled = true;
     setStatus('در حال ارسال کپچا...', 'blue');
     reserveSubmit(captcha);
