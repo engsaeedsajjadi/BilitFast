@@ -97,6 +97,7 @@
 
     <section class="card" id="found-section" style="display:none">
       <h3>قطارهای یافت‌شده</h3>
+      <div id="found-time-note"></div>
       <table class="table" id="found-table">
         <thead>
           <tr><th>شماره قطار</th><th>ساعت حرکت</th><th>قیمت</th><th>نوع کوپه</th><th>ظرفیت</th><th></th></tr>
@@ -364,6 +365,7 @@
       saveRouteState({
         searchData: data.searchData,
         foundTrains: data.trains,
+        foundAt: Date.now(),
         status: 'قطار یافت شد!',
         statusColor: 'green',
         running: false,
@@ -463,6 +465,18 @@
   function renderFound(trains) {
     if (!trains.length) { $('found-section').style.display = 'none'; return; }
     $('found-section').style.display = 'block';
+    // نمایش زمان یافت‌شدن نتایج — نتایج قدیمی ریسک خطای ۱۰۱ (انقضای توکن) دارند
+    const route = BilitFast.getRoute(ROUTE_ID);
+    const foundAt = route && route.foundAt;
+    let timeNote = '';
+    if (foundAt) {
+      try {
+        timeNote = '<p class="muted small" style="margin:4px 0">⏱ نتایج در ساعت ' +
+          new Date(foundAt).toLocaleTimeString('fa-IR') + ' یافت شدند' +
+          ((Date.now() - foundAt > FRESH_WINDOW_MS) ? ' — <b style="color:#e67e22">قدیمی هستند؛ قبل از رزرو تازه‌سازی می‌شوند</b>' : '') + '</p>';
+      } catch (e) { /* ignore */ }
+    }
+    $('found-time-note').innerHTML = timeNote;
     $('found-table').querySelector('tbody').innerHTML = trains.map((t) => `
       <tr>
         <td>${esc(t['شماره قطار'])}</td>
@@ -484,10 +498,34 @@
   /* ---------------- رزرو (چندمرحله‌ای: کپچا → اطلاعات مسافر → پرداخت) ---------------- */
   const RESERVE_MAX_STEPS = 8;
   const CAPTCHA_MAX_AUTO_ATTEMPTS = 5; // پیش‌فرض (مقدار واقعی از تنظیمات سرور: captcha.max_attempts)
+  const FRESH_WINDOW_MS = 10 * 60 * 1000; // نتایج جستجو تا ۱۰ دقیقه «تازه» هستند
   let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
   let autoSolving = false;
   let autoSolveStop = false;
   let lastCaptchaAttempt = null; // { text, source: 'manual'|'ocr' } — برای حلقه یادگیری
+
+  /* --- تازه‌سازی نتایج قبل از رزرو ---
+   * توکن «srvc» هر قطار موقع جستجو ساخته می‌شود و ممکن است منقضی شود؛ در آن
+   * حالت سرور خطای «101-ارائه سرویس امکان‌پذیر نمی‌باشد» برمی‌گرداند. اگر
+   * نتایج قدیمی باشند، قبل از رزرو یک جستجوی تازه انجام می‌شود. */
+  async function refreshFoundTrains() {
+    setStatus('در حال تازه‌سازی نتایج جستجو (توکن تازه)...', 'blue');
+    let data;
+    try {
+      data = await BilitFast.apiSearch({
+        fields: getFields(),
+        passengers: getPassengers(),
+        cookies: BilitFast.getCookies(),
+      });
+    } catch (e) { return false; }
+    if (data && data.ok && data.trains && data.trains.length) {
+      saveRouteState({ searchData: data.searchData, foundTrains: data.trains, foundAt: Date.now() });
+      renderFound(data.trains);
+      setStatus('نتایج تازه‌سازی شد.', 'green');
+      return true;
+    }
+    return false;
+  }
 
   /* --- حلقه یادگیری مدل کپچا ---
    * وقتی کپچایی (دستی یا با OCR) حل شد و سرور عبور از مرحله کپچا را تأیید
@@ -507,8 +545,24 @@
   }
 
   async function reserve(trainNumber) {
-    const route = BilitFast.getRoute(ROUTE_ID);
+    let route = BilitFast.getRoute(ROUTE_ID);
     if (!route) { setStatus('مسیر یافت نشد.', 'red'); return; }
+
+    // اگر نتایج جستجو قدیمی باشند، توکن «srvc» ممکن است منقضی شده باشد و
+    // سرور خطای ۱۰۱ برگرداند؛ پس اول یک جستجوی تازه انجام می‌دهیم.
+    const age = route.foundAt ? (Date.now() - route.foundAt) : Infinity;
+    if (age > FRESH_WINDOW_MS) {
+      const fresh = await refreshFoundTrains();
+      if (!fresh) {
+        setStatus('در جستجوی تازه ظرفیتی یافت نشد.', 'orange');
+        showReserveError('ظرفیتی برای این مسیر در جستجوی تازه یافت نشد. ' +
+          'دوباره «شروع جستجو» بزنید و بلافاصله پس از یافتن قطار، رزرو کنید. ' +
+          'اگر در خود سایت صفیر ریل هم ظرفیت نیست، یعنی تکمیل شده است.');
+        return;
+      }
+      route = BilitFast.getRoute(ROUTE_ID);
+    }
+
     const train = (route.foundTrains || []).find((t) => t['شماره قطار'] === trainNumber);
     if (!train) { setStatus('قطار یافت نشد (لیست قطارها را دوباره جستجو کنید).', 'red'); return; }
 
