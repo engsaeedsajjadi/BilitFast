@@ -172,10 +172,16 @@ test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}"
 }
 
 // (13) استخراج پیام خطای سرور از alert (مثل 101-متاسفانه...)
+//      + alert داخل تعریف تابع (setPayment) نباید خطای واقعی شمرده شود
 {
-  const page = analyzeHtml(`<html><body><script>alert('101-متاسفانه ارائه سرویس رفت درخواست شده امکان‌پذیر نمی‌باشد');document.location='index.php'</script></body></html>`, 'https://safirrail.ir/etrain/TresV.php');
-  const ok = page.serverMessages.length > 0 && /101/.test(page.serverMessages[0]);
-  console.log((ok ? 'PASS' : 'FAIL') + '  استخراج alert سرور  (serverMessages=' + JSON.stringify(page.serverMessages) + ')');
+  const page = analyzeHtml(`<html><body>
+    <script>function setPayment(isok){ if(!isok){ alert('عبارت امنیتی صحیح نمیباشد'); } }</script>
+    <script>alert('101-متاسفانه ارائه سرویس رفت درخواست شده امکان‌پذیر نمی‌باشد');document.location='index.php'</script>
+  </body></html>`, 'https://safirrail.ir/etrain/TresV.php');
+  const okFirst = page.serverMessages.length > 0 && /101/.test(page.serverMessages[0]);
+  const okNoFalsePositive = page.serverMessages.every((m) => !/عبارت امنیتی/.test(m));
+  const ok = okFirst && okNoFalsePositive;
+  console.log((ok ? 'PASS' : 'FAIL') + '  استخراج alert سرور (بدون false-positive)  (serverMessages=' + JSON.stringify(page.serverMessages) + ')');
   if (!ok) failures++;
 }
 
