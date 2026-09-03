@@ -447,9 +447,7 @@
 
   /* ---------------- رزرو (چندمرحله‌ای: کپچا → اطلاعات مسافر → پرداخت) ---------------- */
   const RESERVE_MAX_STEPS = 8;
-  const CAPTCHA_MAX_AUTO_ATTEMPTS = 5; // حداکثر تلاش خودکار حل کپچا
   let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
-  let autoSolveAttempts = 0;
   let autoSolving = false;
   let autoSolveStop = false;
 
@@ -531,8 +529,14 @@
         // تصویر کپچا را بلافاصله برای حل دستی نمایش می‌دهیم، و هم‌زمان
         // حل خودکار (OCR) را در پس‌زمینه اجرا می‌کنیم. اگر OCR موفق شد
         // خودکار ارسال می‌شود؛ در غیر این صورت کاربر تصویر را دیده و دستی حل می‌کند.
-        showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true });
-        autoSolveLoop(data.captchaImageUrl);
+        if (data.captchaError) {
+          // کپچای قبلی اشتباه بود → کپچای جدید را برای ورود دستی نشان بده
+          // (بدون اجرای دوباره‌ی حل خودکار که کاربر را گیج می‌کند)
+          showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, wrongCaptcha: true });
+        } else {
+          showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true });
+          autoSolveLoop(data.captchaImageUrl);
+        }
         break;
       case 'passenger_form':
         // فرم اطلاعات مسافر دریافت شد → ارسال خودکار با داده‌های تکمیل‌شده
@@ -597,14 +601,19 @@
   function showReserveCaptcha(data) {
     hideReserveAll();
     const auto = !!(data && data.autoSolving);
-    $('reserve-message').textContent = auto
-      ? 'کد امنیتی تصویر زیر را وارد کنید (در حال حل خودکار در پس‌زمینه...):'
-      : 'حل خودکار کپچا ناموفق بود. لطفاً کد امنیتی را وارد کنید:';
+    const wrongCaptcha = !!(data && data.wrongCaptcha);
+    if (wrongCaptcha) {
+      $('reserve-message').textContent = 'کپچای واردشده اشتباه بود. کد تصویر جدید را وارد کنید:';
+    } else if (auto) {
+      $('reserve-message').textContent = 'کد امنیتی تصویر زیر را وارد کنید (در حال حل خودکار در پس‌زمینه...):';
+    } else {
+      $('reserve-message').textContent = 'لطفاً کد امنیتی تصویر زیر را وارد کنید:';
+    }
     $('reserve-captcha').style.display = 'block';
     $('reserve-captcha-input').value = '';
     const imgUrl = (data && data.captchaImageUrl) || reserveCtx.captchaImageUrl;
     if (imgUrl) loadCaptchaImage(imgUrl);
-    setStatus(auto ? 'کپچا نمایش داده شد — کد را وارد کنید' : 'کد امنیتی (کپچا) را دستی وارد کنید', 'orange');
+    setStatus(wrongCaptcha ? 'کپچا اشتباه بود — دوباره وارد کنید' : (auto ? 'کپچا نمایش داده شد — کد را وارد کنید' : 'کد امنیتی (کپچا) را دستی وارد کنید'), 'orange');
   }
 
   async function loadCaptchaImage(url) {
@@ -625,63 +634,62 @@
     }
   }
 
-  /* --- حل خودکار کپچا (OCR) با تلاش مجدد و fallback دستی --- */
+  /* --- حل خودکار کپچا (OCR) — فقط یک بار، و ارسال خودکار تنها در صورت اطمینان --- */
   async function autoSolveLoop(captchaImageUrl) {
     if (autoSolving) return;
     autoSolving = true;
-    autoSolveAttempts = 0;
     autoSolveStop = false;
 
-    let currentUrl = captchaImageUrl;
+    // OCR فقط یک بار روی تصویر فعلی اجرا می‌شود (solveCaptcha در سمت سرور خودش
+    // چند پیش‌پردازش را امتحان می‌کند). نکته مهم: اگر OCR مطمئن نبود، تصویر را
+    // رفرش نمی‌کنیم (که کپچا عوض شود و کاربر نتواند بخواند) — همان تصویر برای
+    // ورود دستی باقی می‌ماند.
+    setStatus('حل خودکار کپچا...', 'blue');
 
-    while (autoSolveAttempts < CAPTCHA_MAX_AUTO_ATTEMPTS && !autoSolveStop) {
-      autoSolveAttempts++;
-      setStatus('حل خودکار کپچا (تلاش ' + autoSolveAttempts + '/' + CAPTCHA_MAX_AUTO_ATTEMPTS + ')...', 'blue');
+    const solved = await callReserve({
+      action: 'solve-captcha',
+      captchaImageUrl: captchaImageUrl,
+      stateToken: reserveCtx.token,
+    });
 
-      const solved = await callReserve({
-        action: 'solve-captcha',
-        captchaImageUrl: currentUrl,
+    if (autoSolveStop) { autoSolving = false; return; }
+
+    if (solved && solved.ok && solved.text) {
+      $('reserve-captcha-input').value = solved.text;
+      setStatus('کپچای خوانده‌شده: ' + solved.text + ' — در حال ارسال...', 'blue');
+      const resp = await callReserve({
+        action: 'submit',
         stateToken: reserveCtx.token,
+        captcha: solved.text,
+        passengers: reserveCtx.passengers,
+        phone: reserveCtx.phone,
       });
 
-      if (autoSolveStop) break;
+      if (resp && resp.ok) {
+        // به‌روزرسانی token (پاسخ submit حاوی state جدید است)
+        if (resp.stateToken) reserveCtx.token = resp.stateToken;
 
-      if (solved && solved.ok && solved.text) {
-        $('reserve-captcha-input').value = solved.text;
-        setStatus('کپچای خوانده‌شده: ' + solved.text + ' — در حال ارسال...', 'blue');
-        const resp = await callReserve({
-          action: 'submit',
-          stateToken: reserveCtx.token,
-          captcha: solved.text,
-          passengers: reserveCtx.passengers,
-          phone: reserveCtx.phone,
-        });
-
-        if (resp && resp.ok) {
-          // به‌روزرسانی token (پاسخ submit حاوی state جدید است)
-          if (resp.stateToken) reserveCtx.token = resp.stateToken;
-
-          if (resp.step !== 'captcha') {
-            // موفق شد (پرداخت/فرم مسافر/موفقیت)
-            autoSolving = false;
-            handleReserveStep(resp);
-            return;
-          }
-          // کپچا اشتباه بود → کپچای جدید از همان پاسخ
-          if (resp.captchaImageUrl) {
-            currentUrl = resp.captchaImageUrl;
-            reserveCtx.captchaImageUrl = resp.captchaImageUrl;
-            await loadCaptchaImage(currentUrl);
-          }
+        if (resp.step !== 'captcha') {
+          // موفق شد (پرداخت/فرم مسافر/موفقیت/خطا)
+          autoSolving = false;
+          handleReserveStep(resp);
+          return;
         }
-      } else if (solved && !solved.ok) {
-        // OCR نامطمئن → کپچای جدید
-        const refreshed = await refreshCaptchaImage();
-        if (refreshed) { currentUrl = refreshed; reserveCtx.captchaImageUrl = refreshed; }
+        // کپچا اشتباه بود → سرور کپچای تازه فرستاده؛ همان را برای ورود دستی نشان بده
+        if (resp.captchaImageUrl) {
+          reserveCtx.captchaImageUrl = resp.captchaImageUrl;
+          await loadCaptchaImage(resp.captchaImageUrl);
+        }
+        showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl, wrongCaptcha: true });
+        autoSolving = false;
+        return;
       }
+    } else {
+      // OCR نامطمئن/ناموفق → تصویر فعلی برای ورود دستی باقی می‌ماند
+      setStatus('حل خودکار ناموفق بود — کد را دستی وارد کنید', 'orange');
     }
 
-    // تلاش‌های خودکار تمام شد → واگذار به کاربر (نمایش فرم دستی کپچا)
+    // واگذار به کاربر (نمایش فرم دستی کپچا با همان تصویر)
     autoSolving = false;
     showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl });
   }

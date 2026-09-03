@@ -185,6 +185,22 @@ test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}"
   if (!ok) failures++;
 }
 
+// (14) mergeCaptchaAjax باید ajaxResponse (captchaId@base64) را هم بازسازی کند
+//      تا بدنه ارسال دقیقاً مثل فرم واقعی سایت باشد (captchaNew این فیلد را پر می‌کند).
+{
+  const shell = analyzeHtml(`<form action="TresV.php" method="post" name="mainFrm">
+    <input type="hidden" name="ajaxResponse" id="ajaxResponse"/>
+    <input type="hidden" name="captchaId" id="captchaId"/>
+  </form>`, 'https://safirrail.ir/etrain/TresV.php');
+  const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  const merged = mergeCaptchaAjax(shell, parseCaptchaAjaxResponse('9@' + b64));
+  const okCaptchaId = merged.hiddenFields.captchaId === '9';
+  const okAjax = merged.hiddenFields.ajaxResponse === '9@' + b64;
+  const ok = okCaptchaId && okAjax;
+  console.log((ok ? 'PASS' : 'FAIL') + '  بازسازی ajaxResponse در ادغام کپچا  (captchaId=' + merged.hiddenFields.captchaId + ' ajaxResponse=' + (okAjax ? 'captchaId@b64' : merged.hiddenFields.ajaxResponse) + ')');
+  if (!ok) failures++;
+}
+
 console.log('');
 if (failures) {
   console.log(failures + ' تست شکست خورد');
