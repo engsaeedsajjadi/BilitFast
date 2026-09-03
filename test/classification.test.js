@@ -252,6 +252,23 @@ test('فقط hidden + دکمه → unknown', `<html><body><form action="${BASE}"
   if (!ok) failures++;
 }
 
+// (18) mergeCaptchaAjax باید formFieldValues را هم به‌روز کند (نه فقط hiddenFields)
+//      — این باگ باعث می‌شد captchaId/ajaxResponse خالی در بدنه ارسال برود.
+{
+  const shell = analyzeHtml(`<form action="TresV.php" method="post" name="mainFrm">
+    <input type="hidden" name="ajaxResponse" id="ajaxResponse" value=""/>
+    <input type="hidden" name="captchaId" id="captchaId" value=""/>
+    <input type="hidden" name="srvc" value="S370"/>
+  </form>`, 'https://safirrail.ir/etrain/TresV-auth.php');
+  const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  const merged = mergeCaptchaAjax(shell, parseCaptchaAjaxResponse('77@' + b64));
+  const okH = merged.hiddenFields.captchaId === '77' && merged.hiddenFields.ajaxResponse === '77@' + b64;
+  const okF = merged.formFieldValues.captchaId === '77' && merged.formFieldValues.ajaxResponse === '77@' + b64;
+  const ok = okH && okF;
+  console.log((ok ? 'PASS' : 'FAIL') + '  mergeCaptchaAjax فرم‌فیلدها را هم به‌روز می‌کند  (hiddenFields.captchaId=' + merged.hiddenFields.captchaId + ' formFieldValues.captchaId=' + merged.formFieldValues.captchaId + ')');
+  if (!ok) failures++;
+}
+
 console.log('');
 if (failures) {
   console.log(failures + ' تست شکست خورد');
