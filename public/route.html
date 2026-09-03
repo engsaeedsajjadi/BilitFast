@@ -33,15 +33,15 @@
       <div class="form-grid">
         <div class="field">
           <label>مبدا:</label>
-          <select id="from_city"></select>
+          <select id="from_city" autocomplete="off"></select>
         </div>
         <div class="field">
           <label>مقصد:</label>
-          <select id="to_city"></select>
+          <select id="to_city" autocomplete="off"></select>
         </div>
         <div class="field">
           <label>تاریخ (شمسی):</label>
-          <input type="text" id="date" placeholder="1405/06/09">
+          <input type="text" id="date" placeholder="1405/06/09" autocomplete="off">
         </div>
         <div class="field">
           <label>جنسیت:</label>
@@ -53,7 +53,7 @@
         </div>
         <div class="field">
           <label>شماره قطار (اختیاری — پایش یک قطار خاص):</label>
-          <input type="text" id="train_number">
+          <input type="text" id="train_number" autocomplete="off">
         </div>
       </div>
 
@@ -83,7 +83,7 @@
       <button class="btn btn-sm" id="btn-add-row">➕ افزودن ردیف</button>
       <div class="field" style="margin-top:10px">
         <label>شماره همراه (برای رزرو):</label>
-        <input type="text" id="phone" placeholder="09xxxxxxxxx" style="direction:ltr;max-width:200px" autocomplete="tel"/>
+        <input type="text" id="phone" placeholder="09xxxxxxxxx" style="direction:ltr;max-width:200px" autocomplete="off"/>
       </div>
     </section>
 
@@ -389,6 +389,15 @@
       BilitFast.sendNotification('capacity_found', {
         from: f0.from_city, to: f0.to_city, date: f0.date, trains_count: data.trains.length,
       });
+      // اگر کاربر شماره قطار مشخصی را پایش می‌کند، بعد از یافتن، رزرو به‌صورت
+      // خودکار شروع می‌شود (بدون نیاز به انتخاب دستی از لیست).
+      const wantedTrain = (f0.train_number || '').trim();
+      if (wantedTrain) {
+        const target = data.trains.find((t) => t['شماره قطار'] === wantedTrain) || data.trains[0];
+        setStatus('قطار «' + wantedTrain + '» یافت شد — رزرو خودکار آغاز می‌شود...', 'green');
+        saveRouteState({ status: 'رزرو خودکار قطار ' + wantedTrain, statusColor: 'blue' });
+        reserve(target['شماره قطار']);
+      }
     } else {
       const msg = data.note || 'هیچ قطاری با ظرفیت کافی یافت نشد.';
       setStatus(msg, 'orange');

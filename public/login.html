@@ -43,7 +43,19 @@
     </section>
 
     <section class="card narrow">
-      <h3>همگام‌سازی خودکار کوکی (پیشنهادی)</h3>
+      <h3>🔄 همگام‌سازی یک‌کلیکی با افزونه (پیشنهادی)</h3>
+      <p class="muted small">
+        اگر در مرورگر وارد <code>safirrail.ir</code> هستید، روی آیکون افزونه
+        «بیلیت فست» کلیک کنید تا کوکی‌ها (شامل کوکی نشست که از صفحه وب قابل
+        خواندن نیست) ارسال شود؛ سپس دکمه زیر را بزنید تا دریافت شوند.
+        راهنمای نصب افزونه: <code>docs/EXTENSION.md</code>
+      </p>
+      <button class="btn btn-primary" id="btn-ext-sync">دریافت کوکی از افزونه</button>
+      <div id="ext-sync-result" class="muted small" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card narrow">
+      <h3>همگام‌سازی خودکار کوکی (اجرای محلی — بدون افزونه)</h3>
       <p class="muted small">
         اگر در مرورگر وارد سایت <code>safirrail.ir</code> شده باشید، با زدن دکمه زیر،
         کوکی‌های ورود به‌صورت خودکار از پروفایل مرورگر خوانده و به برنامه منتقل می‌شود
@@ -102,6 +114,49 @@
     } else {
       showAlert(data.error || data.message || 'ورود ناموفق بود.', false);
     }
+  });
+
+  // دریافت کوکی از افزونه مرورگر (پنج دقیقه پس از کلیک افزونه اعتبار دارد)
+  let extPollTimer = null;
+  document.getElementById('btn-ext-sync').addEventListener('click', () => {
+    const el = document.getElementById('ext-sync-result');
+    const btn = document.getElementById('btn-ext-sync');
+    if (extPollTimer) { clearInterval(extPollTimer); extPollTimer = null; }
+    btn.disabled = true;
+    el.textContent = 'در انتظار کلیک روی آیکون افزونه در صفحه صفیر ریل... (تا ۶۰ ثانیه)';
+    let tries = 0;
+    const poll = async () => {
+      tries++;
+      try {
+        const res = await fetch('/api/cookie-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'poll' }),
+        });
+        const data = await res.json();
+        if (data && data.ok && data.cookies && data.cookies.length) {
+          clearInterval(extPollTimer); extPollTimer = null;
+          btn.disabled = false;
+          BilitFast.setCookies(data.cookies);
+          // اگر کاربر وارد حساب شده، کوکی‌ها را در حساب هم ذخیره کن
+          if (BilitFast.isLoggedIn()) {
+            BilitFast.authFetch('/api/auth', { action: 'import-local', cookies: data.cookies }).catch(() => {});
+          }
+          document.getElementById('cookie-input').value = data.cookies.join('; ');
+          updateCookieWarn();
+          el.innerHTML = '✅ ' + data.count + ' کوکی دریافت و ذخیره شد.' +
+            (data.has_session ? ' (کوکی نشست موجود است)' : ' ⚠️ کوکی نشست یافت نشد — ابتدا در مرورگر وارد سایت شوید.');
+          return;
+        }
+      } catch (e) { /* ادامه تلاش */ }
+      if (tries >= 30) {
+        clearInterval(extPollTimer); extPollTimer = null;
+        btn.disabled = false;
+        el.textContent = 'کوکی‌ای دریافت نشد. مطمئن شوید افزونه نصب است، سپس در صفحه صفیر ریل روی آیکون افزونه کلیک کنید و دوباره این دکمه را بزنید.';
+      }
+    };
+    poll();
+    extPollTimer = setInterval(poll, 2000);
   });
 
   // همگام‌سازی خودکار کوکی از مرورگر (Firefox / Chrome)
