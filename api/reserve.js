@@ -2,6 +2,7 @@
 const {
   startReservation,
   submitReservation,
+  refreshCaptcha,
   fetchCaptchaImage,
   solveCaptchaImage,
 } = require('../lib/reserve');
@@ -36,6 +37,11 @@ module.exports = async (req, res) => {
 
     if (action === 'captcha-image') {
       const result = await fetchCaptchaImage(body.captchaImageUrl, body.stateToken);
+      return respond(res, result);
+    }
+
+    if (action === 'refresh-captcha') {
+      const result = await refreshCaptcha({ stateToken: body.stateToken });
       return respond(res, result);
     }
 

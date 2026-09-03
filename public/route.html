@@ -451,6 +451,7 @@
   let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
   let autoSolveAttempts = 0;
   let autoSolving = false;
+  let autoSolveStop = false;
 
   async function reserve(trainNumber) {
     const route = BilitFast.getRoute(ROUTE_ID);
@@ -527,9 +528,10 @@
 
     switch (data.step) {
       case 'captcha':
-        // حل خودکار کپچا در پس‌زمینه (بدون نمایش UI، مگر در صورت شکست)
-        $('reserve-message').textContent = 'در حال حل خودکار کپچا...';
-        setStatus('در حال حل خودکار کپچا...', 'blue');
+        // تصویر کپچا را بلافاصله برای حل دستی نمایش می‌دهیم، و هم‌زمان
+        // حل خودکار (OCR) را در پس‌زمینه اجرا می‌کنیم. اگر OCR موفق شد
+        // خودکار ارسال می‌شود؛ در غیر این صورت کاربر تصویر را دیده و دستی حل می‌کند.
+        showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true });
         autoSolveLoop(data.captchaImageUrl);
         break;
       case 'passenger_form':
@@ -594,18 +596,27 @@
 
   function showReserveCaptcha(data) {
     hideReserveAll();
-    $('reserve-message').textContent = 'حل خودکار کپچا ناموفق بود. لطفاً کد امنیتی را وارد کنید:';
+    const auto = !!(data && data.autoSolving);
+    $('reserve-message').textContent = auto
+      ? 'کد امنیتی تصویر زیر را وارد کنید (در حال حل خودکار در پس‌زمینه...):'
+      : 'حل خودکار کپچا ناموفق بود. لطفاً کد امنیتی را وارد کنید:';
     $('reserve-captcha').style.display = 'block';
     $('reserve-captcha-input').value = '';
     const imgUrl = (data && data.captchaImageUrl) || reserveCtx.captchaImageUrl;
     if (imgUrl) loadCaptchaImage(imgUrl);
-    setStatus('کد امنیتی (کپچا) را دستی وارد کنید', 'orange');
+    setStatus(auto ? 'کپچا نمایش داده شد — کد را وارد کنید' : 'کد امنیتی (کپچا) را دستی وارد کنید', 'orange');
   }
 
   async function loadCaptchaImage(url) {
     const img = $('reserve-captcha-img');
+    img.alt = 'کپچا';
     img.src = '';
     if (!url) return;
+    // کپچای data-URI (جاسازی‌شده) → مستقیم نمایش بده، بدون رفت‌وبرگشت سرور
+    if (/^data:image/i.test(url)) {
+      img.src = url;
+      return;
+    }
     const data = await callReserve({ action: 'captcha-image', captchaImageUrl: url, stateToken: reserveCtx.token });
     if (data && data.ok && data.dataUri) {
       img.src = data.dataUri;
@@ -619,11 +630,11 @@
     if (autoSolving) return;
     autoSolving = true;
     autoSolveAttempts = 0;
-    $('btn-captcha-submit').disabled = true;
+    autoSolveStop = false;
 
     let currentUrl = captchaImageUrl;
 
-    while (autoSolveAttempts < CAPTCHA_MAX_AUTO_ATTEMPTS) {
+    while (autoSolveAttempts < CAPTCHA_MAX_AUTO_ATTEMPTS && !autoSolveStop) {
       autoSolveAttempts++;
       setStatus('حل خودکار کپچا (تلاش ' + autoSolveAttempts + '/' + CAPTCHA_MAX_AUTO_ATTEMPTS + ')...', 'blue');
 
@@ -632,6 +643,8 @@
         captchaImageUrl: currentUrl,
         stateToken: reserveCtx.token,
       });
+
+      if (autoSolveStop) break;
 
       if (solved && solved.ok && solved.text) {
         $('reserve-captcha-input').value = solved.text;
@@ -651,7 +664,6 @@
           if (resp.step !== 'captcha') {
             // موفق شد (پرداخت/فرم مسافر/موفقیت)
             autoSolving = false;
-            $('btn-captcha-submit').disabled = false;
             handleReserveStep(resp);
             return;
           }
@@ -671,16 +683,30 @@
 
     // تلاش‌های خودکار تمام شد → واگذار به کاربر (نمایش فرم دستی کپچا)
     autoSolving = false;
-    $('btn-captcha-submit').disabled = false;
     showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl });
   }
 
   async function refreshCaptchaImage() {
-    if (!reserveCtx.captchaImageUrl) return null;
-    const sep = reserveCtx.captchaImageUrl.includes('?') ? '&' : '?';
-    const newUrl = reserveCtx.captchaImageUrl + sep + '_=' + Date.now();
-    await loadCaptchaImage(newUrl);
-    return newUrl;
+    // کپچای این صفحه به نشست گره خورده است؛ برای کپچای جدید باید از سرور
+    // درخواست تازه بدهیم (captchaAjax.php)، نه اینکه به URL موجود cache-buster
+    // بچسبانیم (که برای data-URI اصلاً معنا ندارد و آن را خراب می‌کند).
+    const data = await callReserve({ action: 'refresh-captcha', stateToken: reserveCtx.token });
+    if (data && data.ok && (data.captchaImageUrl || data.captchaDataUri)) {
+      if (data.stateToken) reserveCtx.token = data.stateToken;
+      const url = data.captchaImageUrl || data.captchaDataUri;
+      reserveCtx.captchaImageUrl = url;
+      loadCaptchaImage(url);
+      return url;
+    }
+    // fallback: اگر URL معمولی (نه data-URI) باشد، cache-buster
+    const cur = reserveCtx.captchaImageUrl;
+    if (cur && !/^data:image/i.test(cur)) {
+      const sep = cur.includes('?') ? '&' : '?';
+      const newUrl = cur + sep + '_=' + Date.now();
+      await loadCaptchaImage(newUrl);
+      return newUrl;
+    }
+    return null;
   }
 
   function showReservePayment(data) {
@@ -854,17 +880,15 @@
   $('btn-captcha-submit').addEventListener('click', () => {
     const captcha = $('reserve-captcha-input').value.trim();
     if (!captcha) { $('reserve-captcha-input').focus(); return; }
+    autoSolveStop = true;  // توقف حل خودکار در صورت ارسال دستی
     $('btn-captcha-submit').disabled = true;
     setStatus('در حال ارسال کپچا...', 'blue');
     reserveSubmit(captcha);
   });
-  $('btn-captcha-refresh').addEventListener('click', () => {
-    // درخواست دوباره تصویر (با cache-buster)
-    const url = reserveCtx.captchaImageUrl;
-    if (url) {
-      const sep = url.includes('?') ? '&' : '?';
-      loadCaptchaImage(url + sep + '_=' + Date.now());
-    }
+  $('btn-captcha-refresh').addEventListener('click', async () => {
+    // درخواست کپچای تازه از سرور (captchaAjax.php)
+    setStatus('دریافت کپچای جدید...', 'blue');
+    await refreshCaptchaImage();
   });
 
   window.reserve = reserve;
