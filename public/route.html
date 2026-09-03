@@ -16,8 +16,10 @@
       </div>
       <nav class="topnav">
         <a href="index.html">مسیرها</a>
-        <a href="login.html">ورود</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
       </nav>
     </div>
   </header>
@@ -132,6 +134,17 @@
         <a class="btn btn-primary" id="btn-reserve-pay" href="#" target="_blank" rel="noopener">ادامه به صفحه پرداخت</a>
       </div>
 
+      <!-- تأیید نتیجه پرداخت -->
+      <div id="reserve-pay-confirm" style="display:none" class="alert">
+        <p style="margin-top:0"><b>نتیجه پرداخت چه شد؟</b><br>
+        <span class="muted small">بانک نتیجه را مستقیم به این برنامه اعلام نمی‌کند؛ با ثبت نتیجه، وضعیت در تاریخچه رزروها ثبت می‌شود.</span></p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btn-paid" type="button">پرداخت را انجام دادم ✅</button>
+          <button class="btn btn-danger" id="btn-pay-failed" type="button">پرداخت ناموفق بود ❌</button>
+        </div>
+        <p class="muted small" id="pay-confirm-note" style="margin-bottom:0"></p>
+      </div>
+
       <!-- خطا -->
       <div id="reserve-error" class="alert alert-error" style="display:none"></div>
 
@@ -156,6 +169,7 @@
 
   <script src="jalaali.min.js"></script>
   <script src="app.js"></script>
+  <script src="datepicker.js"></script>
   <script>
   const params = new URLSearchParams(window.location.search);
   const ROUTE_ID = parseInt(params.get('id'), 10);
@@ -238,6 +252,9 @@
   }
   ['from_city','to_city','date','train_number'].forEach((id) => $(id).addEventListener('input', updateTitle));
   document.querySelectorAll('input[name="gender"]').forEach((r) => r.addEventListener('change', updateTitle));
+
+  // دیت‌پیکر شمسی برای فیلد تاریخ (تایپ دستی هم مثل قبل کار می‌کند)
+  BilitFastDatePicker.attach($('date'));
 
   $('btn-prev-day').addEventListener('click', () => { $('date').value = BilitFast.shiftJalaliDate($('date').value, -1); updateTitle(); });
   $('btn-next-day').addEventListener('click', () => { $('date').value = BilitFast.shiftJalaliDate($('date').value, 1); updateTitle(); });
@@ -355,6 +372,11 @@
       renderFound(data.trains);
       renderDiagnostics(data);
       notifyFound(data.trains.length, getFields().train_number || null);
+      // اطلاع‌رسانی سروری (تلگرام/پیامک) — بهترین تلاش؛ هرگز جریان اصلی را مختل نمی‌کند
+      const f0 = getFields();
+      BilitFast.sendNotification('capacity_found', {
+        from: f0.from_city, to: f0.to_city, date: f0.date, trains_count: data.trains.length,
+      });
     } else {
       const msg = data.note || 'هیچ قطاری با ظرفیت کافی یافت نشد.';
       setStatus(msg, 'orange');
@@ -601,6 +623,7 @@
   function hideReserveAll() {
     $('reserve-captcha').style.display = 'none';
     $('reserve-payment').style.display = 'none';
+    $('reserve-pay-confirm').style.display = 'none';
     $('reserve-error').style.display = 'none';
     $('reserve-fallback').style.display = 'none';
     $('reserve-summary').style.display = 'none';
@@ -754,7 +777,53 @@
     setStatus('انتقال به صفحه پرداخت...', 'green');
     saveRouteState({ status: 'آماده پرداخت', statusColor: 'green' });
     openPaymentWindow(data.paymentUrl);
+    saveBookingRecord(data);
   }
+
+  /* --- ذخیره رزرو در تاریخچه + تأیید نتیجه پرداخت توسط کاربر ---
+   * بانک نتیجه پرداخت را به این برنامه اعلام نمی‌کند (آدرس بازگشت دست صفیر
+   * ریل است)؛ بنابراین رزرو به‌صورت «در انتظار پرداخت» ذخیره می‌شود و کاربر
+   * نتیجه را با یک کلیک تأیید می‌کند. */
+  let currentBookingId = null;
+
+  async function saveBookingRecord(data) {
+    currentBookingId = null;
+    const noteEl = $('pay-confirm-note');
+    $('btn-paid').disabled = false;
+    $('btn-pay-failed').disabled = false;
+    $('reserve-pay-confirm').style.display = 'block';
+    if (!BilitFast.isLoggedIn()) {
+      noteEl.textContent = '💡 برای ذخیره این رزرو در «تاریخچه»، وارد حساب خود شوید.';
+      return;
+    }
+    noteEl.textContent = '';
+    try {
+      const r = await BilitFast.saveBooking({
+        booking: data.booking || null,
+        paymentUrl: data.paymentUrl || '',
+        workflow_id: data.workflow_id || '',
+        totalPrice: (data.totalPrice !== null && data.totalPrice !== undefined) ? data.totalPrice : undefined,
+      });
+      if (r && r.ok) currentBookingId = r.id;
+    } catch (e) { /* ذخیره تاریخچه نباید جریان رزرو را مختل کند */ }
+  }
+
+  $('btn-paid').addEventListener('click', async () => {
+    $('btn-paid').disabled = true;
+    if (currentBookingId) await BilitFast.bookingResult(currentBookingId, 'paid');
+    $('reserve-pay-confirm').style.display = 'none';
+    $('reserve-message').textContent = '✅ رزرو و پرداخت با موفقیت ثبت شد. جزئیات در «تاریخچه رزروها» است.';
+    setStatus('رزرو موفق (پرداخت انجام شد)', 'green');
+    saveRouteState({ status: 'رزرو موفق (پرداخت انجام شد)', statusColor: 'green' });
+  });
+  $('btn-pay-failed').addEventListener('click', async () => {
+    $('btn-pay-failed').disabled = true;
+    if (currentBookingId) await BilitFast.bookingResult(currentBookingId, 'failed');
+    $('reserve-pay-confirm').style.display = 'none';
+    $('reserve-message').textContent = 'پرداخت ناموفق ثبت شد. می‌توانید دوباره از بخش «تاریخچه» یا با انتخاب مجدد قطار تلاش کنید.';
+    setStatus('پرداخت ناموفق', 'orange');
+    saveRouteState({ status: 'پرداخت ناموفق', statusColor: 'orange' });
+  });
 
   // نمایش خلاصه رزرو + اعتبارسنجی قیمت قبل از پرداخت
   function renderBookingSummary(data) {

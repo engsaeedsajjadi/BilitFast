@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تاریخچه رزروها — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2>تاریخچه رزروها</h2>
+      <p class="muted small">
+        رزروهایی که به مرحله پرداخت رسیده‌اند اینجا ذخیره می‌شوند. نتیجه پرداخت را
+        بانک به‌صورت خودکار به این برنامه اعلام نمی‌کند؛ لطفاً بعد از پرداخت، نتیجه را
+        با دکمه‌های همین صفحه ثبت کنید.
+      </p>
+      <div id="content"><p class="muted">در حال بارگذاری...</p></div>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="app.js"></script>
+  <script>
+  const STATUS_FA = {
+    'pending_payment': { text: 'در انتظار پرداخت', cls: 'badge-not_started' },
+    'paid_confirmed': { text: 'پرداخت انجام شد', cls: 'badge-active' },
+    'payment_failed': { text: 'پرداخت ناموفق', cls: 'badge-expired' },
+    'unknown': { text: 'نامشخص', cls: 'badge-not_started' },
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+  function fmtDate(ts) {
+    try {
+      return new Date(ts).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' });
+    } catch (e) { return String(ts); }
+  }
+
+  async function render() {
+    const el = document.getElementById('content');
+    if (!BilitFast.isLoggedIn()) {
+      el.innerHTML = '<p>برای مشاهده تاریخچه رزروها، <a href="account.html">وارد حساب خود شوید</a>.</p>';
+      return;
+    }
+    const data = await BilitFast.listBookings();
+    if (!data.ok) {
+      el.innerHTML = '<div class="alert alert-error">' + esc(data.error || 'خطا در دریافت تاریخچه') + '</div>';
+      return;
+    }
+    if (!data.items.length) {
+      el.innerHTML = '<p class="muted">هنوز رزروی ثبت نشده است. رزروهایی که به مرحله پرداخت برسند اینجا نمایش داده می‌شوند.</p>';
+      return;
+    }
+    let html = '<table class="table"><thead><tr>' +
+      '<th>مسیر</th><th>تاریخ/ساعت حرکت</th><th>قطار</th><th>مسافران</th><th>مبلغ (ریال)</th><th>وضعیت</th><th>ثبت شده</th><th>عملیات</th>' +
+      '</tr></thead><tbody>';
+    for (const b of data.items) {
+      const bk = b.booking || {};
+      const st = STATUS_FA[b.status] || STATUS_FA.unknown;
+      html += '<tr>' +
+        '<td>' + esc(bk.origin || '?') + ' ← ' + esc(bk.destination || '?') + '</td>' +
+        '<td>' + esc(bk.date || '') + ' — ' + esc(bk.time || '') + '</td>' +
+        '<td>' + esc(bk.train_number || '') + ' (' + esc(bk.train_type || '') + ')</td>' +
+        '<td>' + esc(bk.passengers || 0) + '</td>' +
+        '<td>' + esc(bk.total_price != null ? bk.total_price : (bk.ticket_price || '')) + '</td>' +
+        '<td><span class="badge ' + st.cls + '">' + st.text + '</span></td>' +
+        '<td class="small">' + esc(fmtDate(b.created_at)) + '</td>' +
+        '<td style="white-space:nowrap">' +
+          (b.status === 'pending_payment' && b.payment_url ? '<a class="btn btn-sm btn-primary" href="' + esc(b.payment_url) + '" target="_blank" rel="noopener">ادامه پرداخت</a> ' : '') +
+          (b.status === 'pending_payment'
+            ? '<button class="btn btn-sm" onclick="markPaid(\'' + esc(b.id) + '\')">پرداخت کردم ✅</button> ' +
+              '<button class="btn btn-sm btn-danger" onclick="markFailed(\'' + esc(b.id) + '\')">ناموفق ❌</button>'
+            : '') +
+        '</td></tr>';
+    }
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+
+  async function mark(id, result) {
+    const data = await BilitFast.bookingResult(id, result);
+    if (!data.ok) { alert(data.error || 'خطا در ثبت نتیجه'); return; }
+    render();
+  }
+  window.markPaid = (id) => mark(id, 'paid');
+  window.markFailed = (id) => mark(id, 'failed');
+
+  render();
+  </script>
+</body>
+</html>

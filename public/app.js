@@ -1,21 +1,34 @@
-/* app.js — منطق مشترک سمت کلاینت (پورت از هسته پایتون به مرورگر)
+/* app.js — منطق مشترک سمت کلاینت
  *
- * تغییر مهم نسبت به نسخه قبل: مدیریت مجوز/دوره آزمایشی دیگر در مرورگر جعل
- * نمی‌شود. کد فعال‌سازی از کد کلاینت حذف شده و وضعیت مجوز با «توکن امضاشده
- * سمت سرور» بررسی می‌شود (از طریق /api/trial و /api/activate). برای مقاومت
- * در برابر قطعی موقت سرور، آخرین وضعیت معتبر به‌صورت کش نگهداری می‌شود.
+ * نسخه تجاری: مجوز سروری + حساب کاربری + اشتراک + تاریخچه + اطلاع‌رسانی.
+ * مهمان‌ها (بدون ورود) همچنان با توکن‌های امضاشده دوره آزمایشی کار می‌کنند؛
+ * کاربران واردشده اولویت با «اشتراک فعال» دارند و تاریخچه/اطلاعیه دارند.
  */
 
 const BilitFast = (function () {
-  const TRIAL_KEY = 'bilitfast_trial_token';   // توکن امضاشده دوره آزمایشی (از سرور)
-  const LICENSE_KEY = 'bilitfast_license_token'; // توکن امضاشده فعال‌سازی دائمی (از سرور)
-  const CACHE_KEY = 'bilitfast_license_cache'; // کش آخرین وضعیت (برای آفلاین/کندی)
-  const CACHE_TTL_MS = 15000;                  // اعتبار کش قبل از پرسش دوباره از سرور
+  const TRIAL_KEY = 'bilitfast_trial_token';
+  const LICENSE_KEY = 'bilitfast_license_token';
+  const SESSION_KEY = 'bilitfast_session_token';
+  const CACHE_KEY = 'bilitfast_license_cache';
+  const CACHE_TTL_MS = 15000;
 
-  /* ---------------- مجوز و دوره آزمایشی (سمت سرور) ---------------- */
+  /* ---------------- نشست کاربر ---------------- */
+  function getSessionToken() { return localStorage.getItem(SESSION_KEY) || ''; }
+  function setSessionToken(t) { if (t) localStorage.setItem(SESSION_KEY, t); else localStorage.removeItem(SESSION_KEY); }
+  function isLoggedIn() { return !!getSessionToken(); }
 
-  function getLicenseToken() { return localStorage.getItem(LICENSE_KEY) || ''; }
-  function getTrialToken() { return localStorage.getItem(TRIAL_KEY) || ''; }
+  /** فراخوانی API با توکن نشست (هدر + بدنه برای سازگاری). */
+  async function authFetch(path, payload) {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getSessionToken();
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const body = { ...(payload || {}) };
+    if (token) body.sessionToken = token;
+    const res = await fetch(path, { method: 'POST', headers, body: JSON.stringify(body) });
+    return res.json();
+  }
+
+  /* ---------------- مجوز، دوره آزمایشی و اشتراک ---------------- */
 
   function readCache() {
     try {
@@ -27,69 +40,93 @@ const BilitFast = (function () {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...st, ts: Date.now() })); } catch (e) { /* ignore */ }
   }
 
-  /**
-   * دریافت وضعیت مجوز از سرور (مرجع اصلی). خروجی:
-   *   { state: 'activated'|'active'|'expired'|'not_started'|'unknown', message }
-   * اگر سرور در دسترس نبود، از کش استفاده می‌شود؛ اگر کشی نبود 'not_started'.
-   */
+  /** وضعیت مجوز از سرور: اشتراک فعال > فعال‌سازی دائمی > دوره آزمایشی. */
   async function fetchLicenseState(force = false) {
     const cache = readCache();
-    if (!force && cache && (Date.now() - (cache.ts || 0) < CACHE_TTL_MS)) {
+    if (!force && cache && (Date.now() - (cache.ts || 0) < CACHE_TTL_MS) && (cache.session === isLoggedIn())) {
       return { state: cache.state, message: cache.message };
     }
     try {
-      const res = await fetch('/api/trial', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'status', trialToken: getTrialToken(), licenseToken: getLicenseToken() }),
-      });
-      const data = await res.json();
+      const data = await authFetch('/api/trial', { action: 'status', trialToken: localStorage.getItem(TRIAL_KEY) || '', licenseToken: localStorage.getItem(LICENSE_KEY) || '' });
       if (data && data.ok && data.state) {
-        const st = { state: data.state, message: data.message || '' };
+        const st = { state: data.state, message: data.message || '', subscription: data.subscription || null, session: isLoggedIn() };
         writeCache(st);
         return st;
       }
       throw new Error('bad response');
     } catch (e) {
-      // سرور در دسترس نیست → کش قدیمی (هرچقدر قدیمی) بهتر از قفل‌کردن کاربر است
       if (cache) return { state: cache.state, message: cache.message + ' (آفلاین)' };
       return { state: 'not_started', message: 'دوره آزمایشی شروع نشده' };
     }
   }
 
-  /** شروع دوره آزمایشی (فقط یک‌بار — سرور توکن امضاشده می‌دهد). */
   async function startTrial() {
-    const res = await fetch('/api/trial', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'start', trialToken: getTrialToken(), licenseToken: getLicenseToken() }),
-    });
-    const data = await res.json();
-    if (data && data.ok) {
-      if (data.trialToken) localStorage.setItem(TRIAL_KEY, data.trialToken);
-      writeCache({ state: data.state, message: data.message });
-      return { state: data.state, message: data.message };
+    try {
+      const data = await authFetch('/api/trial', { action: 'start', trialToken: localStorage.getItem(TRIAL_KEY) || '', licenseToken: localStorage.getItem(LICENSE_KEY) || '' });
+      if (data && data.ok) {
+        if (data.trialToken) localStorage.setItem(TRIAL_KEY, data.trialToken);
+        writeCache({ state: data.state, message: data.message, session: isLoggedIn() });
+        return { state: data.state, message: data.message };
+      }
+      return { state: 'unknown', message: (data && data.error) || 'خطا در شروع دوره آزمایشی' };
+    } catch (e) {
+      return { state: 'unknown', message: 'خطا در ارتباط با سرور' };
     }
-    return { state: 'unknown', message: (data && data.error) || 'خطا در شروع دوره آزمایشی' };
   }
 
-  /** فعال‌سازی دائمی با کد (اعتبارسنجی فقط سمت سرور). */
+  /** فعال‌سازی دائمی با کد (برای مهمان‌ها؛ کاربران واردشده اشتراک می‌خرند). */
   async function activate(code) {
-    const res = await fetch('/api/activate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
-    });
-    const data = await res.json();
-    if (data && data.ok && data.token) {
-      localStorage.setItem(LICENSE_KEY, data.token);
-      writeCache({ state: 'activated', message: 'فعال‌سازی دائمی' });
-      return { ok: true, message: data.message || 'برنامه فعال شد.' };
+    try {
+      const res = await fetch('/api/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (data && data.ok && data.token) {
+        localStorage.setItem(LICENSE_KEY, data.token);
+        writeCache({ state: 'activated', message: 'فعال‌سازی دائمی', session: isLoggedIn() });
+        return { ok: true, message: data.message || 'برنامه فعال شد.' };
+      }
+      return { ok: false, message: (data && data.error) || 'خطا در فعال‌سازی' };
+    } catch (e) {
+      return { ok: false, message: 'خطا در ارتباط با سرور' };
     }
-    return { ok: false, message: (data && data.error) || 'خطا در فعال‌سازی' };
   }
 
-  /* ---------------- مسیرها (معادل route_search_data / route_windows) ---------------- */
+  /* ---------------- اشتراک ---------------- */
+  async function getPlans() {
+    try { return await authFetch('/api/subscription', { action: 'plans' }); }
+    catch (e) { return { ok: false, error: 'خطا در ارتباط با سرور' }; }
+  }
+  async function createCheckout(planId) {
+    return authFetch('/api/subscription', { action: 'create', plan: planId });
+  }
+  async function subscriptionStatus() {
+    return authFetch('/api/subscription', { action: 'status' });
+  }
+
+  /* ---------------- تاریخچه رزرو ---------------- */
+  async function saveBooking(data) {
+    return authFetch('/api/bookings', { action: 'save', ...data });
+  }
+  async function bookingResult(id, result) {
+    return authFetch('/api/bookings', { action: 'result', id, result });
+  }
+  async function listBookings() {
+    return authFetch('/api/bookings', { action: 'list' });
+  }
+
+  /* ---------------- اطلاع‌رسانی ---------------- */
+  async function sendNotification(type, data) {
+    // بهترین تلاش؛ نباید هرگز جریان اصلی را خراب کند
+    try {
+      if (!isLoggedIn()) return { ok: false, skipped: true };
+      return await authFetch('/api/notify', { action: 'send', type, data });
+    } catch (e) { return { ok: false, error: String(e) }; }
+  }
+
+  /* ---------------- مسیرها (ذخیره محلی مرورگر) ---------------- */
   const ROUTES_KEY = 'bilitfast_routes';
 
   function loadRoutes() {
@@ -133,7 +170,7 @@ const BilitFast = (function () {
     localStorage.setItem(COOKIES_KEY, JSON.stringify(c || []));
   }
 
-  /* ---------------- تاریخ شمسی (با jalaali) ---------------- */
+  /* ---------------- تاریخ شمسی ---------------- */
   function jalali() {
     if (!window.jalaali) {
       throw new Error('کتابخانه jalaali.min.js بارگذاری نشده است. (خطای اسکریپت)');
@@ -163,8 +200,7 @@ const BilitFast = (function () {
     return t.jy + '/' + String(t.jm).padStart(2, '0') + '/' + String(t.jd).padStart(2, '0');
   }
 
-  /* ---------------- اعتبارسنجی‌های کاربردی ---------------- */
-  /** اعتبارسنجی کد ملی ایران (الگوریتم چک‌دیجیت) — هم‌نام نسخه سروری. */
+  /* ---------------- اعتبارسنجی‌ها ---------------- */
   function isValidNationalCode(code) {
     const s = String(code == null ? '' : code).trim();
     if (!/^\d{10}$/.test(s)) return false;
@@ -176,7 +212,7 @@ const BilitFast = (function () {
     return parseInt(s[9], 10) === check;
   }
 
-  /* ---------------- تنظیمات مشترک (از /api/config) ---------------- */
+  /* ---------------- تنظیمات مشترک ---------------- */
   let sharedConfig = null;
 
   async function loadSharedConfig() {
@@ -187,19 +223,17 @@ const BilitFast = (function () {
     } catch (e) { sharedConfig = {}; }
     return sharedConfig;
   }
-  /** فاصله جستجو (میلی‌ثانیه) — از config.json؛ پیش‌فرض ۳۰۰۰ */
   function getPollIntervalMs() {
     const n = parseInt(sharedConfig && sharedConfig.refresh_interval, 10);
     return (n > 0 ? n * 1000 : 3000);
   }
-  /** حداکثر تلاش خودکار حل کپچا — از config.json؛ پیش‌فرض ۵ */
   function getCaptchaMaxAttempts() {
     const c = (sharedConfig && sharedConfig.captcha) || {};
     const n = parseInt(c.max_attempts, 10);
     return (n > 0 ? n : 5);
   }
 
-  /* ---------------- حالت توسعه (نمایش تشخیص‌ها) ---------------- */
+  /* ---------------- حالت توسعه ---------------- */
   function isDebugMode() {
     try {
       if (new URLSearchParams(window.location.search).has('debug')) return true;
@@ -237,13 +271,22 @@ const BilitFast = (function () {
   }
 
   return {
+    // نشست و حساب
+    getSessionToken, setSessionToken, isLoggedIn, authFetch,
+    // مجوز و اشتراک
     fetchLicenseState, startTrial, activate,
+    getPlans, createCheckout, subscriptionStatus,
+    // تاریخچه و اطلاع‌رسانی
+    saveBooking, bookingResult, listBookings, sendNotification,
+    // داده محلی
     loadRoutes, saveRoutes, getRoute, upsertRoute, removeRoute, nextRouteId,
     getCookies, setCookies,
-    todayJalali, isValidJalaliDate, shiftJalaliDate,
-    isValidNationalCode,
+    // تاریخ و اعتبارسنجی
+    todayJalali, isValidJalaliDate, shiftJalaliDate, isValidNationalCode,
+    // تنظیمات
     loadSharedConfig, getPollIntervalMs, getCaptchaMaxAttempts,
     isDebugMode, setDebugMode,
+    // API پایه
     apiSearch, apiReserve, apiLogin,
   };
 })();

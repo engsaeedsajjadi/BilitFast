@@ -88,11 +88,21 @@ const server = http.createServer(async (req, res) => {
       const expressRes = {
         status(c) { this._status = c; return this; },
         json(j) { this._json = j; return this; },
+        set(k, v) {
+          this._headers = Object.assign(this._headers || {}, typeof k === 'string' ? { [k]: v } : k);
+          return this;
+        },
+        send(s) { this._send = s; return this; },
       };
       await handler(expressReq, expressRes);
       const status = expressRes._status || 200;
-      const payload = expressRes._json !== undefined ? JSON.stringify(expressRes._json) : '';
-      send(res, status, payload, { 'Content-Type': 'application/json; charset=utf-8' });
+      const extraHeaders = expressRes._headers || {};
+      if (expressRes._send !== undefined) {
+        send(res, status, expressRes._send, { 'Content-Type': 'text/html; charset=utf-8', ...extraHeaders });
+      } else {
+        const payload = expressRes._json !== undefined ? JSON.stringify(expressRes._json) : '';
+        send(res, status, payload, { 'Content-Type': 'application/json; charset=utf-8', ...extraHeaders });
+      }
     } catch (e) {
       send(res, 500, JSON.stringify({ ok: false, error: String(e && e.message ? e.message : e) }), { 'Content-Type': 'application/json' });
     }

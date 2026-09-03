@@ -18,6 +18,9 @@ temp_*.html
 trial.json
 state.json
 
+# دیتابیس محلی (هرگز نباید کامیت شود)
+data/
+
 # env
 .env
 .env.*

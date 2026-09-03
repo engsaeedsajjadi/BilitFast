@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>وضعیت مجوز — Bilit Fast</title>
+  <title>مجوز و اشتراک — Bilit Fast</title>
   <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -16,77 +16,151 @@
       </div>
       <nav class="topnav">
         <a href="index.html">مسیرها</a>
-        <a href="login.html">ورود</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
       </nav>
     </div>
   </header>
   <main class="container">
     <section class="card narrow">
       <h2>وضعیت مجوز</h2>
-      <div id="content"><p class="muted">در حال بررسی وضعیت مجوز...</p></div>
+      <div id="status-content"><p class="muted">در حال بررسی...</p></div>
+    </section>
+
+    <section class="card" id="plans-section" style="display:none">
+      <h2>خرید اشتراک</h2>
+      <p class="muted small">با خرید اشتراک، محدودیت دوره آزمایشی برداشته می‌شود و تاریخچه رزرو و اطلاع‌رسانی فعال می‌ماند.</p>
+      <div id="plans-content"></div>
+      <div id="pay-alert" style="display:none"></div>
     </section>
   </main>
   <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
 
   <script src="app.js"></script>
   <script>
-  async function render() {
-    const c = document.getElementById('content');
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+  function showAlert(id, msg, ok) {
+    const el = document.getElementById(id);
+    el.style.display = 'block';
+    el.className = 'alert ' + (ok ? 'alert-success' : 'alert-error');
+    el.innerHTML = msg;
+  }
+  function fmtRial(n) {
+    try { return Number(n).toLocaleString('fa-IR') + ' ریال'; }
+    catch (e) { return String(n) + ' ریال'; }
+  }
+
+  async function renderStatus() {
+    const c = document.getElementById('status-content');
     c.innerHTML = '<p class="muted">در حال بررسی وضعیت مجوز...</p>';
     const ts = await BilitFast.fetchLicenseState(true);
 
+    let html = '';
     if (ts.state === 'activated') {
-      c.innerHTML = '<div class="alert alert-success">✅ برنامه به صورت دائمی فعال شده است.</div>' +
+      html = '<div class="alert alert-success">✅ ' + esc(ts.message || 'فعال‌سازی دائمی') + '</div>' +
+        '<a class="btn btn-primary" href="index.html">ورود به برنامه</a>';
+    } else if (ts.state === 'active') {
+      html = '<div class="alert alert-success">دوره آزمایشی فعال است.</div>' +
         '<a class="btn btn-primary" href="index.html">ورود به برنامه</a>';
     } else if (ts.state === 'expired') {
-      c.innerHTML = '<p>دوره آزمایشی شما به پایان رسیده است. برای فعال‌سازی دائمی، کد فعال‌سازی را وارد کنید:</p>' +
-        '<form id="activate-form">' +
-        '<div class="field"><label>کد فعال‌سازی:</label><input type="text" id="code" required autocomplete="off"></div>' +
-        '<button class="btn btn-primary" type="submit">فعال‌سازی</button>' +
-        '</form>' +
-        '<div id="alert" style="display:none"></div>';
-      document.getElementById('activate-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const code = document.getElementById('code').value;
-        const el = document.getElementById('alert');
-        const btn = e.target.querySelector('button[type=submit]');
-        btn.disabled = true;
-        const result = await BilitFast.activate(code);
-        btn.disabled = false;
-        el.style.display = 'block';
-        if (result.ok) {
-          el.className = 'alert alert-success';
-          el.textContent = '✅ برنامه به صورت دائمی فعال شد.';
-          setTimeout(() => render(), 600);
-        } else {
-          el.className = 'alert alert-error';
-          el.textContent = '❌ ' + result.message;
-        }
-      });
+      html = '<div class="alert alert-error">دوره آزمایشی به پایان رسیده است.</div>';
+      if (BilitFast.isLoggedIn()) {
+        html += '<p>برای ادامه، یکی از طرح‌های اشتراک را خریداری کنید.</p>';
+      } else {
+        html += '<p>می‌توانید <a href="account.html">حساب بسازید</a> و اشتراک بخرید، یا اگر کد فعال‌سازی دارید وارد کنید:</p>' +
+          '<form id="activate-form">' +
+          '<div class="field"><label>کد فعال‌سازی:</label><input type="text" id="code" required autocomplete="off"></div>' +
+          '<button class="btn btn-primary" type="submit">فعال‌سازی</button>' +
+          '</form><div id="alert" style="display:none"></div>';
+      }
     } else if (ts.state === 'not_started') {
-      c.innerHTML = '<p>آیا مایل به شروع دوره آزمایشی هستید؟</p>' +
+      html = '<p>آیا مایل به شروع دوره آزمایشی هستید؟</p>' +
         '<button class="btn btn-primary" id="start-trial">شروع دوره آزمایشی</button>' +
         '<div id="alert" style="display:none"></div>';
-      document.getElementById('start-trial').addEventListener('click', async (e) => {
-        e.target.disabled = true;
-        const st = await BilitFast.startTrial();
-        if (st.state === 'active') { render(); return; }
-        const el = document.getElementById('alert');
-        el.style.display = 'block';
-        el.className = 'alert alert-error';
-        el.textContent = '❌ ' + (st.message || 'خطا در شروع دوره آزمایشی');
-        e.target.disabled = false;
-      });
-    } else if (ts.state === 'active') {
-      c.innerHTML = '<div class="alert alert-success">دوره آزمایشی فعال است.</div>' +
-        '<a class="btn btn-primary" href="index.html">ورود به برنامه</a>';
     } else {
-      c.innerHTML = '<div class="alert alert-error">⚠️ ' + (ts.message || 'خطا در ارتباط با سرور') + '</div>' +
-        '<button class="btn btn-primary" onclick="render()">تلاش مجدد</button>';
+      html = '<div class="alert alert-error">⚠️ ' + esc(ts.message || 'خطا در ارتباط با سرور') + '</div>' +
+        '<button class="btn btn-primary" onclick="renderAll()">تلاش مجدد</button>';
     }
+    c.innerHTML = html;
+
+    const startBtn = document.getElementById('start-trial');
+    if (startBtn) startBtn.addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      const st = await BilitFast.startTrial();
+      if (st.state === 'active' || st.state === 'activated') { renderAll(); return; }
+      showAlert('alert', '❌ ' + (st.message || 'خطا در شروع دوره آزمایشی'), false);
+      e.target.disabled = false;
+    });
+
+    const actForm = document.getElementById('activate-form');
+    if (actForm) actForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const result = await BilitFast.activate(document.getElementById('code').value);
+      showAlert('alert', (result.ok ? '✅ برنامه فعال شد.' : '❌ ' + result.message), result.ok);
+      if (result.ok) setTimeout(renderAll, 600);
+    });
   }
-  render();
+
+  async function renderPlans() {
+    const section = document.getElementById('plans-section');
+    const content = document.getElementById('plans-content');
+    const data = await BilitFast.getPlans();
+    if (!data.ok || !Array.isArray(data.plans) || !data.plans.length) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = 'block';
+    let html = '<div class="plans-grid">';
+    for (const p of data.plans) {
+      html += '<div class="plan-card">' +
+        '<h3>' + esc(p.title) + '</h3>' +
+        '<p class="plan-price">' + esc(fmtRial(p.price_rial)) + '</p>' +
+        '<p class="muted small">' + esc(p.days) + ' روز اعتبار</p>' +
+        '<button class="btn btn-primary" data-plan="' + esc(p.id) + '">خرید این طرح</button>' +
+        '</div>';
+    }
+    html += '</div>';
+    if (!data.configured) {
+      html += '<p class="muted small" style="margin-top:10px">⚠️ درگاه پرداخت روی این استقرار هنوز پیکربندی نشده است؛ دکمه خرید خطای پیکربندی نمایش می‌دهد.</p>';
+    } else if (data.sandbox) {
+      html += '<p class="muted small" style="margin-top:10px">🧪 حالت آزمایشی درگاه (سندباکس) فعال است.</p>';
+    }
+    content.innerHTML = html;
+
+    content.querySelectorAll('button[data-plan]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        if (!BilitFast.isLoggedIn()) {
+          showAlert('pay-alert', 'برای خرید اشتراک ابتدا <a href="account.html">وارد حساب خود شوید</a>.', false);
+          return;
+        }
+        b.disabled = true;
+        showAlert('pay-alert', 'در حال دریافت آدرس درگاه پرداخت...', true);
+        const r = await BilitFast.createCheckout(b.getAttribute('data-plan'));
+        b.disabled = false;
+        if (!r.ok) {
+          showAlert('pay-alert', r.error || 'خطا در ایجاد خرید', false);
+          return;
+        }
+        const win = window.open(r.redirectUrl, '_blank', 'noopener');
+        if (!win) {
+          showAlert('pay-alert', 'مرورگر بازشدن خودکار را مسدود کرد. <a href="' + esc(r.redirectUrl) + '" target="_blank" rel="noopener">برای پرداخت کلیک کنید</a>.', true);
+        } else {
+          showAlert('pay-alert', 'صفحه پرداخت باز شد. پس از پرداخت، این صفحه را تازه‌سازی (رفرش) کنید تا وضعیت به‌روز شود.', true);
+        }
+      });
+    });
+  }
+
+  async function renderAll() {
+    await Promise.all([renderStatus(), renderPlans()]);
+  }
+  renderAll();
   </script>
 </body>
 </html>
