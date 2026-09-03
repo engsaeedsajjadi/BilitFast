@@ -5,6 +5,7 @@
   "reserve_init_url": "/etrain/TresV-auth.php",
   "reserve_submit_url": "/etrain/VerifyTck.php",
   "refresh_interval": 3,
+  "trial_period_days": 2,
   "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
   "content_type": "application/x-www-form-urlencoded",
   "accept": "*/*",

@@ -11,6 +11,22 @@ const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
 const API_DIR = path.join(ROOT, 'api');
 const PORT = process.env.PORT || 3000;
+const MAX_BODY_BYTES = 5 * 1024 * 1024; // ۵ مگابایت (تصاویر کپچا به‌صورت data-URI ارسال می‌شوند)
+
+// بارگذاری .env (برای متغیرهای لایسنس/رمزنگاری). متغیرهای موجود در محیط
+// اولویت دارند و بازنویسی نمی‌شوند.
+(function loadDotEnv() {
+  const p = path.join(ROOT, '.env');
+  if (!fs.existsSync(p)) return;
+  try {
+    for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) continue;
+      if (process.env[m[1]] !== undefined) continue;
+      process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  } catch (e) { /* ignore */ }
+})();
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -23,10 +39,20 @@ const MIME = {
 };
 
 function readBody(req) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', (c) => { data += c; });
+    let size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > MAX_BODY_BYTES) {
+        reject(new Error('BODY_TOO_LARGE'));
+        req.destroy();
+        return;
+      }
+      data += c;
+    });
     req.on('end', () => resolve(data));
+    req.on('error', reject);
   });
 }
 
@@ -48,8 +74,17 @@ const server = http.createServer(async (req, res) => {
     }
     try {
       const handler = require(fnPath);
-      const body = await readBody(req);
-      const expressReq = { method: req.method, body, query: Object.fromEntries(url.searchParams) };
+      let body;
+      try {
+        body = await readBody(req);
+      } catch (e) {
+        if (e && e.message === 'BODY_TOO_LARGE') {
+          send(res, 413, JSON.stringify({ ok: false, error: 'حجم درخواست بیش از حد مجاز است.' }), { 'Content-Type': 'application/json' });
+          return;
+        }
+        throw e;
+      }
+      const expressReq = { method: req.method, body, query: Object.fromEntries(url.searchParams), headers: req.headers, socket: req.socket };
       const expressRes = {
         status(c) { this._status = c; return this; },
         json(j) { this._json = j; return this; },

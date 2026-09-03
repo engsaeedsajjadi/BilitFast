@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>وضعیت مجوز — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,51 +24,66 @@
   <main class="container">
     <section class="card narrow">
       <h2>وضعیت مجوز</h2>
-      <div id="content"></div>
+      <div id="content"><p class="muted">در حال بررسی وضعیت مجوز...</p></div>
     </section>
   </main>
   <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
 
   <script src="app.js"></script>
   <script>
-  function render() {
-    const ts = BilitFast.trialState();
+  async function render() {
     const c = document.getElementById('content');
+    c.innerHTML = '<p class="muted">در حال بررسی وضعیت مجوز...</p>';
+    const ts = await BilitFast.fetchLicenseState(true);
+
     if (ts.state === 'activated') {
       c.innerHTML = '<div class="alert alert-success">✅ برنامه به صورت دائمی فعال شده است.</div>' +
         '<a class="btn btn-primary" href="index.html">ورود به برنامه</a>';
     } else if (ts.state === 'expired') {
       c.innerHTML = '<p>دوره آزمایشی شما به پایان رسیده است. برای فعال‌سازی دائمی، کد فعال‌سازی را وارد کنید:</p>' +
         '<form id="activate-form">' +
-        '<div class="field"><label>کد فعال‌سازی:</label><input type="text" id="code" required></div>' +
+        '<div class="field"><label>کد فعال‌سازی:</label><input type="text" id="code" required autocomplete="off"></div>' +
         '<button class="btn btn-primary" type="submit">فعال‌سازی</button>' +
         '</form>' +
         '<div id="alert" style="display:none"></div>';
-      document.getElementById('activate-form').addEventListener('submit', (e) => {
+      document.getElementById('activate-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const code = document.getElementById('code').value;
         const el = document.getElementById('alert');
-        if (BilitFast.activate(code)) {
-          el.style.display = 'block';
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true;
+        const result = await BilitFast.activate(code);
+        btn.disabled = false;
+        el.style.display = 'block';
+        if (result.ok) {
           el.className = 'alert alert-success';
           el.textContent = '✅ برنامه به صورت دائمی فعال شد.';
           setTimeout(() => render(), 600);
         } else {
-          el.style.display = 'block';
           el.className = 'alert alert-error';
-          el.textContent = '❌ کد فعال‌سازی نادرست است.';
+          el.textContent = '❌ ' + result.message;
         }
       });
     } else if (ts.state === 'not_started') {
-      c.innerHTML = '<p>آیا مایل به شروع دوره آزمایشی ۲ روزه هستید؟</p>' +
-        '<button class="btn btn-primary" id="start-trial">شروع دوره آزمایشی</button>';
-      document.getElementById('start-trial').addEventListener('click', () => {
-        BilitFast.startTrial();
-        render();
+      c.innerHTML = '<p>آیا مایل به شروع دوره آزمایشی هستید؟</p>' +
+        '<button class="btn btn-primary" id="start-trial">شروع دوره آزمایشی</button>' +
+        '<div id="alert" style="display:none"></div>';
+      document.getElementById('start-trial').addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        const st = await BilitFast.startTrial();
+        if (st.state === 'active') { render(); return; }
+        const el = document.getElementById('alert');
+        el.style.display = 'block';
+        el.className = 'alert alert-error';
+        el.textContent = '❌ ' + (st.message || 'خطا در شروع دوره آزمایشی');
+        e.target.disabled = false;
       });
-    } else {
+    } else if (ts.state === 'active') {
       c.innerHTML = '<div class="alert alert-success">دوره آزمایشی فعال است.</div>' +
         '<a class="btn btn-primary" href="index.html">ورود به برنامه</a>';
+    } else {
+      c.innerHTML = '<div class="alert alert-error">⚠️ ' + (ts.message || 'خطا در ارتباط با سرور') + '</div>' +
+        '<button class="btn btn-primary" onclick="render()">تلاش مجدد</button>';
     }
   }
   render();

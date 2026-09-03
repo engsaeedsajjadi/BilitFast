@@ -1,67 +1,103 @@
-/* app.js — منطق مشترک سمت کلاینت (پورت از هسته پایتون به مرورگر) */
+/* app.js — منطق مشترک سمت کلاینت (پورت از هسته پایتون به مرورگر)
+ *
+ * تغییر مهم نسبت به نسخه قبل: مدیریت مجوز/دوره آزمایشی دیگر در مرورگر جعل
+ * نمی‌شود. کد فعال‌سازی از کد کلاینت حذف شده و وضعیت مجوز با «توکن امضاشده
+ * سمت سرور» بررسی می‌شود (از طریق /api/trial و /api/activate). برای مقاومت
+ * در برابر قطعی موقت سرور، آخرین وضعیت معتبر به‌صورت کش نگهداری می‌شود.
+ */
 
-/* =====================================================================
- * مدیریت دوره آزمایشی (پورت از TrialManager در BilitFast.py)
- * به‌جای رجیستری ویندوز / فایل، در localStorage مرورگر ذخیره می‌شود.
- * ===================================================================== */
 const BilitFast = (function () {
-  const TRIAL_KEY = 'bilitfast_trial';
-  const ROUTES_KEY = 'bilitfast_routes';
-  const COOKIES_KEY = 'bilitfast_cookies';
-  const ACTIVATION_CODE = 'Sa@0946517835';
-  const TRIAL_PERIOD_DAYS = 2;
+  const TRIAL_KEY = 'bilitfast_trial_token';   // توکن امضاشده دوره آزمایشی (از سرور)
+  const LICENSE_KEY = 'bilitfast_license_token'; // توکن امضاشده فعال‌سازی دائمی (از سرور)
+  const CACHE_KEY = 'bilitfast_license_cache'; // کش آخرین وضعیت (برای آفلاین/کندی)
+  const CACHE_TTL_MS = 15000;                  // اعتبار کش قبل از پرسش دوباره از سرور
 
-  /* ---------------- Trial (TrialManager) ---------------- */
-  function loadTrial() {
+  /* ---------------- مجوز و دوره آزمایشی (سمت سرور) ---------------- */
+
+  function getLicenseToken() { return localStorage.getItem(LICENSE_KEY) || ''; }
+  function getTrialToken() { return localStorage.getItem(TRIAL_KEY) || ''; }
+
+  function readCache() {
     try {
-      const raw = localStorage.getItem(TRIAL_KEY);
-      if (!raw) return { startDate: null, activated: false };
-      return JSON.parse(raw);
-    } catch (e) {
-      return { startDate: null, activated: false };
-    }
+      const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      return (c && typeof c === 'object' && c.state) ? c : null;
+    } catch (e) { return null; }
   }
-  function saveTrial(t) {
-    localStorage.setItem(TRIAL_KEY, JSON.stringify(t));
-  }
-  function trialState() {
-    const t = loadTrial();
-    if (t.activated) return { state: 'activated', message: 'فعال‌سازی دائمی' };
-    if (!t.startDate) return { state: 'not_started', message: 'دوره آزمایشی شروع نشده' };
-    const start = new Date(t.startDate).getTime();
-    const expiry = start + TRIAL_PERIOD_DAYS * 86400000;
-    if (Date.now() > expiry) return { state: 'expired', message: 'دوره آزمایشی به پایان رسیده' };
-    return { state: 'active', message: 'دوره آزمایشی فعال' };
-  }
-  function startTrial() {
-    const t = loadTrial();
-    if (!t.startDate) {
-      t.startDate = new Date().toISOString();
-      saveTrial(t);
-    }
-  }
-  function activate(code) {
-    if (code === ACTIVATION_CODE) {
-      const t = loadTrial();
-      t.activated = true;
-      saveTrial(t);
-      return true;
-    }
-    return false;
-  }
-  function trialExpired() {
-    return trialState().state === 'expired';
+  function writeCache(st) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...st, ts: Date.now() })); } catch (e) { /* ignore */ }
   }
 
-  /* ---------------- Routes (معادل route_search_data / route_windows) ---------------- */
+  /**
+   * دریافت وضعیت مجوز از سرور (مرجع اصلی). خروجی:
+   *   { state: 'activated'|'active'|'expired'|'not_started'|'unknown', message }
+   * اگر سرور در دسترس نبود، از کش استفاده می‌شود؛ اگر کشی نبود 'not_started'.
+   */
+  async function fetchLicenseState(force = false) {
+    const cache = readCache();
+    if (!force && cache && (Date.now() - (cache.ts || 0) < CACHE_TTL_MS)) {
+      return { state: cache.state, message: cache.message };
+    }
+    try {
+      const res = await fetch('/api/trial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'status', trialToken: getTrialToken(), licenseToken: getLicenseToken() }),
+      });
+      const data = await res.json();
+      if (data && data.ok && data.state) {
+        const st = { state: data.state, message: data.message || '' };
+        writeCache(st);
+        return st;
+      }
+      throw new Error('bad response');
+    } catch (e) {
+      // سرور در دسترس نیست → کش قدیمی (هرچقدر قدیمی) بهتر از قفل‌کردن کاربر است
+      if (cache) return { state: cache.state, message: cache.message + ' (آفلاین)' };
+      return { state: 'not_started', message: 'دوره آزمایشی شروع نشده' };
+    }
+  }
+
+  /** شروع دوره آزمایشی (فقط یک‌بار — سرور توکن امضاشده می‌دهد). */
+  async function startTrial() {
+    const res = await fetch('/api/trial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'start', trialToken: getTrialToken(), licenseToken: getLicenseToken() }),
+    });
+    const data = await res.json();
+    if (data && data.ok) {
+      if (data.trialToken) localStorage.setItem(TRIAL_KEY, data.trialToken);
+      writeCache({ state: data.state, message: data.message });
+      return { state: data.state, message: data.message };
+    }
+    return { state: 'unknown', message: (data && data.error) || 'خطا در شروع دوره آزمایشی' };
+  }
+
+  /** فعال‌سازی دائمی با کد (اعتبارسنجی فقط سمت سرور). */
+  async function activate(code) {
+    const res = await fetch('/api/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    if (data && data.ok && data.token) {
+      localStorage.setItem(LICENSE_KEY, data.token);
+      writeCache({ state: 'activated', message: 'فعال‌سازی دائمی' });
+      return { ok: true, message: data.message || 'برنامه فعال شد.' };
+    }
+    return { ok: false, message: (data && data.error) || 'خطا در فعال‌سازی' };
+  }
+
+  /* ---------------- مسیرها (معادل route_search_data / route_windows) ---------------- */
+  const ROUTES_KEY = 'bilitfast_routes';
+
   function loadRoutes() {
     try {
       const raw = localStorage.getItem(ROUTES_KEY);
       const arr = raw ? JSON.parse(raw) : [];
       return Array.isArray(arr) ? arr : [];
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   }
   function saveRoutes(routes) {
     localStorage.setItem(ROUTES_KEY, JSON.stringify(routes));
@@ -86,7 +122,9 @@ const BilitFast = (function () {
     return maxId + 1;
   }
 
-  /* ---------------- Cookies (نشست صفیر ریل) ---------------- */
+  /* ---------------- کوکی‌ها (نشست صفیر ریل) ---------------- */
+  const COOKIES_KEY = 'bilitfast_cookies';
+
   function getCookies() {
     try { return JSON.parse(localStorage.getItem(COOKIES_KEY)) || []; }
     catch (e) { return []; }
@@ -125,6 +163,53 @@ const BilitFast = (function () {
     return t.jy + '/' + String(t.jm).padStart(2, '0') + '/' + String(t.jd).padStart(2, '0');
   }
 
+  /* ---------------- اعتبارسنجی‌های کاربردی ---------------- */
+  /** اعتبارسنجی کد ملی ایران (الگوریتم چک‌دیجیت) — هم‌نام نسخه سروری. */
+  function isValidNationalCode(code) {
+    const s = String(code == null ? '' : code).trim();
+    if (!/^\d{10}$/.test(s)) return false;
+    if (/^(\d)\1{9}$/.test(s)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(s[i], 10) * (10 - i);
+    const r = sum % 11;
+    const check = r < 2 ? r : 11 - r;
+    return parseInt(s[9], 10) === check;
+  }
+
+  /* ---------------- تنظیمات مشترک (از /api/config) ---------------- */
+  let sharedConfig = null;
+
+  async function loadSharedConfig() {
+    if (sharedConfig) return sharedConfig;
+    try {
+      const res = await fetch('/api/config');
+      sharedConfig = await res.json();
+    } catch (e) { sharedConfig = {}; }
+    return sharedConfig;
+  }
+  /** فاصله جستجو (میلی‌ثانیه) — از config.json؛ پیش‌فرض ۳۰۰۰ */
+  function getPollIntervalMs() {
+    const n = parseInt(sharedConfig && sharedConfig.refresh_interval, 10);
+    return (n > 0 ? n * 1000 : 3000);
+  }
+  /** حداکثر تلاش خودکار حل کپچا — از config.json؛ پیش‌فرض ۵ */
+  function getCaptchaMaxAttempts() {
+    const c = (sharedConfig && sharedConfig.captcha) || {};
+    const n = parseInt(c.max_attempts, 10);
+    return (n > 0 ? n : 5);
+  }
+
+  /* ---------------- حالت توسعه (نمایش تشخیص‌ها) ---------------- */
+  function isDebugMode() {
+    try {
+      if (new URLSearchParams(window.location.search).has('debug')) return true;
+      return localStorage.getItem('bilitfast_debug') === '1';
+    } catch (e) { return false; }
+  }
+  function setDebugMode(on) {
+    try { localStorage.setItem('bilitfast_debug', on ? '1' : '0'); } catch (e) { /* ignore */ }
+  }
+
   /* ---------------- API ---------------- */
   async function apiSearch(payload) {
     const res = await fetch('/api/search', {
@@ -152,11 +237,13 @@ const BilitFast = (function () {
   }
 
   return {
-    ACTIVATION_CODE, TRIAL_PERIOD_DAYS,
-    loadTrial, saveTrial, trialState, startTrial, activate, trialExpired,
+    fetchLicenseState, startTrial, activate,
     loadRoutes, saveRoutes, getRoute, upsertRoute, removeRoute, nextRouteId,
     getCookies, setCookies,
     todayJalali, isValidJalaliDate, shiftJalaliDate,
+    isValidNationalCode,
+    loadSharedConfig, getPollIntervalMs, getCaptchaMaxAttempts,
+    isDebugMode, setDebugMode,
     apiSearch, apiReserve, apiLogin,
   };
 })();

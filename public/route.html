@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>مسیر — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -166,7 +167,7 @@
   const $ = (id) => document.getElementById(id);
   const CITIES = {};
   const MAX_PASSENGERS = 6;       // حداکثر مسافر قابل تعریف (طبق درخواست کاربر)
-  const POLL_INTERVAL_MS = 3000;  // جستجو هر 3 ثانیه
+  const POLL_INTERVAL_MS = 3000;  // پیش‌فرض جستجو هر ۳ ثانیه (مقدار واقعی از تنظیمات سرور می‌آید)
 
   /* ---------------- نوتیفیکیشن مرورگر ---------------- */
   let notifAllowed = false;
@@ -260,12 +261,12 @@
         <option value="کودک" ${data.quota_type==='کودک'?'selected':''}>کودک</option>
         <option value="اتباع" ${data.quota_type==='اتباع'?'selected':''}>اتباع</option>
       </select></td>
-      <td><input class="col-national" value="${data.national_code||''}" placeholder="کد ملی"></td>
-      <td><input class="col-day" value="${data.birth_day||''}" placeholder="روز"></td>
-      <td><input class="col-month" value="${data.birth_month||''}" placeholder="ماه"></td>
-      <td><input class="col-year" value="${data.birth_year||''}" placeholder="سال"></td>
-      <td><input class="col-name" value="${data.first_name||''}" placeholder="نام"></td>
-      <td><input class="col-family" value="${data.last_name||''}" placeholder="نام خانوادگی"></td>
+      <td><input class="col-national" value="${esc(data.national_code||'')}" placeholder="کد ملی"></td>
+      <td><input class="col-day" value="${esc(data.birth_day||'')}" placeholder="روز"></td>
+      <td><input class="col-month" value="${esc(data.birth_month||'')}" placeholder="ماه"></td>
+      <td><input class="col-year" value="${esc(data.birth_year||'')}" placeholder="سال"></td>
+      <td><input class="col-name" value="${esc(data.first_name||'')}" placeholder="نام"></td>
+      <td><input class="col-family" value="${esc(data.last_name||'')}" placeholder="نام خانوادگی"></td>
       <td><button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()">حذف</button></td>
     `;
     $('passengers-table').querySelector('tbody').appendChild(tr);
@@ -364,7 +365,8 @@
 
   function renderDiagnostics(data) {
     const el = $('diag-content');
-    if (!data.diag) { $('diag-section').style.display = 'none'; return; }
+    // پنل تشخیص فقط در حالت توسعه نمایش داده می‌شود (?debug یا گزینه «تنظیمات»)
+    if (!BilitFast.isDebugMode() || !data.diag) { $('diag-section').style.display = 'none'; return; }
     $('diag-section').style.display = 'block';
     let html = '<p><b>وضعیت نشست:</b> ' +
       (data.sessionOk ? '✅ کوکی سشن (PHPSESSID) ارسال شد' : '❌ کوکی سشن (PHPSESSID) ارسال نشده') +
@@ -379,7 +381,8 @@
 
   function startPolling() {
     if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(doOneAttempt, POLL_INTERVAL_MS);
+    // فاصله جستجو از تنظیمات سرور (config.json → refresh_interval)؛ پیش‌فرض ۳ ثانیه
+    pollTimer = setInterval(doOneAttempt, BilitFast.getPollIntervalMs() || POLL_INTERVAL_MS);
   }
   function stopPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -399,6 +402,17 @@
     if (passengers.length > MAX_PASSENGERS) {
       setStatus('حداکثر ' + MAX_PASSENGERS + ' مسافر مجاز است.', 'red');
       return;
+    }
+    // اعتبارسنجی کد ملی (الگوریتم چک‌دیجیت) — قبل از ارسال به سامانه،
+    // تا خطای تایپی زودتر از «خطای ۱۰۱» سامانه به کاربر نمایش داده شود.
+    // برای سهمیه «اتباع» (شماره گذرنامه) بررسی نمی‌شود.
+    for (let i = 0; i < passengers.length; i++) {
+      const p = passengers[i];
+      if (p.quota_type !== 'اتباع' && String(p.national_code || '').trim() !== '' &&
+          !BilitFast.isValidNationalCode(p.national_code)) {
+        setStatus('کد ملی مسافر ردیف ' + (i + 1) + ' نامعتبر است. لطفاً کد ملی ۱۰ رقمی صحیح را وارد کنید.', 'red');
+        return;
+      }
     }
     requestNotifyPermission();
     saveRouteState({ fields: f, passengers, running: true, status: 'جستجو آغاز شد...', statusColor: 'blue', foundTrains: [] });
@@ -447,7 +461,7 @@
 
   /* ---------------- رزرو (چندمرحله‌ای: کپچا → اطلاعات مسافر → پرداخت) ---------------- */
   const RESERVE_MAX_STEPS = 8;
-  const CAPTCHA_MAX_AUTO_ATTEMPTS = 5; // تعداد تلاش خودکار حل کپچا (هر بار کپچای تازه)
+  const CAPTCHA_MAX_AUTO_ATTEMPTS = 5; // پیش‌فرض (مقدار واقعی از تنظیمات سرور: captcha.max_attempts)
   let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
   let autoSolving = false;
   let autoSolveStop = false;
@@ -651,8 +665,9 @@
     // فقط صفحه کپچا را دوباره برمی‌گرداند (هیچ جریمه/بلاکی ندارد)، می‌توانیم
     // تا چند بار خودکار تلاش کنیم و شانس موفقیت کلی را به‌شدت بالا ببریم.
     // تصویر در طول این مدت همیشه نمایش داده می‌شود تا کاربر بتواند هر لحظه دستی وارد کند.
-    for (let attempt = 1; attempt <= CAPTCHA_MAX_AUTO_ATTEMPTS && !autoSolveStop; attempt++) {
-      setStatus('حل خودکار کپچا (تلاش ' + attempt + '/' + CAPTCHA_MAX_AUTO_ATTEMPTS + ')...', 'blue');
+    const maxAutoAttempts = BilitFast.getCaptchaMaxAttempts() || CAPTCHA_MAX_AUTO_ATTEMPTS;
+    for (let attempt = 1; attempt <= maxAutoAttempts && !autoSolveStop; attempt++) {
+      setStatus('حل خودکار کپچا (تلاش ' + attempt + '/' + maxAutoAttempts + ')...', 'blue');
 
       const solved = await callReserve({
         action: 'solve-captcha',
@@ -812,7 +827,8 @@
   function renderReserveDiagnostics(data) {
     const el = $('reserve-diagnostics');
     const body = $('reserve-diagnostics-body');
-    if (!data || !data.diagnostics) { el.style.display = 'none'; return; }
+    // پنل تشخیص فقط در حالت توسعه نمایش داده می‌شود (?debug یا گزینه «تنظیمات»)
+    if (!BilitFast.isDebugMode() || !data || !data.diagnostics) { el.style.display = 'none'; return; }
 
     const lines = [];
     lines.push('step: ' + (data.step || '—'));
@@ -927,6 +943,13 @@
   /* ---------------- شروع ---------------- */
   (function init() {
     const route = BilitFast.getRoute(ROUTE_ID);
+    // بارگذاری تنظیمات سرور (فاصله جستجو و تعداد تلاش کپچا) — ناهمزمان و بدون
+    // ایجاد تأخیر در صفحه؛ مقادیر پیش‌فرض تا آماده‌شدن تنظیمات استفاده می‌شوند.
+    BilitFast.loadSharedConfig();
+    // کنترل مجوز (مانند صفحه مسیرها): فقط در صورت انقضای قطعی هدایت می‌شود.
+    BilitFast.fetchLicenseState().then((ts) => {
+      if (ts.state === 'expired') window.location.href = 'trial.html';
+    });
     loadCities();
     // بارگذاری مسافران ذخیره‌شده
     const pass = route && route.passengers ? route.passengers : [];

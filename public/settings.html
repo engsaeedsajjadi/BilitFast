@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تنظیمات — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -30,6 +31,18 @@
       </p>
       <pre id="config-preview">در حال بارگذاری...</pre>
     </section>
+
+    <section class="card">
+      <h3>حالت توسعه</h3>
+      <p class="muted small">
+        با فعال‌کردن این گزینه، پنل‌های «تشخیص» (جزئیات فنی فرم‌ها و مراحل رزرو)
+        در صفحه مسیر نمایش داده می‌شوند. این اطلاعات برای رفع اشکال مفید است و
+        برای استفاده عادی نیازی به آن نیست.
+      </p>
+      <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+        <input type="checkbox" id="debug-toggle"> نمایش پنل‌های تشخیص (حالت توسعه)
+      </label>
+    </section>
   </main>
   <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
 
@@ -41,6 +54,10 @@
     document.getElementById('config-preview').textContent = JSON.stringify(data, null, 2);
   }
   loadConfig();
+
+  const debugToggle = document.getElementById('debug-toggle');
+  debugToggle.checked = BilitFast.isDebugMode();
+  debugToggle.addEventListener('change', () => BilitFast.setDebugMode(debugToggle.checked));
   </script>
 </body>
 </html>

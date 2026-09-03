@@ -5,7 +5,7 @@
   "description": "Bilit Fast — وب‌اپ رزرو بلیت قطار",
   "scripts": {
     "start": "node dev-server.js",
-    "test": "node test/classification.test.js"
+    "test": "node test/classification.test.js && node test/security.test.js"
   },
   "engines": {
     "node": ">=18"

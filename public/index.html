@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bilit Fast — مسیرها</title>
+  <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -60,6 +61,12 @@
     'green': '#27ae60', 'blue': '#2980b9'
   };
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
   function renderRoutes() {
     const routes = BilitFast.loadRoutes();
     const tbody = document.querySelector('#routes-table tbody');
@@ -73,24 +80,24 @@
       const cap = (r.searchData && r.searchData.passCnt) || '';
       return `
         <tr data-id="${r.id}">
-          <td>${r.id}</td>
-          <td>${r.fields.from_city || '-'}</td>
-          <td>${r.fields.to_city || '-'}</td>
-          <td>${r.fields.date || '-'}</td>
-          <td>${r.fields.train_number || '-'}</td>
-          <td>${cap}</td>
-          <td><span style="color:${color}">●</span> ${status}</td>
+          <td>${esc(r.id)}</td>
+          <td>${esc(r.fields.from_city || '-')}</td>
+          <td>${esc(r.fields.to_city || '-')}</td>
+          <td>${esc(r.fields.date || '-')}</td>
+          <td>${esc(r.fields.train_number || '-')}</td>
+          <td>${esc(cap)}</td>
+          <td><span style="color:${color}">●</span> ${esc(status)}</td>
           <td>
-            <button class="btn btn-sm" onclick="openRoute(${r.id})">باز کردن</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteRoute(${r.id})">حذف</button>
+            <button class="btn btn-sm" onclick="openRoute(${parseInt(r.id, 10)})">باز کردن</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteRoute(${parseInt(r.id, 10)})">حذف</button>
           </td>
         </tr>`;
     }).join('');
   }
 
-  function refresh() {
-    // کنترل دوره آزمایشی
-    const ts = BilitFast.trialState();
+  async function refresh() {
+    // کنترل مجوز/دوره آزمایشی از سرور (با کش کوتاه برای کاهش درخواست‌ها)
+    const ts = await BilitFast.fetchLicenseState();
     if (ts.state === 'expired') { window.location.href = 'trial.html'; return; }
     const badge = document.getElementById('trial-badge');
     badge.textContent = ts.message;
@@ -108,9 +115,9 @@
     renderRoutes();
   }
 
-  document.getElementById('btn-add-route').addEventListener('click', () => {
-    const ts = BilitFast.trialState();
-    if (ts.state === 'not_started') { window.location.href = 'trial.html'; return; }
+  document.getElementById('btn-add-route').addEventListener('click', async () => {
+    const ts = await BilitFast.fetchLicenseState();
+    if (ts.state === 'not_started' || ts.state === 'expired') { window.location.href = 'trial.html'; return; }
     const id = BilitFast.nextRouteId();
     BilitFast.upsertRoute({
       id,

@@ -6,6 +6,7 @@ const {
   fetchCaptchaImage,
   solveCaptchaImage,
 } = require('../lib/reserve');
+const { guardApi } = require('../lib/guard');
 
 function readBody(req) {
   if (typeof req.body === 'string') {
@@ -16,6 +17,12 @@ function readBody(req) {
 }
 
 module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    res.status(405).json({ ok: false, error: 'Method Not Allowed' });
+    return;
+  }
+  if (!guardApi(req, res, { name: 'reserve', limit: 120, windowMs: 60000 })) return;
+
   const body = readBody(req);
   const action = body.action || (req.query && req.query.action) || 'start';
 

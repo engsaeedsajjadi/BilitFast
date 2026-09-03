@@ -160,3 +160,18 @@ body {
 }
 
 pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; direction: ltr; text-align: left; }
+
+/* ---------------- واکنش‌گرایی (موبایل) ---------------- */
+@media (max-width: 720px) {
+  .container { margin: 10px auto; padding: 10px; }
+  .card { padding: 14px; border-radius: 8px; }
+  .card.narrow { margin: 16px auto; }
+  /* جدول‌ها در عرض کم به‌جای شکستن، اسکرول افقی می‌گیرند */
+  .table { display: block; overflow-x: auto; white-space: nowrap; }
+  .form-grid { grid-template-columns: 1fr; }
+  .topbar-inner { padding: 10px 12px; gap: 6px; }
+  .topnav a { padding: 5px 8px; font-size: 13px; margin: 0 2px; }
+  .brand-name { font-size: 18px; }
+  .route-header { flex-direction: column; align-items: flex-start; }
+  .search-controls { flex-wrap: wrap; }
+}
