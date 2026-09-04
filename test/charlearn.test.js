@@ -82,9 +82,17 @@ async function compose(text, seed) {
   test('نمونه‌ها از دیتابیس بارگذاری می‌شوند', loaded.length === 4);
 
   // ۲) حالا همان کپچا دوباره حل می‌شود — باید با اتکا به نمونه‌ها درست خوانده شود
+  // (طول کپچای واقعی ۵ است؛ برای تست سرتاسری از کپچای ۵کاراکتری استفاده می‌کنیم)
+  const buf5 = await compose('72914', 4242);
+  const res5 = { _status: 200, _json: null, status(c) { this._status = c; return this; }, json(j) { this._json = j; return this; } };
+  await learnHandler({
+    method: 'POST',
+    headers: {},
+    body: { action: 'captcha-sample', image: 'data:image/png;base64,' + buf5.toString('base64'), text: '72914', source: 'manual' },
+  }, res5);
   const { solveWithModel } = require('../lib/captcha');
-  const solved = await solveWithModel(buf);
-  test('solveWithModel با کمک نمونه‌ها متن درست برمی‌گرداند', !!solved && solved.text === '7291');
+  const solved = await solveWithModel(buf5);
+  test('solveWithModel با کمک نمونه‌ها متن درست برمی‌گرداند', !!solved && solved.text === '72914');
   test('حداقل یک کاراکتر از مسیر نمونه (prototype) حل شده', !!solved && solved.chars.some((c) => c.source === 'prototype'));
 
   console.log(failures === 0 ? '\nهمه تست‌ها پاس شدند' : '\n' + failures + ' تست ناموفق بود');

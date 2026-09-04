@@ -100,13 +100,13 @@ function test(name, cond) {
     return ops.toPngBuffer(out);
   }
 
-  const buf = await compose('7291', 777);
+  const buf = await compose('72914', 777);
   const m = await solveWithModel(buf);
-  test('solveWithModel: کپچای ۴رقمی را درست می‌خواند', !!m && m.text === '7291');
+  test('solveWithModel: کپچای ۵رقمی را درست می‌خواند', !!m && m.text === '72914');
   test('solveWithModel: اطمینان کاراکترها پس از کالیبراسیون معقول است', !!m && m.minConf >= 0.5);
 
   const full = await solveCaptcha(buf, { forceDigits: true });
-  test('solveCaptcha متن درست برمی‌گرداند (هر مسیر حل)', full.text === '7291');
+  test('solveCaptcha متن درست برمی‌گرداند (هر مسیر حل)', full.text === '72914');
 
   console.log(failures === 0 ? '\nهمه تست‌ها پاس شدند' : '\n' + failures + ' تست ناموفق بود');
   process.exit(failures === 0 ? 0 : 1);
