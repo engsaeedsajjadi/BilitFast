@@ -233,6 +233,64 @@ const BilitFast = (function () {
     return (n > 0 ? n : 5);
   }
 
+  /* ---------------- پایش همزمان مسیرها (هماهنگی بین تب‌ها) ----------------
+   * هر تبِ در حال جستجو، خودش را در یک رجیستری مشترک (localStorage) با
+   * «ضربان قلب» زمانی ثبت می‌کند. فاصله درخواست‌ها به نسبت تعداد مسیرهای
+   * فعال زیاد می‌شود تا نرخ کل درخواست‌ها به سایت صفیر ریل ثابت بماند و
+   * محدودسازی/بلاک رخ ندهد. */
+  const MONITOR_KEY = 'bilitfast_active_monitors';
+  const MAX_CONCURRENT_MONITORS = 5;
+  const MONITOR_TTL_MS = 25000; // باید از حداکثر فاصله ممکن بین دو درخواست بیشتر باشد
+
+  function readMonitors() {
+    try {
+      const m = JSON.parse(localStorage.getItem(MONITOR_KEY) || '{}');
+      return (m && typeof m === 'object') ? m : {};
+    } catch (e) { return {}; }
+  }
+  function writeMonitors(m) {
+    try { localStorage.setItem(MONITOR_KEY, JSON.stringify(m)); } catch (e) { /* ignore */ }
+  }
+  function pruneMonitors(m) {
+    const now = Date.now();
+    const out = {};
+    for (const k of Object.keys(m || {})) {
+      if (typeof m[k] === 'number' && now - m[k] <= MONITOR_TTL_MS) out[k] = m[k];
+    }
+    return out;
+  }
+  function activeMonitors() {
+    return pruneMonitors(readMonitors());
+  }
+  /** ثبت/تازه‌سازی حضور این مسیر؛ تعداد مسیرهای فعال را برمی‌گرداند. */
+  function heartbeatMonitor(routeId) {
+    const m = pruneMonitors(readMonitors());
+    m[String(routeId)] = Date.now();
+    writeMonitors(m);
+    return Object.keys(m).length;
+  }
+  function unregisterMonitor(routeId) {
+    const m = pruneMonitors(readMonitors());
+    delete m[String(routeId)];
+    writeMonitors(m);
+  }
+  /** آیا برای این مسیر جا هست؟ (حداکثر ۵ مسیر همزمان) */
+  function monitorSlotAvailable(routeId) {
+    const m = activeMonitors();
+    const others = Object.keys(m).filter((k) => k !== String(routeId));
+    return others.length < MAX_CONCURRENT_MONITORS;
+  }
+  /**
+   * فاصله بین درخواست‌ها = فاصله پایه × تعداد مسیرهای فعال (+ جیتر ۱۵±٪).
+   * با این فرمول «نرخ مجموع» درخواست‌ها به سایت تقریباً ثابت می‌ماند.
+   */
+  function monitorIntervalMs(baseMs, activeCount) {
+    const n = Math.min(Math.max(1, activeCount || 1), MAX_CONCURRENT_MONITORS);
+    const interval = (baseMs || 3000) * n;
+    const jitter = Math.round(interval * 0.3 * (Math.random() - 0.5));
+    return Math.max(1500, interval + jitter);
+  }
+
   /* ---------------- حالت توسعه ---------------- */
   function isDebugMode() {
     try {
@@ -301,6 +359,9 @@ const BilitFast = (function () {
     loadSharedConfig, getPollIntervalMs, getCaptchaMaxAttempts,
     isDebugMode, setDebugMode,
     getCaptchaMode, setCaptchaMode,
+    // پایش همزمان
+    activeMonitors, heartbeatMonitor, unregisterMonitor, monitorSlotAvailable,
+    monitorIntervalMs, MAX_CONCURRENT_MONITORS,
     // API پایه
     apiSearch, apiReserve, apiLogin,
   };

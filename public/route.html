@@ -33,15 +33,15 @@
       <div class="form-grid">
         <div class="field">
           <label>مبدا:</label>
-          <select id="from_city" autocomplete="off"></select>
+          <select id="bf_src" autocomplete="off"></select>
         </div>
         <div class="field">
           <label>مقصد:</label>
-          <select id="to_city" autocomplete="off"></select>
+          <select id="bf_dst" autocomplete="off"></select>
         </div>
         <div class="field">
           <label>تاریخ (شمسی):</label>
-          <input type="text" id="date" placeholder="1405/06/09" autocomplete="off">
+          <input type="text" id="bf_dt" placeholder="1405/06/09" autocomplete="off">
         </div>
         <div class="field">
           <label>جنسیت:</label>
@@ -53,9 +53,16 @@
         </div>
         <div class="field">
           <label>شماره قطار (اختیاری — پایش یک قطار خاص):</label>
-          <input type="text" id="train_number" autocomplete="off">
+          <input type="text" id="bf_train" autocomplete="off">
         </div>
       </div>
+      <div id="same-city-warn" class="alert alert-error" style="display:none;margin-top:10px">
+        ⚠️ مبدا و مقصد یکسان انتخاب شده‌اند! جستجو در این حالت نتیجه‌ای ندارد. لطفاً شهرها را بررسی کنید.
+      </div>
+      <p class="muted small" style="margin-top:8px">
+        💡 شناسه فیلدها عمداً خنثی انتخاب شده‌اند تا «تکمیل خودکار مرورگر» نتواند
+        مقادیر (مثل شهرها) را بدون اجازه شما تغییر دهد.
+      </p>
 
       <div class="date-buttons">
         <button class="btn btn-sm" id="btn-prev-day">روز قبل</button>
@@ -83,7 +90,7 @@
       <button class="btn btn-sm" id="btn-add-row">➕ افزودن ردیف</button>
       <div class="field" style="margin-top:10px">
         <label>شماره همراه (برای رزرو):</label>
-        <input type="text" id="phone" placeholder="09xxxxxxxxx" style="direction:ltr;max-width:200px" autocomplete="off"/>
+        <input type="text" id="bf_contact" placeholder="09xxxxxxxxx" style="direction:ltr;max-width:200px" autocomplete="off"/>
       </div>
     </section>
 
@@ -219,7 +226,7 @@
     // لیست را از یک endpoint سبک می‌گیریم (که در api/cities ارائه می‌شود).
     const res = await fetch('/api/cities');
     const data = await res.json();
-    const selectFrom = $('from_city'), selectTo = $('to_city');
+    const selectFrom = $('bf_src'), selectTo = $('bf_dst');
     for (const name of data.cities) {
       CITIES[name] = true;
       const o1 = document.createElement('option'); o1.value = name; o1.textContent = name;
@@ -234,24 +241,32 @@
   function getFields() {
     const gender = document.querySelector('input[name="gender"]:checked');
     return {
-      from_city: $('from_city').value,
-      to_city: $('to_city').value,
-      date: $('date').value.trim(),
+      from_city: $('bf_src').value,
+      to_city: $('bf_dst').value,
+      date: $('bf_dt').value.trim(),
       gender: gender ? gender.value : 'عادی',
-      train_number: $('train_number').value.trim(),
+      train_number: $('bf_train').value.trim(),
     };
   }
 
   function applyFields(f) {
     if (!f) return;
-    if (f.from_city) $('from_city').value = f.from_city;
-    if (f.to_city) $('to_city').value = f.to_city;
-    if (f.date) $('date').value = f.date;
+    if (f.from_city) $('bf_src').value = f.from_city;
+    if (f.to_city) $('bf_dst').value = f.to_city;
+    if (f.date) $('bf_dt').value = f.date;
     if (f.gender) {
       const r = document.querySelector('input[name="gender"][value="' + f.gender + '"]');
       if (r) r.checked = true;
     }
-    if (f.train_number) $('train_number').value = f.train_number;
+    if (f.train_number) $('bf_train').value = f.train_number;
+  }
+
+  // هشدار زنده: مبدا و مقصد هرگز نباید یکسان باشند (جلوگیری از جستجوی بی‌نتیجه)
+  function checkSameCity() {
+    const f = getFields();
+    const warn = $('same-city-warn');
+    if (f.from_city && f.from_city === f.to_city) warn.style.display = 'block';
+    else warn.style.display = 'none';
   }
 
   function updateTitle() {
@@ -261,14 +276,15 @@
     $('route-title').textContent = t;
     document.title = t + ' — Bilit Fast';
   }
-  ['from_city','to_city','date','train_number'].forEach((id) => $(id).addEventListener('input', updateTitle));
+  ['bf_src','bf_dst','bf_dt','bf_train'].forEach((id) => $(id).addEventListener('input', updateTitle));
   document.querySelectorAll('input[name="gender"]').forEach((r) => r.addEventListener('change', updateTitle));
+  ['bf_src','bf_dst'].forEach((id) => $(id).addEventListener('change', checkSameCity));
 
   // دیت‌پیکر شمسی برای فیلد تاریخ (تایپ دستی هم مثل قبل کار می‌کند)
-  BilitFastDatePicker.attach($('date'));
+  BilitFastDatePicker.attach($('bf_dt'));
 
-  $('btn-prev-day').addEventListener('click', () => { $('date').value = BilitFast.shiftJalaliDate($('date').value, -1); updateTitle(); });
-  $('btn-next-day').addEventListener('click', () => { $('date').value = BilitFast.shiftJalaliDate($('date').value, 1); updateTitle(); });
+  $('btn-prev-day').addEventListener('click', () => { $('bf_dt').value = BilitFast.shiftJalaliDate($('bf_dt').value, -1); updateTitle(); });
+  $('btn-next-day').addEventListener('click', () => { $('bf_dt').value = BilitFast.shiftJalaliDate($('bf_dt').value, 1); updateTitle(); });
 
   /* ---------------- جدول مسافران ---------------- */
   function passengerCount() {
@@ -334,8 +350,12 @@
 
   $('btn-add-row').addEventListener('click', () => addPassengerRow());
 
-  /* ---------------- جستجو (حلقه polling سمت کلاینت) ---------------- */
+  /* ---------------- جستجو (حلقه تطبیقی سمت کلاینت) ----------------
+   * پایش همزمان: این تب در رجیستری مشترک ثبت می‌شود و فاصله درخواست‌ها به
+   * نسبت تعداد مسیرهای فعال زیاد می‌شود تا فشار روی سایت صفیر ریل ثابت بماند. */
   let pollTimer = null;
+  let polling = false;
+  let lastStatusColor = '';
 
   function saveRouteState(patch) {
     const route = BilitFast.getRoute(ROUTE_ID);
@@ -348,11 +368,28 @@
     const el = $('status');
     el.textContent = text;
     el.style.color = color;
+    lastStatusColor = color;
+  }
+
+  /** زمان‌بندی تلاش بعدی با فاصله تطبیقی (پایه × تعداد مسیرهای فعال + جیتر). */
+  function scheduleNextPoll() {
+    if (!polling) return;
+    const route = BilitFast.getRoute(ROUTE_ID);
+    if (!route || !route.running) { stopPolling(); return; }
+    BilitFast.heartbeatMonitor(ROUTE_ID);
+    const count = Object.keys(BilitFast.activeMonitors()).length;
+    const base = BilitFast.getPollIntervalMs() || POLL_INTERVAL_MS;
+    const wait = BilitFast.monitorIntervalMs(base, count);
+    pollTimer = setTimeout(doOneAttempt, wait);
+    if (count > 1 && lastStatusColor !== 'red') {
+      setStatus('جستجو ادامه دارد — پایش همزمان ' + count + ' مسیر؛ درخواست بعدی حدود ' +
+        (wait / 1000).toFixed(1) + ' ثانیه دیگر', 'blue');
+    }
   }
 
   async function doOneAttempt() {
     const route = BilitFast.getRoute(ROUTE_ID);
-    if (!route || !route.running) return;
+    if (!route || !route.running) { stopPolling(); return; }
     const payload = {
       fields: getFields(),
       passengers: getPassengers(),
@@ -363,11 +400,14 @@
       data = await BilitFast.apiSearch(payload);
     } catch (e) {
       setStatus('خطا در ارتباط با سرور', 'red');
+      scheduleNextPoll();
       return;
     }
+    if (!polling) return; // در حین درخواست، جستجو متوقف شده است
     if (!data.ok) {
       setStatus(data.error || 'خطا', 'red');
       saveRouteState({ status: data.error || 'خطا', statusColor: 'red' });
+      scheduleNextPoll();
       return;
     }
     if (data.trains && data.trains.length) {
@@ -403,6 +443,7 @@
       setStatus(msg, 'orange');
       saveRouteState({ status: msg, statusColor: 'orange' });
       renderDiagnostics(data);
+      scheduleNextPoll();
     }
   }
 
@@ -423,18 +464,36 @@
   }
 
   function startPolling() {
-    if (pollTimer) clearInterval(pollTimer);
-    // فاصله جستجو از تنظیمات سرور (config.json → refresh_interval)؛ پیش‌فرض ۳ ثانیه
-    pollTimer = setInterval(doOneAttempt, BilitFast.getPollIntervalMs() || POLL_INTERVAL_MS);
+    // پایش همزمان: حداکثر ۵ مسیر؛ اگر جا نیست، این مسیر شروع نمی‌کند.
+    if (!BilitFast.monitorSlotAvailable(ROUTE_ID)) {
+      setStatus('ظرفیت پایش همزمان پر است (' + BilitFast.MAX_CONCURRENT_MONITORS + '/' +
+        BilitFast.MAX_CONCURRENT_MONITORS + '). برای پایش این مسیر، یکی از مسیرهای دیگر را متوقف کنید.', 'red');
+      saveRouteState({ running: false, status: 'ظرفیت پایش همزمان پر است', statusColor: 'red' });
+      $('btn-start').disabled = false;
+      $('btn-stop').disabled = true;
+      return;
+    }
+    polling = true;
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    BilitFast.heartbeatMonitor(ROUTE_ID);
+    doOneAttempt(); // اولین تلاش فوری؛ ادامه‌ها با فاصله تطبیقی زمان‌بندی می‌شوند
   }
   function stopPolling() {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    polling = false;
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    BilitFast.unregisterMonitor(ROUTE_ID);
   }
 
   $('btn-start').addEventListener('click', () => {
     const f = getFields();
     if (!f.from_city || !f.to_city || !BilitFast.isValidJalaliDate(f.date)) {
       setStatus('فرمت تاریخ اشتباه است یا ورودی‌ها ناقص‌اند.', 'red');
+      return;
+    }
+    // جلوگیری از جستجوی بی‌نتیجه: مبدا و مقصد نباید یکسان باشند
+    if (f.from_city === f.to_city) {
+      setStatus('مبدا و مقصد یکسان است! لطفاً شهرها را اصلاح کنید.', 'red');
+      checkSameCity();
       return;
     }
     const passengers = getPassengers();
@@ -463,7 +522,6 @@
     $('btn-stop').disabled = false;
     $('found-section').style.display = 'none';
     setStatus('جستجو آغاز شد...', 'blue');
-    doOneAttempt();          // اولین تلاش فوری
     startPolling();
   });
 
@@ -590,7 +648,7 @@
       train,
       fields: getFields(),
       passengers: getPassengers(),
-      phone: $('phone').value.trim(),
+      phone: $('bf_contact').value.trim(),
       steps: 0,
       captchaImageUrl: null,
       formHtml: null,
@@ -1178,7 +1236,14 @@
     }
     if (route && route.foundTrains && route.foundTrains.length) renderFound(route.foundTrains);
     updateTitle();
+    checkSameCity();
   })();
+
+  // با بسته‌شدن تب، این مسیر از رجیستری پایش همزمان حذف می‌شود تا بقیه تب‌ها
+  // فاصله درخواست‌هایشان را به‌درستی بازمحاسبه کنند.
+  window.addEventListener('beforeunload', () => {
+    try { BilitFast.unregisterMonitor(ROUTE_ID); } catch (e) { /* ignore */ }
+  });
   </script>
 </body>
 </html>
