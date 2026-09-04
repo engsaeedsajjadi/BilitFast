@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const Jimp = require('jimp');
-const { MLP, mulberry32 } = require('../lib/ml');
+const { MLP, mulberry32, accuracy, calibrateTemperature } = require('../lib/ml');
 const { generateDataset, LABELS, normalizeComponent } = require('../lib/digitsynth');
 const ops = require('../lib/imageops');
 
@@ -24,29 +24,6 @@ function shuffle(X, Y, rng) {
     [X[i], X[j]] = [X[j], X[i]];
     [Y[i], Y[j]] = [Y[j], Y[i]];
   }
-}
-
-function accuracy(model, X, Y) {
-  let ok = 0;
-  for (let i = 0; i < X.length; i++) if (model.predict(X[i]).label === Y[i]) ok++;
-  return ok / X.length;
-}
-
-function calibrateTemperature(model, X, Y) {
-  let bestT = 1, bestNll = Infinity;
-  const raw = X.map((x) => model.forward(x).probs);
-  for (let T = 0.2; T <= 1.001; T += 0.05) {
-    let nll = 0;
-    for (let i = 0; i < raw.length; i++) {
-      const probs = raw[i];
-      let s = 0;
-      const q = new Array(probs.length);
-      for (let j = 0; j < probs.length; j++) { q[j] = Math.pow(Math.max(probs[j], 1e-12), 1 / T); s += q[j]; }
-      nll += -Math.log(Math.max(q[Y[i]] / s, 1e-12));
-    }
-    if (nll < bestNll) { bestNll = nll; bestT = Math.round(T * 100) / 100; }
-  }
-  return bestT;
 }
 
 /** اعتبارسنجی امضای باینری تصویر (PNG/JPEG/GIF) — قبل از هر پردازش. */

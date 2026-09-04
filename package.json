@@ -5,7 +5,8 @@
   "description": "Bilit Fast — وب‌اپ رزرو بلیت قطار",
   "scripts": {
     "start": "node dev-server.js",
-    "test": "node test/classification.test.js && node test/security.test.js && node test/account.test.js && node test/captcha.test.js && node test/ml.test.js && node test/cookie-sync.test.js && node test/hardening.test.js && node test/rateplan.test.js && node test/search-validation.test.js && node test/charlearn.test.js && node test/swt.test.js"
+    "test": "node test/classification.test.js && node test/security.test.js && node test/account.test.js && node test/captcha.test.js && node test/ml.test.js && node test/cookie-sync.test.js && node test/hardening.test.js && node test/rateplan.test.js && node test/search-validation.test.js && node test/charlearn.test.js && node test/swt.test.js",
+    "benchmark:captcha": "node scripts/benchmark-captcha.js"
   },
   "engines": {
     "node": ">=18"

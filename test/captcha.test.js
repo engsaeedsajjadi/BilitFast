@@ -4,7 +4,7 @@
 
 const Jimp = require('jimp');
 const ops = require('../lib/imageops');
-const { advancedVariants, scoreResult } = require('../lib/captcha');
+const { advancedVariants, scoreResult, buildModelCandidateResult } = require('../lib/captcha');
 
 let failures = 0;
 function test(name, cond) {
@@ -143,6 +143,19 @@ function gRect(gray, x, y, w, h, v = 0) {
   const good = { text: '12345', confidence: 88 };
   const bad = { text: 'AB', confidence: 88 };
   test('امتیازدهی: نتیجه رقمی با طول معتبر امتیاز بالاتری می‌گیرد', scoreResult(good) > scoreResult(bad));
+
+  /* ---------------- حفظ provenance نامزد مدل ---------------- */
+  const protoCandidate = buildModelCandidateResult({
+    text: 'A1b2C',
+    confidence: 93,
+    variant: 'char-model',
+    whitelist: 'mixed',
+    engine: 'cnn',
+    chars: [{ digit: 'A', conf: 99, source: 'char-cnn' }],
+  }, false);
+  test('نامزد مدل: variant واقعی حفظ می‌شود', !!protoCandidate && protoCandidate.variant === 'char-model');
+  test('نامزد مدل: whitelist واقعی حفظ می‌شود', !!protoCandidate && protoCandidate.whitelist === 'mixed');
+  test('نامزد مدل: engine و chars برای telemetry حفظ می‌شوند', !!protoCandidate && protoCandidate.engine === 'cnn' && protoCandidate.chars.length === 1);
 
   console.log(failures === 0 ? '\nهمه تست‌ها پاس شدند' : '\n' + failures + ' تست ناموفق بود');
   process.exit(failures === 0 ? 0 : 1);
