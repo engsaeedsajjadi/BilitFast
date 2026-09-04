@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ورود — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card narrow">
+      <h2>ورود به سامانه صفیر ریل</h2>
+      <p class="muted">برای انجام رزرو، ابتدا با حساب صفیر ریل خود وارد شوید.</p>
+      <div id="alert" style="display:none"></div>
+      <form id="login-form">
+        <div class="field">
+          <label>شناسه (نام کاربری):</label>
+          <input type="text" id="username" required autocomplete="username">
+        </div>
+        <div class="field">
+          <label>گذرواژه:</label>
+          <input type="password" id="password" required autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" type="submit">ورود</button>
+      </form>
+      <p class="muted small">در صورت بروز خطا در ورود (مثلاً کپچا)، از روش «چسباندن کوکی» پایین استفاده کنید.</p>
+    </section>
+
+    <section class="card narrow">
+      <h3>🔄 همگام‌سازی یک‌کلیکی با افزونه (پیشنهادی)</h3>
+      <p class="muted small">
+        اگر در مرورگر وارد <code>safirrail.ir</code> هستید، روی آیکون افزونه
+        «بیلیت فست» کلیک کنید تا کوکی‌ها (شامل کوکی نشست که از صفحه وب قابل
+        خواندن نیست) ارسال شود؛ سپس دکمه زیر را بزنید تا دریافت شوند.
+        راهنمای نصب افزونه: <code>docs/EXTENSION.md</code>
+        <br>نکته امنیتی: دریافت فقط در همان مرورگری انجام می‌شود که این صفحه را باز کرده است؛
+        آدرس برنامه در تنظیمات افزونه باید دقیقاً با همین آدرس یکی باشد.
+      </p>
+      <button class="btn btn-primary" id="btn-ext-sync">دریافت کوکی از افزونه</button>
+      <div id="ext-sync-result" class="muted small" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card narrow">
+      <h3>همگام‌سازی خودکار کوکی (اجرای محلی — بدون افزونه)</h3>
+      <p class="muted small">
+        اگر در مرورگر وارد سایت <code>safirrail.ir</code> شده باشید، با زدن دکمه زیر،
+        کوکی‌های ورود به‌صورت خودکار از پروفایل مرورگر خوانده و به برنامه منتقل می‌شود
+        (دقیقاً مثل نسخه دسکتاپی). این قابلیت فقط در اجرای محلی و از طریق
+        <code>localhost</code>/<code>127.0.0.1</code> مجاز است.
+      </p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btn-sync-firefox">🔄 از Firefox</button>
+        <button class="btn btn-primary" id="btn-sync-chrome">🔄 از Chrome</button>
+      </div>
+      <div id="sync-result" class="muted small" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card narrow">
+      <h3>ورود با چسباندن دستی کوکی</h3>
+      <p class="muted small">
+        چون ورود خودکار ممکن است با کپچا مسدود شود، مطمئن‌ترین راه این است که در مرورگر خود وارد
+        <code>safirrail.ir</code> شوید و کوکی‌های آن را اینجا جای‌گذاری کنید.
+      </p>
+      <div class="alert alert-error" style="font-size:12px">
+        ⚠️ <b>مهم:</b> کوکی سشن (<code>PHPSESSID</code>) معمولاً <b>HttpOnly</b> است و دستور
+        <code>document.cookie</code> آن را نشان نمی‌دهد! برای گرفتن کامل کوکی‌ها از یکی از این دو روش استفاده کنید:
+        <br>۱) دکمه «همگام‌سازی از Firefox/Chrome» بالا (بهترین روش — کوکی HttpOnly را هم می‌خواند).
+        <br>۲) در تب <b>Application → Cookies → safirrail.ir</b> مقدار <code>PHPSESSID</code> را دستی کپی کنید و به‌صورت
+        <code style="direction:ltr;display:inline-block">PHPSESSID=مقدار</code> در کادر زیر قرار دهید.
+      </div>
+      <div class="field">
+        <label>کوکی‌ها (مثلاً: PHPSESSID=...; other=...):</label>
+        <textarea id="cookie-input" rows="3" style="font-family:monospace;direction:ltr;text-align:left"></textarea>
+      </div>
+      <button class="btn btn-primary" id="btn-save-cookies">ذخیره کوکی‌ها</button>
+      <div id="cookie-warn" class="muted small" style="margin-top:6px"></div>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="app.js"></script>
+  <script>
+  const COOKIE_SYNC_PAIR = 'bf_cookie_sync_pair';
+
+  function showAlert(msg, ok) {
+    const el = document.getElementById('alert');
+    el.style.display = 'block';
+    el.className = 'alert ' + (ok ? 'alert-success' : 'alert-error');
+    el.textContent = msg;
+  }
+
+  function randomToken(bytes) {
+    const arr = new Uint8Array(bytes || 24);
+    crypto.getRandomValues(arr);
+    let s = '';
+    for (const b of arr) s += String.fromCharCode(b);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
+  function setCookieSyncPair() {
+    const token = randomToken(24);
+    const parts = [COOKIE_SYNC_PAIR + '=' + encodeURIComponent(token), 'Max-Age=600', 'Path=/', 'SameSite=Strict'];
+    if (location.protocol === 'https:') parts.push('Secure');
+    document.cookie = parts.join('; ');
+    return token;
+  }
+
+  function clearCookieSyncPair() {
+    const parts = [COOKIE_SYNC_PAIR + '=; Max-Age=0; Path=/; SameSite=Strict'];
+    if (location.protocol === 'https:') parts.push('Secure');
+    document.cookie = parts.join('; ');
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
+    const data = await BilitFast.apiLogin(username, password);
+    btn.disabled = false;
+    if (data.ok) {
+      BilitFast.setCookies(data.cookies || []);
+      showAlert(data.message || 'ورود موفقیت‌آمیز بود.', true);
+    } else {
+      showAlert(data.error || data.message || 'ورود ناموفق بود.', false);
+    }
+  });
+
+  // دریافت کوکی از افزونه مرورگر (پنج دقیقه پس از کلیک افزونه اعتبار دارد)
+  let extPollTimer = null;
+  async function clearCookieSyncServerState() {
+    try {
+      await fetch('/api/cookie-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' }),
+      });
+    } catch (e) { /* ignore */ }
+  }
+  document.getElementById('btn-ext-sync').addEventListener('click', async () => {
+    const el = document.getElementById('ext-sync-result');
+    const btn = document.getElementById('btn-ext-sync');
+    if (extPollTimer) { clearInterval(extPollTimer); extPollTimer = null; }
+    setCookieSyncPair();
+    await clearCookieSyncServerState();
+    btn.disabled = true;
+    el.textContent = 'در انتظار کلیک روی آیکون افزونه در صفحه صفیر ریل... (تا ۶۰ ثانیه)';
+    let tries = 0;
+    const poll = async () => {
+      tries++;
+      try {
+        const res = await fetch('/api/cookie-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'poll' }),
+        });
+        const data = await res.json();
+        if (data && data.ok && data.cookies && data.cookies.length) {
+          clearInterval(extPollTimer); extPollTimer = null;
+          btn.disabled = false;
+          BilitFast.setCookies(data.cookies);
+          if (BilitFast.isLoggedIn()) {
+            BilitFast.authFetch('/api/auth', { action: 'import-local', cookies: data.cookies }).catch(() => {});
+          }
+          document.getElementById('cookie-input').value = data.cookies.join('; ');
+          updateCookieWarn();
+          el.innerHTML = '✅ ' + data.count + ' کوکی دریافت و ذخیره شد.' +
+            (data.has_session ? ' (کوکی نشست موجود است)' : ' ⚠️ کوکی نشست یافت نشد — ابتدا در مرورگر وارد سایت شوید.');
+          await clearCookieSyncServerState();
+          clearCookieSyncPair();
+          return;
+        }
+        if (data && data.error && !data.waiting) {
+          clearInterval(extPollTimer); extPollTimer = null;
+          btn.disabled = false;
+          el.textContent = data.error;
+          clearCookieSyncPair();
+          return;
+        }
+      } catch (e) { /* ادامه تلاش */ }
+      if (tries >= 30) {
+        clearInterval(extPollTimer); extPollTimer = null;
+        btn.disabled = false;
+        el.textContent = 'کوکی‌ای دریافت نشد. مطمئن شوید افزونه نصب است، سپس در صفحه صفیر ریل روی آیکون افزونه کلیک کنید و دوباره این دکمه را بزنید.';
+        await clearCookieSyncServerState();
+        clearCookieSyncPair();
+      }
+    };
+    poll();
+    extPollTimer = setInterval(poll, 2000);
+  });
+
+  // همگام‌سازی خودکار کوکی از مرورگر (Firefox / Chrome)
+  async function syncCookies(source) {
+    const resultEl = document.getElementById('sync-result');
+    resultEl.textContent = 'در حال خواندن کوکی‌های مرورگر...';
+    try {
+      const res = await fetch('/api/sync-cookies?source=' + source);
+      const data = await res.json();
+      if (data.ok && data.cookies && data.cookies.length) {
+        BilitFast.setCookies(data.cookies);
+        let msg = '✅ ' + data.count + ' کوکی همگام‌سازی و ذخیره شد.';
+        if (data.notes && data.notes.length) msg += ' (هشدار: ' + data.notes.join(' ') + ')';
+        resultEl.textContent = msg;
+        document.getElementById('cookie-input').value = data.cookies.join('; ');
+      } else {
+        resultEl.textContent = data.error || 'کوکی‌ای یافت نشد.';
+      }
+    } catch (e) {
+      resultEl.textContent = 'خطا در همگام‌سازی: ' + (e && e.message ? e.message : e);
+    }
+  }
+  document.getElementById('btn-sync-firefox').addEventListener('click', () => syncCookies('firefox'));
+  document.getElementById('btn-sync-chrome').addEventListener('click', () => syncCookies('chrome'));
+
+  // ذخیره کوکی‌های چسبانده‌شده
+  function parseCookieString(s) {
+    return s.split(';').map((x) => x.trim()).filter((x) => x);
+  }
+
+  document.getElementById('btn-save-cookies').addEventListener('click', () => {
+    const raw = document.getElementById('cookie-input').value.trim();
+    if (!raw) { showAlert('کوکی‌ای وارد نشده است.', false); return; }
+    const arr = parseCookieString(raw);
+    BilitFast.setCookies(arr);
+    showAlert('✅ ' + arr.length + ' کوکی ذخیره شد.', true);
+    updateCookieWarn();
+  });
+
+  // هشدار اگر کوکی سشن (PHPSESSID) وجود نداشته باشد
+  function updateCookieWarn() {
+    const cookies = BilitFast.getCookies();
+    const warnEl = document.getElementById('cookie-warn');
+    const hasSession = cookies.some((c) => /PHPSESSID/i.test(c.split('=')[0]));
+    if (!hasSession) {
+      warnEl.innerHTML = '❌ کوکی سشن <code>PHPSESSID</code> در کوکی‌های ذخیره‌شده یافت نشد. ' +
+        'بدون آن، جستجو ظرفیت واقعی (مخصوصاً مسیر مشهد→تهران) را نشان نمی‌دهد.';
+      warnEl.style.color = '#c0392b';
+    } else {
+      warnEl.innerHTML = '✅ کوکی سشن (PHPSESSID) موجود است.';
+      warnEl.style.color = '#27ae60';
+    }
+  }
+
+  // نمایش کوکی‌های ذخیره‌شده فعلی
+  (function () {
+    clearCookieSyncPair();
+    const existing = BilitFast.getCookies();
+    if (existing && existing.length) {
+      document.getElementById('cookie-input').value = existing.join('; ');
+    }
+    updateCookieWarn();
+  })();
+  </script>
+</body>
+</html>

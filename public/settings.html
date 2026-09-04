@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تنظیمات — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card" id="notify-section" style="display:none">
+      <h2>اطلاع‌رسانی (وقتی ظرفیت پیدا شد)</h2>
+      <div id="notify-alert" style="display:none"></div>
+
+      <h4 style="margin-top:8px">📱 شماره همراه (پیامک)</h4>
+      <div class="field" style="max-width:320px">
+        <label>شماره همراه (مثل 09123456789):</label>
+        <input type="text" id="phone" placeholder="09xxxxxxxxx" style="direction:ltr;text-align:left" autocomplete="tel">
+      </div>
+
+      <h4 style="margin-top:14px">کانال‌های دریافت</h4>
+      <label style="display:flex;gap:8px;align-items:center;cursor:pointer;margin:6px 0">
+        <input type="checkbox" id="notify-telegram"> تلگرام (نیاز به اتصال ربات در ادامه)
+      </label>
+      <label style="display:flex;gap:8px;align-items:center;cursor:pointer;margin:6px 0">
+        <input type="checkbox" id="notify-sms"> پیامک (به شماره بالا — در صورت فعال‌بودن پنل پیامکی)
+      </label>
+      <button class="btn btn-primary" id="btn-save-notify" type="button">ذخیره تنظیمات اطلاع‌رسانی</button>
+
+      <h4 style="margin-top:18px">🤖 اتصال ربات تلگرام</h4>
+      <p class="muted small">
+        ۱) روی «دریافت کد اتصال» بزنید. ۲) در تلگرام، کد را به ربات برنامه ارسال کنید.
+        ۳) حساب شما به‌صورت خودکار متصل می‌شود و وضعیت اینجا «متصل» نمایش داده می‌شود.
+      </p>
+      <div id="tg-status" class="muted small" style="margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="btn-tg-code" type="button">دریافت کد اتصال تلگرام</button>
+        <button class="btn" id="btn-tg-webhook" type="button">برقراری وب‌هوک ربات (مدیریت)</button>
+      </div>
+      <div id="tg-code-box" style="display:none;margin-top:10px">
+        <p class="muted small">این کد را در چت ربات تلگرام ارسال کنید:</p>
+        <code id="tg-code" style="direction:ltr;display:inline-block;font-size:18px;background:#f1f5f9;padding:8px 16px;border-radius:8px"></code>
+        <button class="btn btn-sm" id="btn-tg-check" type="button">بررسی اتصال</button>
+      </div>
+
+      <h4 style="margin-top:18px">🧪 تست ارسال</h4>
+      <button class="btn" id="btn-test-notify" type="button">ارسال پیام آزمایشی به کانال‌های من</button>
+    </section>
+
+    <section class="card">
+      <h2>تنظیمات سامانه</h2>
+      <p class="muted">
+        این مقادیر از فایل <code>config.json</code> خوانده می‌شوند و در زمان استقرار (deploy)
+        همراه با پروژه باندل می‌شوند. برای تغییر باید <code>config.json</code> را در ریپو ویرایش و دوباره دیپلوی کنید.
+      </p>
+      <pre id="config-preview">در حال بارگذاری...</pre>
+    </section>
+
+    <section class="card">
+      <h3>حالت توسعه</h3>
+      <p class="muted small">
+        با فعال‌کردن این گزینه، پنل‌های «تشخیص» (جزئیات فنی فرم‌ها و مراحل رزرو)
+        در صفحه مسیر نمایش داده می‌شوند. این اطلاعات برای رفع اشکال مفید است و
+        برای استفاده عادی نیازی به آن نیست.
+      </p>
+      <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+        <input type="checkbox" id="debug-toggle"> نمایش پنل‌های تشخیص (حالت توسعه)
+      </label>
+    </section>
+
+    <section class="card">
+      <h3>روش حل کپچا</h3>
+      <p class="muted small">
+        <b>خودکار:</b> برنامه با مدل اختصاصی و OCR کپچا را حل می‌کند و در صورت
+        شکست، به شما واگذار می‌کند. <b>دستی:</b> هیچ تلاش خودکار و رفرش خودکاری
+        انجام نمی‌شود و همیشه خودتان کد را وارد می‌کنید. این انتخاب در صفحه
+        مسیر (روی کارت کپچا) هم قابل تغییر است.
+      </p>
+      <div class="radio-group">
+        <label><input type="radio" name="settings-captcha-mode" value="auto"> 🤖 خودکار</label>
+        <label><input type="radio" name="settings-captcha-mode" value="manual"> ✋ دستی</label>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="app.js"></script>
+  <script>
+  function showAlert(id, msg, ok) {
+    const el = document.getElementById(id);
+    el.style.display = 'block';
+    el.className = 'alert ' + (ok ? 'alert-success' : 'alert-error');
+    el.textContent = msg;
+  }
+
+  async function loadConfig() {
+    const res = await fetch('/api/config');
+    const data = await res.json();
+    document.getElementById('config-preview').textContent = JSON.stringify(data, null, 2);
+  }
+  loadConfig();
+
+  const debugToggle = document.getElementById('debug-toggle');
+  debugToggle.checked = BilitFast.isDebugMode();
+  debugToggle.addEventListener('change', () => BilitFast.setDebugMode(debugToggle.checked));
+
+  // روش حل کپچا (همگام با انتخاب صفحه مسیر)
+  document.querySelectorAll('input[name="settings-captcha-mode"]').forEach((r) => {
+    r.checked = (r.value === BilitFast.getCaptchaMode());
+    r.addEventListener('change', () => BilitFast.setCaptchaMode(r.value));
+  });
+
+  /* ---------------- بخش اطلاع‌رسانی ---------------- */
+  let currentUser = null;
+
+  async function initNotify() {
+    if (!BilitFast.isLoggedIn()) {
+      const s = document.getElementById('notify-section');
+      s.style.display = 'block';
+      s.innerHTML = '<h2>اطلاع‌رسانی</h2><p>برای دریافت اطلاعیه (تلگرام/پیامک) هنگام پیدا شدن ظرفیت، <a href="account.html">وارد حساب خود شوید</a>.</p>';
+      return;
+    }
+    document.getElementById('notify-section').style.display = 'block';
+    const data = await BilitFast.authFetch('/api/auth', { action: 'me' });
+    if (!data.ok) return;
+    currentUser = data.user;
+    document.getElementById('phone').value = currentUser.phone || '';
+    document.getElementById('notify-telegram').checked = currentUser.notify.telegram !== false;
+    document.getElementById('notify-sms').checked = currentUser.notify.sms === true;
+    renderTgStatus();
+  }
+
+  function renderTgStatus() {
+    const el = document.getElementById('tg-status');
+    if (currentUser && currentUser.telegram_connected) {
+      el.innerHTML = '✅ <b style="color:#166534">تلگرام متصل است</b> — اطلاعیه‌ها به چت ربات شما ارسال می‌شود.';
+    } else {
+      el.textContent = '⚪ تلگرام هنوز متصل نیست.';
+    }
+  }
+
+  document.getElementById('btn-save-notify').addEventListener('click', async () => {
+    const r = await BilitFast.authFetch('/api/auth', {
+      action: 'update-profile',
+      phone: document.getElementById('phone').value.trim(),
+      notify: {
+        telegram: document.getElementById('notify-telegram').checked,
+        sms: document.getElementById('notify-sms').checked,
+      },
+    });
+    if (r.ok) { currentUser = r.user; showAlert('notify-alert', '✅ تنظیمات ذخیره شد.', true); }
+    else showAlert('notify-alert', r.error || 'خطا در ذخیره تنظیمات', false);
+  });
+
+  document.getElementById('btn-tg-code').addEventListener('click', async () => {
+    const r = await BilitFast.authFetch('/api/notify', { action: 'connect-code' });
+    if (r.ok) {
+      document.getElementById('tg-code-box').style.display = 'block';
+      document.getElementById('tg-code').textContent = r.code;
+      const extra = r.expires_in_seconds ? (' این کد حدود ' + Math.max(1, Math.round(r.expires_in_seconds / 60)) + ' دقیقه اعتبار دارد.') : '';
+      showAlert('notify-alert', (r.hint || 'کد اتصال ساخته شد.') + extra, true);
+    } else {
+      showAlert('notify-alert', r.error || 'خطا در ساخت کد اتصال', false);
+    }
+  });
+
+  document.getElementById('btn-tg-webhook').addEventListener('click', async () => {
+    const r = await BilitFast.authFetch('/api/notify', { action: 'setup-webhook' });
+    showAlert('notify-alert', r.ok ? '✅ وب‌هوک ربات با موفقیت ثبت شد.' : (r.error || 'خطا در ثبت وب‌هوک'), !!r.ok);
+  });
+
+  document.getElementById('btn-tg-check').addEventListener('click', async () => {
+    const data = await BilitFast.authFetch('/api/auth', { action: 'me' });
+    if (data.ok && data.user) {
+      currentUser = data.user;
+      renderTgStatus();
+      if (currentUser.telegram_connected) {
+        document.getElementById('tg-code-box').style.display = 'none';
+        showAlert('notify-alert', '✅ تلگرام با موفقیت متصل شد.', true);
+      } else {
+        showAlert('notify-alert', 'هنوز اتصال برقرار نشده؛ کد را در چت ربات ارسال کنید و دوباره بررسی کنید.', false);
+      }
+    }
+  });
+
+  document.getElementById('btn-test-notify').addEventListener('click', async () => {
+    const r = await BilitFast.sendNotification('info', {});
+    if (r.skipped) { showAlert('notify-alert', 'ابتدا وارد حساب شوید.', false); return; }
+    const delivered = r.results.filter((x) => x.ok);
+    const skipped = r.results.filter((x) => x.skipped);
+    showAlert('notify-alert', delivered.length
+      ? '✅ پیام آزمایشی ارسال شد (' + delivered.map((x) => x.channel).join('، ') + ').'
+      : '⚠️ پیامی ارسال نشد: ' + (skipped.map((x) => (x.channel === 'no_chat_id' ? 'تلگرام متصل نیست' : x.channel)).join('، ') || 'کانالی فعال نیست'), !!delivered.length);
+  });
+
+  initNotify();
+  </script>
+</body>
+</html>

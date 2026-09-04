@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حساب کاربری — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card narrow" id="guest-section" style="display:none">
+      <h2>حساب کاربری</h2>
+      <p class="muted small">
+        با ساخت حساب، مسیرها و تنظیمات شما در سرور ذخیره می‌شود، می‌توانید اشتراک بخرید
+        و اطلاعیه‌ها را روی تلگرام/پیامک دریافت کنید.
+      </p>
+      <div class="tabs" style="display:flex;gap:8px;margin:12px 0">
+        <button class="btn btn-primary tab-btn" id="tab-login" type="button">ورود</button>
+        <button class="btn tab-btn" id="tab-register" type="button">ثبت‌نام</button>
+      </div>
+      <div id="alert" style="display:none"></div>
+      <form id="auth-form">
+        <div class="field">
+          <label>نام کاربری:</label>
+          <input type="text" id="username" required autocomplete="username" style="direction:ltr;text-align:left">
+        </div>
+        <div class="field">
+          <label>گذرواژه:</label>
+          <input type="password" id="password" required autocomplete="current-password" style="direction:ltr;text-align:left">
+        </div>
+        <button class="btn btn-primary" type="submit" id="submit-btn">ورود</button>
+      </form>
+      <p class="muted small" style="margin-top:12px" id="import-note"></p>
+    </section>
+
+    <section class="card narrow" id="user-section" style="display:none">
+      <h2>حساب من</h2>
+      <div id="user-info"></div>
+      <div id="sub-info" style="margin-top:10px"></div>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+        <a class="btn btn-primary" href="trial.html">مجوز و اشتراک</a>
+        <a class="btn" href="settings.html">تنظیمات و اطلاع‌رسانی</a>
+        <button class="btn btn-danger" id="btn-logout" type="button">خروج از حساب</button>
+      </div>
+      <hr style="margin:18px 0;border:none;border-top:1px solid #e5e7eb">
+      <h3>تغییر گذرواژه</h3>
+      <div id="pass-alert" style="display:none"></div>
+      <form id="pass-form">
+        <div class="field">
+          <label>گذرواژه فعلی:</label>
+          <input type="password" id="cur-pass" required style="direction:ltr;text-align:left">
+        </div>
+        <div class="field">
+          <label>گذرواژه جدید (حداقل ۶ کاراکتر):</label>
+          <input type="password" id="new-pass" required minlength="6" style="direction:ltr;text-align:left">
+        </div>
+        <button class="btn" type="submit">تغییر گذرواژه</button>
+      </form>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="app.js"></script>
+  <script>
+  let mode = 'login';
+
+  function showAlert(id, msg, ok) {
+    const el = document.getElementById(id);
+    el.style.display = 'block';
+    el.className = 'alert ' + (ok ? 'alert-success' : 'alert-error');
+    el.textContent = msg;
+  }
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('tab-login').className = 'btn tab-btn' + (m === 'login' ? ' btn-primary' : '');
+    document.getElementById('tab-register').className = 'btn tab-btn' + (m === 'register' ? ' btn-primary' : '');
+    document.getElementById('submit-btn').textContent = m === 'login' ? 'ورود' : 'ثبت‌نام';
+  }
+  document.getElementById('tab-login').addEventListener('click', () => setMode('login'));
+  document.getElementById('tab-register').addEventListener('click', () => setMode('register'));
+
+  document.getElementById('auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    const data = await BilitFast.authFetch('/api/auth', { action: mode, username, password });
+    btn.disabled = false;
+    if (!data.ok) { showAlert('alert', data.error || 'خطا', false); return; }
+
+    BilitFast.setSessionToken(data.token);
+    localStorage.removeItem('bilitfast_license_cache');
+    sessionStorage.removeItem('bilitfast_license_cache');
+
+    // انتقال داده‌های محلی (مسیرها/کوکی‌ها) به حساب — یک‌بار
+    try {
+      const routes = BilitFast.loadRoutes();
+      const cookies = BilitFast.getCookies();
+      if (routes.length || cookies.length) {
+        await BilitFast.authFetch('/api/auth', { action: 'import-local', routes, cookies });
+      }
+    } catch (err) { /* انتقال بهترین تلاش است */ }
+
+    showAlert('alert', mode === 'register' ? '✅ حساب شما ساخته شد و وارد شدید.' : '✅ وارد شدید.', true);
+    setTimeout(render, 500);
+  });
+
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    BilitFast.setSessionToken('');
+    localStorage.removeItem('bilitfast_license_cache');
+    sessionStorage.removeItem('bilitfast_license_cache');
+    location.reload();
+  });
+
+  document.getElementById('pass-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = await BilitFast.authFetch('/api/auth', {
+      action: 'change-password',
+      current_password: document.getElementById('cur-pass').value,
+      new_password: document.getElementById('new-pass').value,
+    });
+    showAlert('pass-alert', data.ok ? data.message : (data.error || 'خطا'), !!data.ok);
+    if (data.ok) { document.getElementById('pass-form').reset(); }
+  });
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  async function render() {
+    const guest = document.getElementById('guest-section');
+    const userEl = document.getElementById('user-section');
+    if (!BilitFast.isLoggedIn()) {
+      guest.style.display = 'block';
+      userEl.style.display = 'none';
+      document.getElementById('import-note').textContent =
+        (BilitFast.loadRoutes().length ? '📌 مسیرهای ذخیره‌شده در این مرورگر بعد از ورود/ثبت‌نام به حساب شما منتقل می‌شوند.' : '');
+      return;
+    }
+    const data = await BilitFast.authFetch('/api/auth', { action: 'me' });
+    if (!data.ok || !data.loggedIn) {
+      BilitFast.setSessionToken('');
+      guest.style.display = 'block';
+      userEl.style.display = 'none';
+      return;
+    }
+    guest.style.display = 'none';
+    userEl.style.display = 'block';
+    const u = data.user;
+    document.getElementById('user-info').innerHTML =
+      '<p><b>نام کاربری:</b> ' + esc(u.username) + '</p>' +
+      '<p><b>شماره همراه:</b> ' + (esc(u.phone) || '<span class="muted">تنظیم نشده</span>') + '</p>' +
+      '<p><b>تلگرام:</b> ' + (u.telegram_connected ? '✅ متصل' : '<span class="muted">متصل نیست</span>') + '</p>';
+
+    const sub = await BilitFast.subscriptionStatus();
+    const subEl = document.getElementById('sub-info');
+    if (sub && sub.ok && sub.subscription) {
+      const s = sub.subscription;
+      subEl.innerHTML = '<div class="alert ' + (s.active ? 'alert-success' : '') + '">' +
+        esc(s.message) + '</div>';
+    } else {
+      subEl.innerHTML = '<div class="alert alert-error">برای بررسی وضعیت اشتراک خطایی رخ داد.</div>';
+    }
+  }
+  render();
+  </script>
+</body>
+</html>

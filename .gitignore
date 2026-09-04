@@ -1,28 +1,39 @@
-﻿__pycache__/
+# Python (نسخه دسکتاپ اصلی)
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-
 venv/
 .venv/
 env/
 
+# Node.js
+node_modules/
+npm-debug.log*
+
+# لاگ‌ها و فایل‌های موقت
 *.log
-
 cookies.json
-
 temp_*.html
+trial.json
+state.json
 
+# دیتابیس محلی (هرگز نباید کامیت شود)
+data/
+
+# env
 .env
 .env.*
 
+# build / dist
 dist/
 build/
-
 *.exe
 
+# IDE
 .vscode/
 .idea/
 
+# OS
 .DS_Store
 Thumbs.db

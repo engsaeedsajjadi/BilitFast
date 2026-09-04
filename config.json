@@ -2,23 +2,96 @@
   "base_url": "https://safirrail.ir",
   "search_url": "/etrain/searchWagn.php",
   "reserve_url": "/etrain/TresV.php",
-  "refresh_interval": 5,
+  "reserve_init_url": "/etrain/TresV-auth.php",
+  "reserve_submit_url": "/etrain/VerifyTck.php",
+  "refresh_interval": 3,
+  "trial_period_days": 2,
+
+  "subscription": {
+    "amount_unit": "rial",
+    "plans": [
+      { "id": "monthly", "title": "اشتراک ماهانه", "days": 30, "price_rial": 2900000 },
+      { "id": "seasonal", "title": "اشتراک سه‌ماهه", "days": 90, "price_rial": 6900000 },
+      { "id": "yearly", "title": "اشتراک سالانه", "days": 365, "price_rial": 19900000 }
+    ]
+  },
   "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
   "content_type": "application/x-www-form-urlencoded",
   "accept": "*/*",
   "train_row_selector": "tr[name='srvc']",
   "train_number_selector": "td:nth-child(3)",
-  "departure_time_selector": "td:nth-child(8)",  # اصلاح شد
-  "capacity_selector": "td:nth-child(9)",      # درست شد (موجودی)
-  "departure_date_selector": "td:nth-child(7)",  # **تاریخ حرکت (اضافه شد)**
-
+  "departure_time_selector": "td:nth-child(8)",
+  "capacity_selector": "td:nth-child(9)",
+  "departure_date_selector": "td:nth-child(7)",
   "availability_selector": "td:nth-child(9)",
-  "price_selector": "td:nth-child(10)",         # اصلاح شد
-  "coupe_selector": "td:nth-child(4)",          # اصلاح شد (عنوان واگن)
-  "company_selector": "td:nth-child(2) > div", # اضافه شد (شرکت ریلی)
+  "price_selector": "td:nth-child(10)",
+  "coupe_selector": "td:nth-child(4)",
+  "company_selector": "td:nth-child(2) > div",
   "srvc_checkbox_selector": "input[name='srvc']",
-  "firefox_exe_path": r"C:\Program Files\Mozilla Firefox\firefox.exe",
-  "firefox_profile_path": r"C:\Users\pc\AppData\Roaming\Mozilla\Firefox\Profiles\zj4ctpkj.selenium_profile",
   "max_routes": 10,
-  "rate_limit_base_interval": 2
+  "rate_limit_base_interval": 2,
+
+  "login_form_url": "/fa/UserAut.php",
+  "login_process_url": "/fa/Login/process.php",
+  "login_user_field": "user",
+  "login_pass_field": "pass",
+  "login_success_marker": "",
+
+  "reservation": {
+    "captcha_img_selectors": [
+      "img[src*='captcha']",
+      "img[src*='kcaptcha']",
+      "img[src*='kaptcha']",
+      "img[src*='Captcha']",
+      "img[src*='KCaptcha']",
+      "img[src*='security']"
+    ],
+    "captcha_input_hints": ["captcha", "kaptcha", "captchacode", "code", "securitycode"],
+    "captcha_input_names": ["Ksubmit", "captcha_code", "security_code"],
+    "captcha_ajax_url": "/etrain/captchaAjax.php",
+    "reserve_init_fields": ["from", "to", "groupWay", "pathWay", "fromd", "tod", "sex", "wagon", "adult", "shahed", "child", "infant", "forien", "passCnt", "srvc"],
+    "login_markers": ["ورود به سامانه", "شناسه:", "UserAut.php", "گذرواژه"],
+    "payment_markers": ["درگاه پرداخت", "شاپرک", "shaparak", "به پرداخت", "سداد", "زرین‌پال", "درگاه بانک"],
+    "success_markers": ["رزرو با موفقیت", "کد رهگیری", "موفقیت آمیز", "شماره سفارش"],
+    "captcha_error_markers": ["کپچا اشتباه", "کد امنیتی اشتباه", "کپچا صحیح", "کد وارد شده صحیح نیست", "اشتباه است"],
+    "no_capacity_markers": ["ظرفیت تکمیل", "موجودی کافی نیست", "اتمام ظرفیت"],
+    "total_price_markers": ["مبلغ قابل پرداخت", "جمع کل", "مبلغ کل", "قابل پرداخت", "مبلغ نهایی"],
+    "price_tolerance": 0,
+    "passenger_field_hints": {
+      "national_code": ["pid", "meli", "codemeli", "national", "nationalcode", "nc", "shomare", "code_melli", "codem"],
+      "birth_day": ["ruz", "rooz", "day", "bd", "birthd", "tavalod_day", "roz"],
+      "birth_month": ["mah", "month", "bm", "birthm", "tavalod_month"],
+      "birth_year": ["sal", "year", "by", "birthy", "tavalod_year"],
+      "first_name": ["fn", "fname", "firstname", "name", "nam"],
+      "last_name": ["ln", "lname", "lastname", "family", "fam", "khanvad", "surname"],
+      "phone": ["phone", "mobile", "tel", "cell", "shomare"]
+    },
+    "non_passenger_field_hints": ["rfood", "foodp", "ret_foodp", "retfood", "food", "radiogroup", "retsrvc", "adis", "ajaxresponse", "totalprice", "ticprice", "price", "btn"],
+    "field_index_regex": "^([a-zA-Z_]+?)(\\d+)$",
+    "wagon_field": "wagon"
+  },
+
+  "captcha": {
+    "auto_solve": true,
+    "max_attempts": 5,
+    "min_confidence": 30,
+    "min_length": 5,
+    "max_length": 5,
+    "whitelist": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+    "psm": 7,
+    "force_digits": false,
+
+    "use_custom_model": true,
+    "model_path": "models/captcha-model.json",
+    "model_min_char_conf": 0.75,
+    "use_prototypes": true,
+    "prototype_max_distance": 0.3,
+
+    "advanced_preprocess": true,
+    "max_variants": 5,
+    "max_ocr_passes": 10,
+    "early_exit_confidence": 75,
+    "deskew": true,
+    "segmentation": true
+  }
 }

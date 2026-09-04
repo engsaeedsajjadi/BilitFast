@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مسیر — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <div class="route-header">
+        <h2>تنظیمات مسیر <span id="route-title"></span></h2>
+        <a class="btn btn-sm" href="index.html">بازگشت به مسیرها</a>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>مبدا:</label>
+          <select id="bf_src" autocomplete="off"></select>
+        </div>
+        <div class="field">
+          <label>مقصد:</label>
+          <select id="bf_dst" autocomplete="off"></select>
+        </div>
+        <div class="field">
+          <label>تاریخ (شمسی):</label>
+          <input type="text" id="bf_dt" placeholder="1405/06/09" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>جنسیت:</label>
+          <div class="radio-group">
+            <label><input type="radio" name="gender" value="عادی" checked> عادی</label>
+            <label><input type="radio" name="gender" value="برادران"> برادران</label>
+            <label><input type="radio" name="gender" value="خواهران"> خواهران</label>
+          </div>
+        </div>
+        <div class="field">
+          <label>شماره قطار (اختیاری — پایش یک قطار خاص):</label>
+          <input type="text" id="bf_train" autocomplete="off">
+        </div>
+      </div>
+      <div id="same-city-warn" class="alert alert-error" style="display:none;margin-top:10px">
+        ⚠️ مبدا و مقصد یکسان انتخاب شده‌اند! جستجو در این حالت نتیجه‌ای ندارد. لطفاً شهرها را بررسی کنید.
+      </div>
+      <p class="muted small" style="margin-top:8px">
+        💡 شناسه فیلدها عمداً خنثی انتخاب شده‌اند تا «تکمیل خودکار مرورگر» نتواند
+        مقادیر (مثل شهرها) را بدون اجازه شما تغییر دهد.
+      </p>
+
+      <div class="date-buttons">
+        <button class="btn btn-sm" id="btn-prev-day">روز قبل</button>
+        <button class="btn btn-sm" id="btn-next-day">روز بعد</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>مشخصات مسافران</h3>
+      <table class="table" id="passengers-table">
+        <thead>
+          <tr>
+            <th>نوع سهمیه</th>
+            <th>کد ملی</th>
+            <th>روز تولد</th>
+            <th>ماه تولد</th>
+            <th>سال تولد</th>
+            <th>نام</th>
+            <th>نام خانوادگی</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <button class="btn btn-sm" id="btn-add-row">➕ افزودن ردیف</button>
+      <div class="field" style="margin-top:10px">
+        <label>شماره همراه (برای رزرو):</label>
+        <input type="text" id="bf_contact" placeholder="09xxxxxxxxx" style="direction:ltr;max-width:200px" autocomplete="off"/>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="search-controls">
+        <button class="btn btn-primary" id="btn-start">شروع جستجو</button>
+        <button class="btn btn-danger" id="btn-stop" disabled>لغو جستجو</button>
+      </div>
+      <div id="status" class="status">آماده</div>
+    </section>
+
+    <section class="card" id="found-section" style="display:none">
+      <h3>قطارهای یافت‌شده</h3>
+      <div id="found-time-note"></div>
+      <table class="table" id="found-table">
+        <thead>
+          <tr><th>شماره قطار</th><th>ساعت حرکت</th><th>قیمت</th><th>نوع کوپه</th><th>ظرفیت</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card" id="diag-section" style="display:none">
+      <h3>جزئیات جستجو (تشخیص)</h3>
+      <div id="diag-content" class="muted small"></div>
+    </section>
+
+    <section class="card" id="reserve-section" style="display:none">
+      <h3>رزرو</h3>
+      <p id="reserve-message" class="status"></p>
+
+      <!-- مرحله کپچا -->
+      <div id="reserve-captcha" style="display:none">
+        <div class="field" style="margin-bottom:10px;padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">
+          <label style="font-weight:600">روش حل کپچا:</label>
+          <div class="radio-group">
+            <label><input type="radio" name="captcha-mode" value="auto"> 🤖 خودکار (مدل + OCR)</label>
+            <label><input type="radio" name="captcha-mode" value="manual"> ✋ دستی (توسط شما)</label>
+          </div>
+          <p class="muted small" id="captcha-mode-hint" style="margin:6px 0 0"></p>
+        </div>
+        <p class="muted small">کد امنیتی تصویر زیر را وارد کنید:</p>
+        <img id="reserve-captcha-img" alt="کپچا" style="max-width:220px;border:1px solid #ccc;border-radius:6px;background:#fff"/>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" id="btn-captcha-refresh" type="button">🔄 کپچای جدید</button>
+          <button class="btn btn-sm" id="btn-captcha-auto-now" type="button">🤖 حل خودکار همین کپچا</button>
+          <button class="btn btn-sm btn-danger" id="btn-captcha-stop-auto" type="button">⏹ توقف حل خودکار</button>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <label>کد امنیتی:</label>
+          <input type="text" id="reserve-captcha-input" style="direction:ltr;text-align:center;max-width:160px" autocomplete="off"/>
+        </div>
+        <button class="btn btn-primary" id="btn-captcha-submit" type="button">ادامه رزرو</button>
+      </div>
+
+      <!-- مرحله پرداخت (فقط اگر مرورگر بازشدن خودکار را مسدود کند) -->
+      <div id="reserve-payment" style="display:none">
+        <p class="muted small">اگر صفحه پرداخت به‌صورت خودکار باز نشد، روی دکمه زیر کلیک کنید:</p>
+        <a class="btn btn-primary" id="btn-reserve-pay" href="#" target="_blank" rel="noopener">ادامه به صفحه پرداخت</a>
+      </div>
+
+      <!-- تأیید نتیجه پرداخت -->
+      <div id="reserve-pay-confirm" style="display:none" class="alert">
+        <p style="margin-top:0"><b>نتیجه پرداخت چه شد؟</b><br>
+        <span class="muted small">بانک نتیجه را مستقیم به این برنامه اعلام نمی‌کند؛ با ثبت نتیجه، وضعیت در تاریخچه رزروها ثبت می‌شود.</span></p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btn-paid" type="button">پرداخت را انجام دادم ✅</button>
+          <button class="btn btn-danger" id="btn-pay-failed" type="button">پرداخت ناموفق بود ❌</button>
+        </div>
+        <p class="muted small" id="pay-confirm-note" style="margin-bottom:0"></p>
+      </div>
+
+      <!-- خطا -->
+      <div id="reserve-error" class="alert alert-error" style="display:none"></div>
+
+      <!-- تشخیص فرم (برای رفع اشکال؛ نام فیلدهای واقعی صفحه را نشان می‌دهد) -->
+      <details id="reserve-diagnostics" style="display:none;margin-top:10px">
+        <summary style="cursor:pointer" class="muted small">🔍 جزئیات تشخیص فرم (نام فیلدهای صفحه)</summary>
+        <pre id="reserve-diagnostics-body" class="muted small" style="direction:ltr;text-align:left;background:#f7f7f7;padding:8px;border-radius:6px;overflow:auto;max-height:260px"></pre>
+      </details>
+
+      <!-- خلاصه رزرو و قیمت -->
+      <div id="reserve-summary" style="display:none"></div>
+
+      <h4 style="margin-top:12px">مشخصات مسافران (تکمیل خودکار در سایت)</h4>
+      <table class="table" id="reserve-passengers"><tbody></tbody></table>
+
+      <p class="muted small" id="reserve-fallback" style="display:none">
+        اگر رزرو خودکار ناموفق بود، <a href="#" id="reserve-download" download="reservation_form.html">فرم رزرو را دانلود</a> کنید و در مرورگر خود باز کنید.
+      </p>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="jalaali.min.js"></script>
+  <script src="app.js"></script>
+  <script src="datepicker.js"></script>
+  <script>
+  const params = new URLSearchParams(window.location.search);
+  const ROUTE_ID = parseInt(params.get('id'), 10);
+  if (!ROUTE_ID || !BilitFast.getRoute(ROUTE_ID)) {
+    document.body.innerHTML = '<div class="container"><div class="card"><h2>مسیر یافت نشد.</h2><a class="btn btn-primary" href="index.html">بازگشت</a></div></div>';
+    throw new Error('route not found');
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const CITIES = {};
+  const MAX_PASSENGERS = 6;       // حداکثر مسافر قابل تعریف (طبق درخواست کاربر)
+  const POLL_INTERVAL_MS = 3000;  // پیش‌فرض جستجو هر ۳ ثانیه (مقدار واقعی از تنظیمات سرور می‌آید)
+
+  /* ---------------- نوتیفیکیشن مرورگر ---------------- */
+  let notifAllowed = false;
+  function requestNotifyPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') { notifAllowed = true; return; }
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then((p) => { notifAllowed = (p === 'granted'); });
+    }
+  }
+  function notifyFound(count, trainNumber) {
+    if (!notifAllowed || !('Notification' in window)) return;
+    const msg = trainNumber
+      ? 'قطار ' + trainNumber + ' با ظرفیت کافی یافت شد!'
+      : count + ' قطار با ظرفیت کافی یافت شد!';
+    try {
+      new Notification('🚆 Bilit Fast — ظرفیت یافت شد', { body: msg });
+    } catch (e) { /* ignore */ }
+  }
+
+  // دریافت لیست شهرها از سمت سرور (از طریق API جستجو یا endpoint جداگانه)
+  async function loadCities() {
+    // شهرها در config/cities سمت سرور است؛ برای انتخاب مبدا/مقصد،
+    // لیست را از یک endpoint سبک می‌گیریم (که در api/cities ارائه می‌شود).
+    const res = await fetch('/api/cities');
+    const data = await res.json();
+    const selectFrom = $('bf_src'), selectTo = $('bf_dst');
+    for (const name of data.cities) {
+      CITIES[name] = true;
+      const o1 = document.createElement('option'); o1.value = name; o1.textContent = name;
+      const o2 = document.createElement('option'); o2.value = name; o2.textContent = name;
+      selectFrom.appendChild(o1); selectTo.appendChild(o2);
+    }
+    // اعمال فیلدهای ذخیره‌شده
+    const route = BilitFast.getRoute(ROUTE_ID);
+    if (route) applyFields(route.fields);
+  }
+
+  function getFields() {
+    const gender = document.querySelector('input[name="gender"]:checked');
+    return {
+      from_city: $('bf_src').value,
+      to_city: $('bf_dst').value,
+      date: $('bf_dt').value.trim(),
+      gender: gender ? gender.value : 'عادی',
+      train_number: $('bf_train').value.trim(),
+    };
+  }
+
+  function applyFields(f) {
+    if (!f) return;
+    if (f.from_city) $('bf_src').value = f.from_city;
+    if (f.to_city) $('bf_dst').value = f.to_city;
+    if (f.date) $('bf_dt').value = f.date;
+    if (f.gender) {
+      const r = document.querySelector('input[name="gender"][value="' + f.gender + '"]');
+      if (r) r.checked = true;
+    }
+    if (f.train_number) $('bf_train').value = f.train_number;
+  }
+
+  // هشدار زنده: مبدا و مقصد هرگز نباید یکسان باشند (جلوگیری از جستجوی بی‌نتیجه)
+  function checkSameCity() {
+    const f = getFields();
+    const warn = $('same-city-warn');
+    if (f.from_city && f.from_city === f.to_city) warn.style.display = 'block';
+    else warn.style.display = 'none';
+  }
+
+  function updateTitle() {
+    const f = getFields();
+    let t = f.from_city + ' به ' + f.to_city + ' - تاریخ ' + f.date;
+    if (f.train_number) t += ' - قطار ' + f.train_number;
+    $('route-title').textContent = t;
+    document.title = t + ' — Bilit Fast';
+  }
+  ['bf_src','bf_dst','bf_dt','bf_train'].forEach((id) => $(id).addEventListener('input', updateTitle));
+  document.querySelectorAll('input[name="gender"]').forEach((r) => r.addEventListener('change', updateTitle));
+  ['bf_src','bf_dst'].forEach((id) => $(id).addEventListener('change', checkSameCity));
+
+  // دیت‌پیکر شمسی برای فیلد تاریخ (تایپ دستی هم مثل قبل کار می‌کند)
+  BilitFastDatePicker.attach($('bf_dt'));
+
+  $('btn-prev-day').addEventListener('click', () => { $('bf_dt').value = BilitFast.shiftJalaliDate($('bf_dt').value, -1); updateTitle(); });
+  $('btn-next-day').addEventListener('click', () => { $('bf_dt').value = BilitFast.shiftJalaliDate($('bf_dt').value, 1); updateTitle(); });
+
+  /* ---------------- جدول مسافران ---------------- */
+  function passengerCount() {
+    return $('passengers-table').querySelector('tbody').rows.length;
+  }
+
+  function addPassengerRow(data) {
+    if (passengerCount() >= MAX_PASSENGERS) {
+      alert('حداکثر ' + MAX_PASSENGERS + ' مسافر مجاز است.');
+      return;
+    }
+    data = data || { quota_type: 'بزرگسال' };
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><select class="quota-select">
+        <option value="بزرگسال" ${data.quota_type==='بزرگسال'?'selected':''}>بزرگسال</option>
+        <option value="خردسال" ${data.quota_type==='خردسال'?'selected':''}>خردسال</option>
+        <option value="کودک" ${data.quota_type==='کودک'?'selected':''}>کودک</option>
+        <option value="اتباع" ${data.quota_type==='اتباع'?'selected':''}>اتباع</option>
+      </select></td>
+      <td><input class="col-national" value="${esc(data.national_code||'')}" placeholder="کد ملی"></td>
+      <td><input class="col-day" value="${esc(data.birth_day||'')}" placeholder="روز"></td>
+      <td><input class="col-month" value="${esc(data.birth_month||'')}" placeholder="ماه"></td>
+      <td><input class="col-year" value="${esc(data.birth_year||'')}" placeholder="سال"></td>
+      <td><input class="col-name" value="${esc(data.first_name||'')}" placeholder="نام"></td>
+      <td><input class="col-family" value="${esc(data.last_name||'')}" placeholder="نام خانوادگی"></td>
+      <td><button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()">حذف</button></td>
+    `;
+    $('passengers-table').querySelector('tbody').appendChild(tr);
+    const select = tr.querySelector('.quota-select');
+    select.addEventListener('change', () => applyQuota(tr));
+    applyQuota(tr);
+  }
+
+  function applyQuota(tr) {
+    const qt = tr.querySelector('.quota-select').value;
+    const inputs = tr.querySelectorAll('input');
+    if (qt === 'اتباع') {
+      inputs[0].placeholder = 'شماره گذرنامه';
+      for (let i = 1; i <= 3; i++) inputs[i].disabled = true;
+    } else {
+      inputs[0].placeholder = 'کد ملی';
+      for (let i = 1; i <= 3; i++) inputs[i].disabled = false;
+    }
+  }
+
+  function getPassengers() {
+    const rows = [...$('passengers-table').querySelector('tbody').rows];
+    return rows.map((tr) => {
+      const qt = tr.querySelector('.quota-select').value;
+      const inputs = tr.querySelectorAll('input');
+      return {
+        quota_type: qt,
+        national_code: inputs[0].value,
+        birth_day: inputs[1].value,
+        birth_month: inputs[2].value,
+        birth_year: inputs[3].value,
+        first_name: inputs[4].value,
+        last_name: inputs[5].value,
+      };
+    });
+  }
+
+  $('btn-add-row').addEventListener('click', () => addPassengerRow());
+
+  /* ---------------- جستجو (حلقه تطبیقی سمت کلاینت) ----------------
+   * پایش همزمان: این تب در رجیستری مشترک ثبت می‌شود و فاصله درخواست‌ها به
+   * نسبت تعداد مسیرهای فعال زیاد می‌شود تا فشار روی سایت صفیر ریل ثابت بماند. */
+  let pollTimer = null;
+  let polling = false;
+  let lastStatusColor = '';
+
+  function saveRouteState(patch) {
+    const route = BilitFast.getRoute(ROUTE_ID);
+    if (!route) return;
+    Object.assign(route, patch);
+    BilitFast.upsertRoute(route);
+  }
+
+  function setStatus(text, color) {
+    const el = $('status');
+    el.textContent = text;
+    el.style.color = color;
+    lastStatusColor = color;
+  }
+
+  /** زمان‌بندی تلاش بعدی با فاصله تطبیقی (پایه × تعداد مسیرهای فعال + جیتر). */
+  function scheduleNextPoll() {
+    if (!polling) return;
+    const route = BilitFast.getRoute(ROUTE_ID);
+    if (!route || !route.running) { stopPolling(); return; }
+    BilitFast.heartbeatMonitor(ROUTE_ID);
+    const count = Object.keys(BilitFast.activeMonitors()).length;
+    const base = BilitFast.getPollIntervalMs() || POLL_INTERVAL_MS;
+    const wait = BilitFast.monitorIntervalMs(base, count);
+    pollTimer = setTimeout(doOneAttempt, wait);
+    if (count > 1 && lastStatusColor !== 'red') {
+      setStatus('جستجو ادامه دارد — پایش همزمان ' + count + ' مسیر؛ درخواست بعدی حدود ' +
+        (wait / 1000).toFixed(1) + ' ثانیه دیگر', 'blue');
+    }
+  }
+
+  async function doOneAttempt() {
+    const route = BilitFast.getRoute(ROUTE_ID);
+    if (!route || !route.running) { stopPolling(); return; }
+    const payload = {
+      fields: getFields(),
+      passengers: getPassengers(),
+      cookies: BilitFast.getCookies(),
+    };
+    let data;
+    try {
+      data = await BilitFast.apiSearch(payload);
+    } catch (e) {
+      setStatus('خطا در ارتباط با سرور', 'red');
+      scheduleNextPoll();
+      return;
+    }
+    if (!polling) return; // در حین درخواست، جستجو متوقف شده است
+    if (!data.ok) {
+      setStatus(data.error || 'خطا', 'red');
+      saveRouteState({ status: data.error || 'خطا', statusColor: 'red' });
+      scheduleNextPoll();
+      return;
+    }
+    if (data.trains && data.trains.length) {
+      setStatus('قطار یافت شد!', 'green');
+      saveRouteState({
+        searchData: data.searchData,
+        foundTrains: data.trains,
+        foundAt: Date.now(),
+        status: 'قطار یافت شد!',
+        statusColor: 'green',
+        running: false,
+      });
+      stopPolling();
+      renderFound(data.trains);
+      renderDiagnostics(data);
+      notifyFound(data.trains.length, getFields().train_number || null);
+      // اطلاع‌رسانی سروری (تلگرام/پیامک) — بهترین تلاش؛ هرگز جریان اصلی را مختل نمی‌کند
+      const f0 = getFields();
+      BilitFast.sendNotification('capacity_found', {
+        from: f0.from_city, to: f0.to_city, date: f0.date, trains_count: data.trains.length,
+      });
+      // اگر کاربر شماره قطار مشخصی را پایش می‌کند، بعد از یافتن، رزرو به‌صورت
+      // خودکار شروع می‌شود (بدون نیاز به انتخاب دستی از لیست).
+      const wantedTrain = (f0.train_number || '').trim();
+      if (wantedTrain) {
+        const target = data.trains.find((t) => t['شماره قطار'] === wantedTrain) || data.trains[0];
+        setStatus('قطار «' + wantedTrain + '» یافت شد — رزرو خودکار آغاز می‌شود...', 'green');
+        saveRouteState({ status: 'رزرو خودکار قطار ' + wantedTrain, statusColor: 'blue' });
+        reserve(target['شماره قطار']);
+      }
+    } else {
+      const msg = data.note || 'هیچ قطاری با ظرفیت کافی یافت نشد.';
+      setStatus(msg, 'orange');
+      saveRouteState({ status: msg, statusColor: 'orange' });
+      renderDiagnostics(data);
+      scheduleNextPoll();
+    }
+  }
+
+  function renderDiagnostics(data) {
+    const el = $('diag-content');
+    // پنل تشخیص فقط در حالت توسعه نمایش داده می‌شود (?debug یا گزینه «تنظیمات»)
+    if (!BilitFast.isDebugMode() || !data.diag) { $('diag-section').style.display = 'none'; return; }
+    $('diag-section').style.display = 'block';
+    let html = '<p><b>وضعیت نشست:</b> ' +
+      (data.sessionOk ? '✅ کوکی سشن (PHPSESSID) ارسال شد' : '❌ کوکی سشن (PHPSESSID) ارسال نشده') +
+      ' | <b>تعداد کل قطارها:</b> ' + data.diag.totalRows + '</p>';
+    if (data.diag.trains && data.diag.trains.length) {
+      html += '<p><b>موجودی همه قطارها (شماره قطار → موجودی):</b></p><p style="direction:ltr;text-align:left">';
+      html += data.diag.trains.map((t) => t.num + ':' + t.avail).join(' ، ');
+      html += '</p>';
+    }
+    el.innerHTML = html;
+  }
+
+  function startPolling() {
+    // پایش همزمان: حداکثر ۵ مسیر؛ اگر جا نیست، این مسیر شروع نمی‌کند.
+    if (!BilitFast.monitorSlotAvailable(ROUTE_ID)) {
+      setStatus('ظرفیت پایش همزمان پر است (' + BilitFast.MAX_CONCURRENT_MONITORS + '/' +
+        BilitFast.MAX_CONCURRENT_MONITORS + '). برای پایش این مسیر، یکی از مسیرهای دیگر را متوقف کنید.', 'red');
+      saveRouteState({ running: false, status: 'ظرفیت پایش همزمان پر است', statusColor: 'red' });
+      $('btn-start').disabled = false;
+      $('btn-stop').disabled = true;
+      return;
+    }
+    polling = true;
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    BilitFast.heartbeatMonitor(ROUTE_ID);
+    doOneAttempt(); // اولین تلاش فوری؛ ادامه‌ها با فاصله تطبیقی زمان‌بندی می‌شوند
+  }
+  function stopPolling() {
+    polling = false;
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    BilitFast.unregisterMonitor(ROUTE_ID);
+  }
+
+  $('btn-start').addEventListener('click', () => {
+    const f = getFields();
+    if (!f.from_city || !f.to_city || !BilitFast.isValidJalaliDate(f.date)) {
+      setStatus('فرمت تاریخ اشتباه است یا ورودی‌ها ناقص‌اند.', 'red');
+      return;
+    }
+    // جلوگیری از جستجوی بی‌نتیجه: مبدا و مقصد نباید یکسان باشند
+    if (f.from_city === f.to_city) {
+      setStatus('مبدا و مقصد یکسان است! لطفاً شهرها را اصلاح کنید.', 'red');
+      checkSameCity();
+      return;
+    }
+    const passengers = getPassengers();
+    if (passengers.length < 1) {
+      setStatus('حداقل یک مسافر تعریف کنید.', 'red');
+      return;
+    }
+    if (passengers.length > MAX_PASSENGERS) {
+      setStatus('حداکثر ' + MAX_PASSENGERS + ' مسافر مجاز است.', 'red');
+      return;
+    }
+    // اعتبارسنجی کد ملی (الگوریتم چک‌دیجیت) — قبل از ارسال به سامانه،
+    // تا خطای تایپی زودتر از «خطای ۱۰۱» سامانه به کاربر نمایش داده شود.
+    // برای سهمیه «اتباع» (شماره گذرنامه) بررسی نمی‌شود.
+    for (let i = 0; i < passengers.length; i++) {
+      const p = passengers[i];
+      if (p.quota_type !== 'اتباع' && String(p.national_code || '').trim() !== '' &&
+          !BilitFast.isValidNationalCode(p.national_code)) {
+        setStatus('کد ملی مسافر ردیف ' + (i + 1) + ' نامعتبر است. لطفاً کد ملی ۱۰ رقمی صحیح را وارد کنید.', 'red');
+        return;
+      }
+    }
+    requestNotifyPermission();
+    saveRouteState({ fields: f, passengers, running: true, status: 'جستجو آغاز شد...', statusColor: 'blue', foundTrains: [] });
+    $('btn-start').disabled = true;
+    $('btn-stop').disabled = false;
+    $('found-section').style.display = 'none';
+    setStatus('جستجو آغاز شد...', 'blue');
+    startPolling();
+  });
+
+  $('btn-stop').addEventListener('click', () => {
+    stopPolling();
+    saveRouteState({ running: false, status: 'جستجو متوقف شد', statusColor: 'red' });
+    $('btn-start').disabled = false;
+    $('btn-stop').disabled = true;
+    setStatus('جستجو متوقف شد', 'red');
+  });
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  function renderFound(trains) {
+    if (!trains.length) { $('found-section').style.display = 'none'; return; }
+    $('found-section').style.display = 'block';
+    // نمایش زمان یافت‌شدن نتایج — نتایج قدیمی ریسک خطای ۱۰۱ (انقضای توکن) دارند
+    const route = BilitFast.getRoute(ROUTE_ID);
+    const foundAt = route && route.foundAt;
+    let timeNote = '';
+    if (foundAt) {
+      try {
+        timeNote = '<p class="muted small" style="margin:4px 0">⏱ نتایج در ساعت ' +
+          new Date(foundAt).toLocaleTimeString('fa-IR') + ' یافت شدند' +
+          ((Date.now() - foundAt > FRESH_WINDOW_MS) ? ' — <b style="color:#e67e22">قدیمی هستند؛ قبل از رزرو تازه‌سازی می‌شوند</b>' : '') + '</p>';
+      } catch (e) { /* ignore */ }
+    }
+    $('found-time-note').innerHTML = timeNote;
+    $('found-table').querySelector('tbody').innerHTML = trains.map((t) => `
+      <tr>
+        <td>${esc(t['شماره قطار'])}</td>
+        <td>${esc(t['ساعت حرکت'])}</td>
+        <td>${esc(t['قیمت'])}</td>
+        <td>${esc(t['نوع کوپه'])}</td>
+        <td>${esc(t['ظرفیت'])}</td>
+        <td><button class="btn btn-sm btn-primary" data-train="${esc(t['شماره قطار'])}">انتخاب</button></td>
+      </tr>`).join('');
+  }
+
+  // اتصال رویداد انتخاب (delegation — با کلیک روی هر دکمه «انتخاب»)
+  $('found-table').querySelector('tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-train]');
+    if (!btn) return;
+    reserve(btn.getAttribute('data-train'));
+  });
+
+  /* ---------------- رزرو (چندمرحله‌ای: کپچا → اطلاعات مسافر → پرداخت) ---------------- */
+  const RESERVE_MAX_STEPS = 8;
+  const CAPTCHA_MAX_AUTO_ATTEMPTS = 5; // پیش‌فرض (مقدار واقعی از تنظیمات سرور: captcha.max_attempts)
+  const FRESH_WINDOW_MS = 10 * 60 * 1000; // نتایج جستجو تا ۱۰ دقیقه «تازه» هستند
+  let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
+  let autoSolving = false;
+  let autoSolveStop = false;
+  let lastCaptchaAttempt = null; // { text, source: 'manual'|'ocr' } — برای حلقه یادگیری
+
+  /* --- تازه‌سازی نتایج قبل از رزرو ---
+   * توکن «srvc» هر قطار موقع جستجو ساخته می‌شود و ممکن است منقضی شود؛ در آن
+   * حالت سرور خطای «101-ارائه سرویس امکان‌پذیر نمی‌باشد» برمی‌گرداند. اگر
+   * نتایج قدیمی باشند، قبل از رزرو یک جستجوی تازه انجام می‌شود. */
+  async function refreshFoundTrains() {
+    setStatus('در حال تازه‌سازی نتایج جستجو (توکن تازه)...', 'blue');
+    let data;
+    try {
+      data = await BilitFast.apiSearch({
+        fields: getFields(),
+        passengers: getPassengers(),
+        cookies: BilitFast.getCookies(),
+      });
+    } catch (e) { return false; }
+    if (data && data.ok && data.trains && data.trains.length) {
+      saveRouteState({ searchData: data.searchData, foundTrains: data.trains, foundAt: Date.now() });
+      renderFound(data.trains);
+      setStatus('نتایج تازه‌سازی شد.', 'green');
+      return true;
+    }
+    return false;
+  }
+
+  /* --- حلقه یادگیری مدل کپچا ---
+   * وقتی کپچایی (دستی یا با OCR) حل شد و سرور عبور از مرحله کپچا را تأیید
+   * کرد، تصویر + متن همان کپچا به‌عنوان نمونه برچسب‌خورده واقعی ثبت می‌شود
+   * تا بعداً مدل با آن بازآموزی شود. بهترین تلاش است و هرگز جریان را مختل نمی‌کند. */
+  function reportCaptchaSample(attempt, learnToken) {
+    try {
+      const src = $('reserve-captcha-img').src;
+      if (!src || !/^data:image/i.test(src)) return;
+      if (!/^\d{3,8}$/.test(attempt.text || '')) return;
+      if (!learnToken) return;
+      fetch('/api/learn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'captcha-sample', image: src, text: attempt.text, source: attempt.source, learnToken }),
+      }).catch(() => {});
+    } catch (e) { /* ignore */ }
+  }
+
+  async function reserve(trainNumber) {
+    let route = BilitFast.getRoute(ROUTE_ID);
+    if (!route) { setStatus('مسیر یافت نشد.', 'red'); return; }
+
+    // اگر نتایج جستجو قدیمی باشند، توکن «srvc» ممکن است منقضی شده باشد و
+    // سرور خطای ۱۰۱ برگرداند؛ پس اول یک جستجوی تازه انجام می‌دهیم.
+    const age = route.foundAt ? (Date.now() - route.foundAt) : Infinity;
+    if (age > FRESH_WINDOW_MS) {
+      const fresh = await refreshFoundTrains();
+      if (!fresh) {
+        setStatus('در جستجوی تازه ظرفیتی یافت نشد.', 'orange');
+        showReserveError('ظرفیتی برای این مسیر در جستجوی تازه یافت نشد. ' +
+          'دوباره «شروع جستجو» بزنید و بلافاصله پس از یافتن قطار، رزرو کنید. ' +
+          'اگر در خود سایت صفیر ریل هم ظرفیت نیست، یعنی تکمیل شده است.');
+        return;
+      }
+      route = BilitFast.getRoute(ROUTE_ID);
+    }
+
+    const train = (route.foundTrains || []).find((t) => t['شماره قطار'] === trainNumber);
+    if (!train) { setStatus('قطار یافت نشد (لیست قطارها را دوباره جستجو کنید).', 'red'); return; }
+
+    reserveCtx = {
+      token: null,
+      train,
+      fields: getFields(),
+      passengers: getPassengers(),
+      phone: $('bf_contact').value.trim(),
+      steps: 0,
+      captchaImageUrl: null,
+      formHtml: null,
+    };
+
+    $('reserve-section').style.display = 'block';
+    renderReservePassengers(reserveCtx.passengers);
+    hideReserveAll();
+    $('reserve-message').textContent = 'در حال شروع رزرو...';
+    setStatus('در حال شروع رزرو...', 'blue');
+    saveRouteState({ status: 'در حال رزرو...', statusColor: 'blue' });
+
+    await reserveStart();
+  }
+
+  async function reserveStart() {
+    const data = await callReserve({
+      action: 'start',
+      fields: reserveCtx.fields,
+      passengers: reserveCtx.passengers,
+      train: reserveCtx.train,
+      cookies: BilitFast.getCookies(),
+    });
+    handleReserveStep(data);
+  }
+
+  async function reserveSubmit(captcha) {
+    const data = await callReserve({
+      action: 'submit',
+      stateToken: reserveCtx.token,
+      captcha,
+      passengers: reserveCtx.passengers,
+      phone: reserveCtx.phone,
+    });
+    handleReserveStep(data);
+  }
+
+  async function callReserve(payload) {
+    try {
+      return await BilitFast.apiReserve(payload);
+    } catch (err) {
+      return { ok: false, error: 'خطا در ارتباط با سرور هنگام رزرو: ' + (err && err.message ? err.message : err) };
+    }
+  }
+
+  function handleReserveStep(data) {
+    if (!data || !data.ok) {
+      showReserveError((data && data.error) || 'خطا در رزرو');
+      return;
+    }
+    // حلقه یادگیری: فقط با proof token صادرشده از سرور، نمونه پذیرفته می‌شود.
+    if (lastCaptchaAttempt && data.step !== 'captcha') {
+      reportCaptchaSample(lastCaptchaAttempt, data.learnToken || '');
+      lastCaptchaAttempt = null;
+    }
+    if (data.stateToken) reserveCtx.token = data.stateToken;
+    if (data.captchaImageUrl) reserveCtx.captchaImageUrl = data.captchaImageUrl;
+    if (data.formHtml) reserveCtx.formHtml = data.formHtml;
+    renderReserveDiagnostics(data);
+
+    reserveCtx.steps++;
+    if (reserveCtx.steps > RESERVE_MAX_STEPS) {
+      showReserveError('رزرو بیش از حد انتظار طول کشید. از فرم دانلودی (پایین صفحه) استفاده کنید.');
+      return;
+    }
+
+    switch (data.step) {
+      case 'captcha':
+        // رفتار بر اساس «روش حل کپچا» که کاربر انتخاب کرده است:
+        // خودکار → حلقه حل خودکار اجرا می‌شود؛ دستی → فقط نمایش برای کاربر.
+        applyCaptchaModeUI();
+        if (data.captchaError) {
+          // کپچای قبلی اشتباه بود → کپچای جدید از سرور رسیده است
+          showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, wrongCaptcha: true });
+          if (BilitFast.getCaptchaMode() === 'auto') autoSolveLoop(data.captchaImageUrl);
+        } else if (BilitFast.getCaptchaMode() === 'auto') {
+          showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true });
+          autoSolveLoop(data.captchaImageUrl);
+        } else {
+          showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: false });
+        }
+        break;
+      case 'passenger_form':
+        // فرم اطلاعات مسافر دریافت شد → ارسال خودکار با داده‌های تکمیل‌شده
+        $('reserve-message').textContent = data.message || 'تکمیل خودکار اطلاعات مسافر...';
+        setStatus('در حال تکمیل اطلاعات مسافر...', 'blue');
+        reserveSubmit(null);
+        break;
+      case 'payment':
+        showReservePayment(data);
+        break;
+      case 'success':
+        $('reserve-message').textContent = data.message || '✅ رزرو با موفقیت انجام شد.';
+        setStatus('✅ رزرو انجام شد', 'green');
+        if (data.paymentUrl) showReservePayment(data);
+        break;
+      case 'login_required':
+        showReserveError(data.message || 'نیاز به ورود. در صفحه «ورود» کوکی‌ها را همگام‌سازی کنید.');
+        break;
+      case 'no_capacity':
+        showReserveError(data.message || 'ظرفیت این قطار تکمیل شده است.');
+        break;
+      case 'error':
+        // خطای قطعی سرور (مثل 101/1000) — رزرو رد شده؛ صفحه پرداخت باز نمی‌شود.
+        showReserveError(data.message || 'سامانه این رزرو را رد کرد.');
+        break;
+      case 'idempotency_blocked':
+        showReserveError(data.message || 'عملیات قبلاً به مرحله پرداخت رسیده است.');
+        break;
+      case 'intermediate_step':
+        // مرحله میانی ناشناخته → نمایش تشخیص و توقف موقت (ارسال خودکار انجام نمی‌شود)
+        hideReserveAll();
+        $('reserve-message').textContent = data.message || 'مرحله میانی دریافت شد.';
+        setStatus('مرحله میانی — جزئیات را در «تشخیص» ببینید', 'orange');
+        saveRouteState({ status: 'مرحله میانی (توقف)', statusColor: 'orange' });
+        break;
+      case 'unknown':
+        // صفحه ناشناخته → نمایش خطای تشخیصی + ساختار صفحه
+        hideReserveAll();
+        $('reserve-message').textContent = data.message || 'ساختار صفحه ناشناخته است.';
+        showReserveError(data.message || 'ساختار صفحه با مراحل شناخته‌شده مطابقت ندارد. جزئیات را در «تشخیص» ببینید.');
+        break;
+      default:
+        showReserveError('مرحله ناشناخته از سامانه: ' + (data.step || '—'));
+    }
+  }
+
+  function hideReserveAll() {
+    $('reserve-captcha').style.display = 'none';
+    $('reserve-payment').style.display = 'none';
+    $('reserve-pay-confirm').style.display = 'none';
+    $('reserve-error').style.display = 'none';
+    $('reserve-fallback').style.display = 'none';
+    $('reserve-summary').style.display = 'none';
+  }
+
+  function showReserveError(msg) {
+    hideReserveAll();
+    $('reserve-message').textContent = 'رزرو ناموفق بود.';
+    $('reserve-error').style.display = 'block';
+    $('reserve-error').textContent = msg;
+    $('reserve-fallback').style.display = 'block';
+    setupFallbackDownload();
+    setStatus(msg, 'red');
+    saveRouteState({ status: 'رزرو ناموفق', statusColor: 'red' });
+  }
+
+  function showReserveCaptcha(data) {
+    hideReserveAll();
+    const auto = !!(data && data.autoSolving);
+    const wrongCaptcha = !!(data && data.wrongCaptcha);
+    if (wrongCaptcha) {
+      $('reserve-message').textContent = 'کپچای واردشده اشتباه بود. کد تصویر جدید را وارد کنید:';
+    } else if (auto) {
+      $('reserve-message').textContent = 'کد امنیتی تصویر زیر را وارد کنید (در حال حل خودکار در پس‌زمینه...):';
+    } else {
+      $('reserve-message').textContent = 'حالت دستی: لطفاً کد امنیتی تصویر زیر را وارد کنید (رفرش خودکار انجام نمی‌شود):';
+    }
+    $('reserve-captcha').style.display = 'block';
+    $('reserve-captcha-input').value = '';
+    const imgUrl = (data && data.captchaImageUrl) || reserveCtx.captchaImageUrl;
+    if (imgUrl) loadCaptchaImage(imgUrl);
+    setStatus(wrongCaptcha ? 'کپچا اشتباه بود — دوباره وارد کنید' : (auto ? 'کپچا نمایش داده شد — کد را وارد کنید' : 'کد امنیتی (کپچا) را دستی وارد کنید'), 'orange');
+  }
+
+  async function loadCaptchaImage(url) {
+    const img = $('reserve-captcha-img');
+    img.alt = 'کپچا';
+    img.src = '';
+    if (!url) return;
+    // کپچای data-URI (جاسازی‌شده) → مستقیم نمایش بده، بدون رفت‌وبرگشت سرور
+    if (/^data:image/i.test(url)) {
+      img.src = url;
+      return;
+    }
+    const data = await callReserve({ action: 'captcha-image', captchaImageUrl: url, stateToken: reserveCtx.token });
+    if (data && data.ok && data.dataUri) {
+      if (data.stateToken) reserveCtx.token = data.stateToken;
+      img.src = data.dataUri;
+    } else {
+      img.alt = 'دریافت کپچا ناموفق';
+    }
+  }
+
+  /* --- انتخاب روش حل کپچا (خودکار/دستی) ---
+   * خودکار: برنامه با مدل اختصاصی/OCR تلاش می‌کند (رفتار قبلی).
+   * دستی: حلقه خودکار اصلاً اجرا نمی‌شود؛ کاربر کد را وارد می‌کند و در صورت
+   * نیاز می‌تواند با یک دکمه، حل خودکارِ همان کپچا را درخواست دهد. */
+  function applyCaptchaModeUI() {
+    const mode = BilitFast.getCaptchaMode();
+    document.querySelectorAll('input[name="captcha-mode"]').forEach((r) => {
+      r.checked = (r.value === mode);
+    });
+    const hint = $('captcha-mode-hint');
+    if (hint) {
+      hint.textContent = (mode === 'auto')
+        ? 'برنامه ابتدا خودش کپچا را حل می‌کند؛ هر لحظه می‌توانید کد را دستی وارد کنید (حل خودکار متوقف می‌شود).'
+        : 'کپچا فقط با ورود شما حل می‌شود و رفرش خودکار انجام نمی‌شود؛ در صورت نیاز «حل خودکار همین کپچا» را بزنید.';
+    }
+    const stopBtn = $('btn-captcha-stop-auto');
+    const autoNowBtn = $('btn-captcha-auto-now');
+    if (stopBtn) stopBtn.style.display = (mode === 'auto') ? '' : 'none';
+    if (autoNowBtn) autoNowBtn.style.display = (mode === 'manual') ? '' : 'none';
+  }
+
+  document.querySelectorAll('input[name="captcha-mode"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      BilitFast.setCaptchaMode(r.value);
+      if (r.value === 'manual') {
+        autoSolveStop = true; // توقف فوری حلقه خودکارِ در حال اجرا
+        if (autoSolving) setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
+      }
+      applyCaptchaModeUI();
+    });
+  });
+
+  $('btn-captcha-auto-now').addEventListener('click', () => {
+    if (autoSolving) return;
+    autoSolveStop = false;
+    setStatus('حل خودکار کپچای فعلی شروع شد...', 'blue');
+    autoSolveLoop(reserveCtx.captchaImageUrl);
+  });
+
+  $('btn-captcha-stop-auto').addEventListener('click', () => {
+    autoSolveStop = true;
+    setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
+  });
+
+  /* --- حل خودکار کپچا (OCR) با تلاش مجدد تا حداکثر، و واگذاری دستی در پایان --- */
+  async function autoSolveLoop(captchaImageUrl) {
+    if (autoSolving) return;
+    autoSolving = true;
+    autoSolveStop = false;
+
+    let currentUrl = captchaImageUrl;
+
+    // نکته مهم: هر تلاش با یک کپچای تازه انجام می‌شود. چون ارسال کپچای اشتباه
+    // فقط صفحه کپچا را دوباره برمی‌گرداند (هیچ جریمه/بلاکی ندارد)، می‌توانیم
+    // تا چند بار خودکار تلاش کنیم و شانس موفقیت کلی را به‌شدت بالا ببریم.
+    // تصویر در طول این مدت همیشه نمایش داده می‌شود تا کاربر بتواند هر لحظه دستی وارد کند.
+    const maxAutoAttempts = BilitFast.getCaptchaMaxAttempts() || CAPTCHA_MAX_AUTO_ATTEMPTS;
+    for (let attempt = 1; attempt <= maxAutoAttempts && !autoSolveStop; attempt++) {
+      setStatus('حل خودکار کپچا (تلاش ' + attempt + '/' + maxAutoAttempts + ')...', 'blue');
+
+      const solved = await callReserve({
+        action: 'solve-captcha',
+        captchaImageUrl: currentUrl,
+        stateToken: reserveCtx.token,
+      });
+
+      if (autoSolveStop) break;
+
+      if (solved && solved.ok && solved.text) {
+        $('reserve-captcha-input').value = solved.text;
+        setStatus('کپچای خوانده‌شده: ' + solved.text + ' — در حال ارسال...', 'blue');
+
+        const resp = await callReserve({
+          action: 'submit',
+          stateToken: reserveCtx.token,
+          captcha: solved.text,
+          passengers: reserveCtx.passengers,
+          phone: reserveCtx.phone,
+        });
+
+        if (autoSolveStop) break;
+
+        if (resp && resp.ok) {
+          if (resp.stateToken) reserveCtx.token = resp.stateToken;
+
+          if (resp.step !== 'captcha') {
+            // موفق شد (پرداخت/فرم مسافر/موفقیت/خطا)
+            lastCaptchaAttempt = { text: solved.text, source: 'ocr' };
+            autoSolving = false;
+            handleReserveStep(resp);
+            return;
+          }
+
+          // کپچا اشتباه بود → سرور کپچای تازه فرستاده؛ برای تلاش بعدی همان را بگیر
+          if (resp.captchaImageUrl) {
+            currentUrl = resp.captchaImageUrl;
+            reserveCtx.captchaImageUrl = resp.captchaImageUrl;
+            await loadCaptchaImage(currentUrl);
+          }
+          continue; // تلاش بعدی با کپچای جدید
+        }
+
+        // خطای ارسال (شبکه/سرور) → از حلقه خودکار خارج شو
+        break;
+      }
+
+      // OCR نامطمئن/ناموفق → کپچای تازه بگیر و دوباره تلاش کن
+      const refreshed = await refreshCaptchaImage();
+      if (refreshed) currentUrl = refreshed;
+    }
+
+    // تلاش‌های خودکار تمام شد → واگذار به کاربر (تصویر فعلی برای ورود دستی)
+    autoSolving = false;
+    showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl });
+  }
+
+  async function refreshCaptchaImage() {
+    // کپچای این صفحه به نشست گره خورده است؛ برای کپچای جدید باید از سرور
+    // درخواست تازه بدهیم (captchaAjax.php)، نه اینکه به URL موجود cache-buster
+    // بچسبانیم (که برای data-URI اصلاً معنا ندارد و آن را خراب می‌کند).
+    const data = await callReserve({ action: 'refresh-captcha', stateToken: reserveCtx.token });
+    if (data && data.ok && (data.captchaImageUrl || data.captchaDataUri)) {
+      if (data.stateToken) reserveCtx.token = data.stateToken;
+      const url = data.captchaImageUrl || data.captchaDataUri;
+      reserveCtx.captchaImageUrl = url;
+      loadCaptchaImage(url);
+      return url;
+    }
+    // fallback: اگر URL معمولی (نه data-URI) باشد، cache-buster
+    const cur = reserveCtx.captchaImageUrl;
+    if (cur && !/^data:image/i.test(cur)) {
+      const sep = cur.includes('?') ? '&' : '?';
+      const newUrl = cur + sep + '_=' + Date.now();
+      await loadCaptchaImage(newUrl);
+      return newUrl;
+    }
+    return null;
+  }
+
+  function showReservePayment(data) {
+    hideReserveAll();
+    renderBookingSummary(data);
+    $('reserve-message').textContent = data.message || 'رزرو تأیید شد؛ در حال انتقال به صفحه پرداخت...';
+    setStatus('انتقال به صفحه پرداخت...', 'green');
+    saveRouteState({ status: 'آماده پرداخت', statusColor: 'green' });
+    openPaymentWindow(data.paymentUrl);
+    saveBookingRecord(data);
+  }
+
+  /* --- ذخیره رزرو در تاریخچه + تأیید نتیجه پرداخت توسط کاربر ---
+   * بانک نتیجه پرداخت را به این برنامه اعلام نمی‌کند (آدرس بازگشت دست صفیر
+   * ریل است)؛ بنابراین رزرو به‌صورت «در انتظار پرداخت» ذخیره می‌شود و کاربر
+   * نتیجه را با یک کلیک تأیید می‌کند. */
+  let currentBookingId = null;
+
+  async function saveBookingRecord(data) {
+    currentBookingId = null;
+    const noteEl = $('pay-confirm-note');
+    $('btn-paid').disabled = false;
+    $('btn-pay-failed').disabled = false;
+    $('reserve-pay-confirm').style.display = 'block';
+    if (!BilitFast.isLoggedIn()) {
+      noteEl.textContent = '💡 برای ذخیره این رزرو در «تاریخچه»، وارد حساب خود شوید.';
+      return;
+    }
+    noteEl.textContent = '';
+    try {
+      const r = await BilitFast.saveBooking({
+        booking: data.booking || null,
+        paymentUrl: data.paymentUrl || '',
+        workflow_id: data.workflow_id || '',
+        totalPrice: (data.totalPrice !== null && data.totalPrice !== undefined) ? data.totalPrice : undefined,
+      });
+      if (r && r.ok) currentBookingId = r.id;
+    } catch (e) { /* ذخیره تاریخچه نباید جریان رزرو را مختل کند */ }
+  }
+
+  $('btn-paid').addEventListener('click', async () => {
+    $('btn-paid').disabled = true;
+    if (currentBookingId) await BilitFast.bookingResult(currentBookingId, 'paid');
+    $('reserve-pay-confirm').style.display = 'none';
+    $('reserve-message').textContent = '✅ رزرو و پرداخت با موفقیت ثبت شد. جزئیات در «تاریخچه رزروها» است.';
+    setStatus('رزرو موفق (پرداخت انجام شد)', 'green');
+    saveRouteState({ status: 'رزرو موفق (پرداخت انجام شد)', statusColor: 'green' });
+  });
+  $('btn-pay-failed').addEventListener('click', async () => {
+    $('btn-pay-failed').disabled = true;
+    if (currentBookingId) await BilitFast.bookingResult(currentBookingId, 'failed');
+    $('reserve-pay-confirm').style.display = 'none';
+    $('reserve-message').textContent = 'پرداخت ناموفق ثبت شد. می‌توانید دوباره از بخش «تاریخچه» یا با انتخاب مجدد قطار تلاش کنید.';
+    setStatus('پرداخت ناموفق', 'orange');
+    saveRouteState({ status: 'پرداخت ناموفق', statusColor: 'orange' });
+  });
+
+  // نمایش خلاصه رزرو + اعتبارسنجی قیمت قبل از پرداخت
+  function renderBookingSummary(data) {
+    const el = $('reserve-summary');
+    const b = data.booking;
+    let html = '';
+    if (b) {
+      const rows = [
+        ['مسیر', (b.origin || '') + ' ← ' + (b.destination || '')],
+        ['تاریخ', b.date || ''],
+        ['ساعت', b.time || ''],
+        ['قطار', b.train_number || ''],
+        ['نوع', b.train_type || ''],
+        ['شرکت', b.company || ''],
+        ['مسافران', b.passengers || 0],
+      ];
+      html = '<table class="table"><tbody>' + rows.map((r) =>
+        `<tr><th>${esc(r[0])}</th><td>${esc(r[1])}</td></tr>`).join('') + '</tbody></table>';
+    }
+    // قیمت و اعتبارسنجی
+    if (data.totalPrice !== null && data.totalPrice !== undefined) {
+      html += '<p class="muted small"><b>مبلغ قابل پرداخت:</b> ' + esc(String(data.totalPrice)) +
+        ' ریال' + (data.expectedPrice ? ' (مبلغ مرحله جستجو: ' + esc(String(data.expectedPrice)) + ' ریال)' : '') + '</p>';
+      if (data.priceCheck && data.priceCheck.verified && !data.priceCheck.ok) {
+        html += '<p class="alert alert-error">⚠️ ' + esc(data.priceCheck.message) + '</p>';
+      }
+    }
+    if (html) { el.style.display = 'block'; el.innerHTML = html; }
+    else { el.style.display = 'none'; el.innerHTML = ''; }
+  }
+
+  // بازکردن صفحه پرداخت در تب جدید (فقط در پایان رزرو)
+  function openPaymentWindow(url) {
+    if (!url) {
+      showReserveError('آدرس پرداخت یافت نشد.');
+      return;
+    }
+    const win = window.open(url, '_blank', 'noopener');
+    if (!win) {
+      // مرورگر بازشدن خودکار را مسدود کرد → نمایش لینک fallback برای کلیک دستی
+      $('reserve-payment').style.display = 'block';
+      const a = $('btn-reserve-pay');
+      a.href = url;
+      $('reserve-message').textContent = 'رزرو تأیید شد. مرورگر بازشدن خودکار را مسدود کرد؛ روی دکمه زیر کلیک کنید:';
+      setStatus('برای ادامه، روی دکمه پرداخت کلیک کنید', 'orange');
+    } else {
+      $('reserve-message').textContent = 'رزرو تأیید شد و صفحه پرداخت در تب جدید باز شد.';
+    }
+  }
+
+  function renderReservePassengers(passengers) {
+    $('reserve-passengers').querySelector('tbody').innerHTML = (passengers || []).map((p) =>
+      `<tr><td>${esc(p.quota_type)}</td><td>${esc(p.national_code||'')}</td><td>${esc(p.birth_day||'')}/${esc(p.birth_month||'')}/${esc(p.birth_year||'')}</td><td>${esc(p.first_name||'')}</td><td>${esc(p.last_name||'')}</td></tr>`
+    ).join('');
+  }
+
+  function setupFallbackDownload() {
+    if (!reserveCtx.formHtml) return;
+    const blob = new Blob([reserveCtx.formHtml], { type: 'text/html' });
+    $('reserve-download').href = URL.createObjectURL(blob);
+  }
+
+  function renderDiagnosticsFromReserve(data) {
+    // نمایش کامل تشخیص (مرحله، finalUrl، تعداد فرم/ورودی، action/method،
+    // نام/نوع ورودی‌ها، و نشانگرهای captcha/login/payment/success/no-capacity)
+    renderReserveDiagnostics(data);
+  }
+
+  // نمایش جزئیات تشخیص فرم (نام فیلدها، فرم‌ها، وضعیت‌ها، طبقه‌بندی) برای رفع اشکال
+  function renderReserveDiagnostics(data) {
+    const el = $('reserve-diagnostics');
+    const body = $('reserve-diagnostics-body');
+    // پنل تشخیص فقط در حالت توسعه نمایش داده می‌شود (?debug یا گزینه «تنظیمات»)
+    if (!BilitFast.isDebugMode() || !data || !data.diagnostics) { el.style.display = 'none'; return; }
+
+    const lines = [];
+    lines.push('step: ' + (data.step || '—'));
+    lines.push('agentState: ' + (data.agentState || '—'));
+    lines.push('finalUrl: ' + (data.finalUrl || '—'));
+    lines.push('httpStatus: ' + (data.httpStatus != null ? data.httpStatus : '—'));
+
+    if (data.classification) {
+      lines.push('classification.type: ' + (data.classification.type || '—'));
+      lines.push('classification.confidence: ' + (data.classification.confidence || 0));
+      if (data.classification.evidence && data.classification.evidence.length) {
+        lines.push('classification.evidence: ' + data.classification.evidence.join(', '));
+      }
+    }
+
+    if (data.flags) {
+      lines.push('detected.login: ' + (!!data.flags.loginRequired));
+      lines.push('detected.payment: ' + (!!data.flags.isPayment));
+      lines.push('detected.success: ' + (!!data.flags.isSuccess));
+      lines.push('detected.noCapacity: ' + (!!data.flags.noCapacity));
+      lines.push('detected.captchaImage: ' + (!!data.flags.hasCaptchaImage));
+    }
+
+    const d = data.diagnostics;
+    lines.push('formCount: ' + (d.formCount || 0));
+    lines.push('inputCount: ' + (d.inputCount || 0));
+
+    if (d.forms && d.forms.length) {
+      d.forms.forEach((f, i) => {
+        lines.push('form[' + i + '] action=' + (f.action || '') + ' method=' + (f.method || ''));
+        lines.push('  fieldNames: ' + (f.fieldNames || []).join(', '));
+        if (f.hiddenFieldNames && f.hiddenFieldNames.length) lines.push('  hidden: ' + f.hiddenFieldNames.join(', '));
+        if (f.selectNames && f.selectNames.length) lines.push('  selects: ' + f.selectNames.join(', '));
+        if (f.buttonNames && f.buttonNames.length) lines.push('  buttons: ' + f.buttonNames.join(', '));
+      });
+    } else {
+      lines.push('forms: (هیچ فرمی یافت نشد)');
+    }
+
+    if (d.inputs && d.inputs.length) {
+      lines.push('inputs: ' + d.inputs.map((x) => x.name + ':' + x.type + (x.id ? '(id=' + x.id + ')' : '')).join(', '));
+    } else {
+      lines.push('inputs: (هیچ ورودی‌ای یافت نشد)');
+    }
+
+    if (d.captchaRefs && d.captchaRefs.length) {
+      lines.push('captchaRefs: ' + d.captchaRefs.join(', '));
+    }
+
+    if (d.handlers && d.handlers.length) {
+      lines.push('onclick/onchange handlers:');
+      d.handlers.forEach((h) => lines.push('  ' + h.tag + '[' + h.type + '] name=' + h.name + ' id=' + h.id + ' onclick="' + h.onclick + '" onchange="' + h.onchange + '"'));
+    }
+
+    if (d.endpoints && d.endpoints.length) {
+      lines.push('endpoints: ' + d.endpoints.join(', '));
+    }
+
+    if (d.redirectUrl) {
+      lines.push('redirectUrl: ' + d.redirectUrl);
+    }
+
+    if (d.serverMessages && d.serverMessages.length) {
+      lines.push('serverMessages: ' + d.serverMessages.join(' | '));
+    }
+
+    if (d.scripts && d.scripts.length) {
+      lines.push('scripts (' + d.scripts.length + '):');
+      d.scripts.forEach((s, i) => lines.push('  <script[' + i + ']> ' + s));
+    }
+
+    if (d.externalScripts && d.externalScripts.length) {
+      lines.push('externalScripts (' + d.externalScripts.length + '): ' + d.externalScripts.join(', '));
+    }
+    if (d.jsRefs && d.jsRefs.length) {
+      lines.push('jsRefs: ' + d.jsRefs.join(', '));
+    }
+
+    if (d.images && d.images.length) {
+      lines.push('images: ' + d.images.filter((s) => s).join(', '));
+    }
+
+    if (d.markers) {
+      lines.push('markers: ' + JSON.stringify(d.markers));
+    }
+
+    if (d.significantText) {
+      lines.push('pageText: ' + d.significantText);
+    }
+
+    body.textContent = lines.join('\n');
+    el.style.display = 'block';
+  }
+
+  // رویدادهای کپچا
+  $('btn-captcha-submit').addEventListener('click', () => {
+    const captcha = $('reserve-captcha-input').value.trim();
+    if (!captcha) { $('reserve-captcha-input').focus(); return; }
+    autoSolveStop = true;  // توقف حل خودکار در صورت ارسال دستی
+    lastCaptchaAttempt = { text: captcha, source: 'manual' };
+    $('btn-captcha-submit').disabled = true;
+    setStatus('در حال ارسال کپچا...', 'blue');
+    reserveSubmit(captcha);
+  });
+  $('btn-captcha-refresh').addEventListener('click', async () => {
+    // درخواست کپچای تازه از سرور (captchaAjax.php)
+    setStatus('دریافت کپچای جدید...', 'blue');
+    await refreshCaptchaImage();
+  });
+
+  window.reserve = reserve;
+
+  /* ---------------- شروع ---------------- */
+  (function init() {
+    const route = BilitFast.getRoute(ROUTE_ID);
+    // بارگذاری تنظیمات سرور (فاصله جستجو و تعداد تلاش کپچا) — ناهمزمان و بدون
+    // ایجاد تأخیر در صفحه؛ مقادیر پیش‌فرض تا آماده‌شدن تنظیمات استفاده می‌شوند.
+    BilitFast.loadSharedConfig();
+    applyCaptchaModeUI();
+    // کنترل مجوز (مانند صفحه مسیرها): فقط در صورت انقضای قطعی هدایت می‌شود.
+    BilitFast.fetchLicenseState().then((ts) => {
+      if (ts.state === 'expired') window.location.href = 'trial.html';
+    });
+    loadCities();
+    // بارگذاری مسافران ذخیره‌شده
+    const pass = route && route.passengers ? route.passengers : [];
+    if (pass.length) pass.forEach((p) => addPassengerRow(p));
+    else addPassengerRow();
+    // بازیابی وضعیت جاری
+    if (route && route.status) setStatus(route.status, route.statusColor || 'black');
+    if (route && route.running) {
+      $('btn-start').disabled = true;
+      $('btn-stop').disabled = false;
+      startPolling();
+    }
+    if (route && route.foundTrains && route.foundTrains.length) renderFound(route.foundTrains);
+    updateTitle();
+    checkSameCity();
+  })();
+
+  // با بسته‌شدن تب، این مسیر از رجیستری پایش همزمان حذف می‌شود تا بقیه تب‌ها
+  // فاصله درخواست‌هایشان را به‌درستی بازمحاسبه کنند.
+  window.addEventListener('beforeunload', () => {
+    try { BilitFast.unregisterMonitor(ROUTE_ID); } catch (e) { /* ignore */ }
+  });
+  </script>
+</body>
+</html>
