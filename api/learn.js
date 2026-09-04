@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
       if (!/^data:image\//i.test(image) || image.length > MAX_IMAGE_CHARS) {
         return res.status(400).json({ ok: false, error: 'تصویر کپچا معتبر نیست.' });
       }
-      if (!/^\d{3,8}$/.test(text)) {
+      if (!/^[A-Za-z0-9]{3,8}$/.test(text)) {
         return res.status(400).json({ ok: false, error: 'متن کپچا معتبر نیست.' });
       }
 

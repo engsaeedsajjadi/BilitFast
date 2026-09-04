@@ -95,6 +95,18 @@ async function loadRealSamples() {
   let skipped = 0;
   for (const s of samples) {
     try {
+      // ۱) نمونه‌هایی که بردار کاراکتر آماده دارند (واردشده/یادگرفته): فقط ارقام
+      //    برای آموزش مدل رقمی استفاده می‌شوند؛ حروف به مدل ۱۰خروجی نمی‌خورند.
+      if (Array.isArray(s.char_vectors)) {
+        for (const cv of s.char_vectors) {
+          if (cv && /^[0-9]$/.test(cv.digit) && Array.isArray(cv.v) && cv.v.length === 400) {
+            X.push(Float64Array.from(cv.v));
+            Y.push(parseInt(cv.digit, 10));
+          }
+        }
+        continue;
+      }
+      // ۲) نمونه‌های تصویری: استخراج کاراکترها (همان خط لوله استنتاج)
       const b64 = String(s.image || '').split(',')[1];
       if (!b64) { skipped++; continue; }
       const chars = await extractChars(Buffer.from(b64, 'base64'));
