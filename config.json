@@ -84,6 +84,8 @@
     "use_custom_model": true,
     "model_path": "models/captcha-model.json",
     "model_min_char_conf": 0.75,
+    "use_prototypes": true,
+    "prototype_max_distance": 0.3,
 
     "advanced_preprocess": true,
     "max_variants": 5,

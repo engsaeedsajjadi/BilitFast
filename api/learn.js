@@ -44,10 +44,22 @@ module.exports = async (req, res) => {
         return res.status(400).json({ ok: false, error: 'متن کپچا معتبر نیست.' });
       }
 
+      // استخراج بردار کاراکترها برای تطبیق نمونه‌محور (k-NN) — بهترین تلاش؛
+      // اگر استخراج ممکن نبود، نمونه همچنان برای بازآموزی ذخیره می‌شود.
+      let charVectors = null;
+      try {
+        const b64 = image.split(',')[1];
+        if (b64) {
+          const { extractCharVectors } = require('../lib/charlearn');
+          charVectors = await extractCharVectors(Buffer.from(b64, 'base64'), text);
+        }
+      } catch (e) { charVectors = null; }
+
       const user = getSessionUser(req, body);
       db.insert('captcha_samples', {
         image, text, source,
         user_id: user ? user.id : null,
+        char_vectors: charVectors,
       });
 
       // محدودنگه‌داشتن تعداد نمونه‌ها (حذف قدیمی‌ترین‌ها)
@@ -57,7 +69,7 @@ module.exports = async (req, res) => {
         for (const old of sorted.slice(0, all.length - MAX_SAMPLES)) db.remove('captcha_samples', old.id);
       }
 
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, chars_learned: charVectors ? charVectors.length : 0 });
     }
 
     if (action === 'stats') {

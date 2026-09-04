@@ -52,8 +52,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, count: cookies.length, has_session: hasSession });
     }
 
-    if (action === 'poll') {
-      const now = Date.now();
+    if (action === 'poll') {      const now = Date.now();
       const candidates = db
         .find('cookie_sync', (s) => !s.consumed && (now - (s.created_at || 0)) <= TTL_MS)
         .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
