@@ -114,9 +114,10 @@ npm start          # معادل node dev-server.js
 **✅ روش پیشنهادی — افزونه مرورگر (یک کلیک):** چون کوکی نشست (`PHPSESSID`) از نوع
 **HttpOnly** است، نه جاوااسکریپت صفحه و نه هیچ روش مرورگری دیگری نمی‌تواند آن را
 بخواند؛ فقط یک افزونه با مجوز `cookies` می‌تواند. افزونه داخل پوشه `extension/` را
-یک‌بار نصب می‌کنید (راهنما: `docs/EXTENSION.md`)؛ سپس هر زمان در مرورگر وارد
-صفیر ریل بودید، **روی آیکون افزونه کلیک می‌کنید** و در صفحه «ورود صفیر ریل»
-دکمه **«دریافت کوکی از افزونه»** را می‌زنید. کوکی‌ها (شامل نشست) منتقل و ذخیره می‌شوند.
+یک‌بار نصب می‌کنید (راهنما: `docs/EXTENSION.md`)؛ سپس در صفحه «ورود صفیر ریل»
+دکمه **«دریافت کوکی از افزونه»** را می‌زنید تا یک نشست کوتاه‌عمر برای همان مرورگر
+ایجاد شود، و بعد **روی آیکون افزونه کلیک می‌کنید**. کوکی‌ها (شامل نشست) فقط در همان
+مرورگر/نشست به برنامه منتقل و ذخیره می‌شوند.
 
 **روش دوم — خواندن مستقیم از پروفایل مرورگر:** دکمه‌های «همگام‌سازی کوکی از
 Firefox / Chrome» در صفحه `/login.html`، کوکی‌های دامنه `safirrail.ir` را مستقیماً از
@@ -368,4 +369,5 @@ npm test
 فهرست کامل و راهنمای ساخت کلیدها در `.env.example` آمده است. خلاصه:
 `BILITFAST_ACTIVATION_CODE`, `BILITFAST_LICENSE_KEY`, `BILITFAST_TOKEN_KEY`,
 `ZARINPAL_MERCHANT_ID`, `ZARINPAL_MODE`, `APP_BASE_URL`,
-`TELEGRAM_BOT_TOKEN`, `KAVENEGAR_API_KEY`, `KAVENEGAR_SENDER`, `BILITFAST_DATA_DIR`.
+`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `BILITFAST_ADMIN_USERS`,
+`KAVENEGAR_API_KEY`, `KAVENEGAR_SENDER`, `BILITFAST_DATA_DIR`.

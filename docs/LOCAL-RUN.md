@@ -31,7 +31,7 @@ npm install
 
 ## ۳) ساخت فایل `.env` (پیکربندی محلی)
 
-در پوشه پروژه فایل `.env` بسازید (همین‌جا کپی کنید):
+در پوشه پروژه فایل `.env` بسازید (می‌توانید فایل `.env.example` را کپی کنید):
 
 **حداقل برای شروع (همه اختیاری‌اند؛ بدون آن‌ها برنامه با حالت توسعه کار می‌کند):**
 
@@ -63,6 +63,11 @@ APP_BASE_URL=http://localhost:3000
 
 # ربات تلگرام (اطلاع‌رسانی)
 TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=CHANGE-ME
+
+# کاربران مدیر برای عملیات مدیریتی (مثلاً setup webhook)
+BILITFAST_ADMIN_USERS=admin
+
 # پیامک کاوه‌نگار
 KAVENEGAR_API_KEY=
 KAVENEGAR_SENDER=

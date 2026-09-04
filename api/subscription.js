@@ -7,13 +7,7 @@
 const { getSessionUser } = require('../lib/auth');
 const sub = require('../lib/subscription');
 const { guardApi } = require('../lib/guard');
-
-function readBody(req) {
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body || '{}'); } catch (e) { return {}; }
-  }
-  return req.body || {};
-}
+const { readJsonBody } = require('../lib/http');
 
 function buildCallbackUrl(req) {
   const base = process.env.APP_BASE_URL ||
@@ -23,7 +17,7 @@ function buildCallbackUrl(req) {
 
 module.exports = async (req, res) => {
   const isPost = req.method === 'POST';
-  const body = isPost ? readBody(req) : {};
+  const body = isPost ? readJsonBody(req) : {};
   const action = body.action || (req.query && req.query.action) || 'status';
 
   if (!guardApi(req, res, { name: 'subscription', limit: 60, windowMs: 60000 })) return;

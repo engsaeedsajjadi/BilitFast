@@ -2,20 +2,14 @@
 const { registerUser, loginUser, publicUser, getSessionUser, verifyPassword, hashPassword } = require('../lib/auth');
 const { guardApi } = require('../lib/guard');
 const db = require('../lib/db');
-
-function readBody(req) {
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body || '{}'); } catch (e) { return {}; }
-  }
-  return req.body || {};
-}
+const { readJsonBody } = require('../lib/http');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ ok: false, error: 'Method Not Allowed' });
     return;
   }
-  const body = readBody(req);
+  const body = readJsonBody(req);
   const action = body.action || 'me';
 
   // ثبت‌نام/ورود محدودسازی سخت‌گیرانه دارد؛ بقیه اکشن‌ها ملایم‌تر

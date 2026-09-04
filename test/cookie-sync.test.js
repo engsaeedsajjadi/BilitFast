@@ -10,8 +10,16 @@ function test(name, cond) {
   if (!cond) failures++;
 }
 
-function mockReq(body) {
-  return { method: 'POST', body, headers: { 'x-forwarded-for': '127.0.0.1' }, socket: { remoteAddress: '127.0.0.1' } };
+function mockReq(body, pair = 'pair-token-abcdefghijklmnopqrstuvwxyz') {
+  return {
+    method: 'POST',
+    body,
+    headers: {
+      'x-forwarded-for': '127.0.0.1',
+      cookie: pair ? ('bf_cookie_sync_pair=' + pair) : '',
+    },
+    socket: { remoteAddress: '127.0.0.1' },
+  };
 }
 function mockRes() {
   return {
@@ -42,12 +50,24 @@ function mockRes() {
   await handler(mockReq({ action: 'poll' }), r);
   test('poll کوکی‌ها را دریافت می‌کند', r._json.ok === true && r._json.cookies.length === 2 && r._json.has_session === true);
 
-  // ۵) poll دوم: رکورد مصرف شده → دوباره در انتظار
+  // ۵) poll دوم: رکورد حذف شده → دوباره در انتظار
   r = mockRes();
   await handler(mockReq({ action: 'poll' }), r);
-  test('poll مجدد → مصرف‌شده (در انتظار)', r._json.waiting === true);
+  test('poll مجدد → مصرف‌شده/حذف‌شده (در انتظار)', r._json.waiting === true);
 
-  // ۶) GET رد می‌شود
+  // ۶) نشستِ بدون توکن جفت‌شدن رد می‌شود
+  r = mockRes();
+  await handler(mockReq({ action: 'poll' }, ''), r);
+  test('poll بدون pair token رد می‌شود', r._status === 400 && r._json.ok === false);
+
+  // ۷) pair نادرست نمی‌تواند رکورد pair دیگر را بخواند
+  r = mockRes();
+  await handler(mockReq({ action: 'push', cookies: ['PHPSESSID=abc999'], source: 'extension' }, 'pair-token-AAAAABBBBBCCCCCDDDDDEEEEE'), r);
+  r = mockRes();
+  await handler(mockReq({ action: 'poll' }, 'pair-token-zzzzz-yyyyy-xxxxx-wwwww-vvvvv'), r);
+  test('pair متفاوت به کوکی‌های pair دیگر دسترسی ندارد', r._json.waiting === true);
+
+  // ۸) GET رد می‌شود
   r = mockRes();
   await handler({ method: 'GET', headers: {}, body: {} }, r);
   test('متد غیر از POST رد می‌شود', r._status === 405);

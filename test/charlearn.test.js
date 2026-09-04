@@ -6,6 +6,8 @@ const Jimp = require('jimp');
 const ops = require('../lib/imageops');
 const { renderDigit } = require('../lib/digitsynth');
 const { mulberry32 } = require('../lib/ml');
+const { makeCaptchaLearnToken } = require('../lib/license');
+const { hashCaptchaDataUri } = require('../lib/reserve');
 const { extractCharVectors, cosineDist, matchPrototype, loadPrototypes } = require('../lib/charlearn');
 
 let failures = 0;
@@ -70,13 +72,50 @@ async function compose(text, seed) {
   // ۱) نمونه تأییدشده از طریق /api/learn ذخیره می‌شود (مثل جریان واقعی کاربر)
   const learnHandler = require('../api/learn');
   const dataUri = 'data:image/png;base64,' + buf.toString('base64');
-  const res1 = { _status: 200, _json: null, status(c) { this._status = c; return this; }, json(j) { this._json = j; return this; } };
+  const resDenied = { _status: 200, _json: null, status(c) { this._status = c; return this; }, json(j) { this._json = j; return this; } };
   await learnHandler({
     method: 'POST',
     headers: {},
     body: { action: 'captcha-sample', image: dataUri, text: '7291', source: 'manual' },
+  }, resDenied);
+  test('api/learn بدون proof token رد می‌شود', resDenied._status === 403 && resDenied._json.ok === false);
+  const res1 = { _status: 200, _json: null, status(c) { this._status = c; return this; }, json(j) { this._json = j; return this; } };
+  await learnHandler({
+    method: 'POST',
+    headers: {},
+    body: {
+      action: 'captcha-sample',
+      image: dataUri,
+      text: '7291',
+      source: 'manual',
+      learnToken: makeCaptchaLearnToken({
+        workflow_id: 'wf-charlearn-1',
+        captcha_text: '7291',
+        image_hash: hashCaptchaDataUri(dataUri),
+        proof_id: 'proof-charlearn-1',
+      }),
+    },
   }, res1);
   test('api/learn بردار کاراکترها را یاد می‌گیرد', res1._json.ok === true && res1._json.chars_learned === 4);
+
+  const resReplay = { _status: 200, _json: null, status(c) { this._status = c; return this; }, json(j) { this._json = j; return this; } };
+  await learnHandler({
+    method: 'POST',
+    headers: {},
+    body: {
+      action: 'captcha-sample',
+      image: dataUri,
+      text: '7291',
+      source: 'manual',
+      learnToken: makeCaptchaLearnToken({
+        workflow_id: 'wf-charlearn-1',
+        captcha_text: '7291',
+        image_hash: hashCaptchaDataUri(dataUri),
+        proof_id: 'proof-charlearn-1',
+      }),
+    },
+  }, resReplay);
+  test('api/learn replay با proof_id تکراری دوباره ذخیره نمی‌شود', resReplay._json.ok === true && resReplay._json.duplicate === true);
 
   const loaded = loadPrototypes();
   test('نمونه‌ها از دیتابیس بارگذاری می‌شوند', loaded.length === 4);
@@ -85,10 +124,22 @@ async function compose(text, seed) {
   // (طول کپچای واقعی ۵ است؛ برای تست سرتاسری از کپچای ۵کاراکتری استفاده می‌کنیم)
   const buf5 = await compose('72914', 4242);
   const res5 = { _status: 200, _json: null, status(c) { this._status = c; return this; }, json(j) { this._json = j; return this; } };
+  const dataUri5 = 'data:image/png;base64,' + buf5.toString('base64');
   await learnHandler({
     method: 'POST',
     headers: {},
-    body: { action: 'captcha-sample', image: 'data:image/png;base64,' + buf5.toString('base64'), text: '72914', source: 'manual' },
+    body: {
+      action: 'captcha-sample',
+      image: dataUri5,
+      text: '72914',
+      source: 'manual',
+      learnToken: makeCaptchaLearnToken({
+        workflow_id: 'wf-charlearn-2',
+        captcha_text: '72914',
+        image_hash: hashCaptchaDataUri(dataUri5),
+        proof_id: 'proof-charlearn-2',
+      }),
+    },
   }, res5);
   const { solveWithModel } = require('../lib/captcha');
   const solved = await solveWithModel(buf5);

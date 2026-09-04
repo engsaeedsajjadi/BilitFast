@@ -108,6 +108,7 @@
 
     BilitFast.setSessionToken(data.token);
     localStorage.removeItem('bilitfast_license_cache');
+    sessionStorage.removeItem('bilitfast_license_cache');
 
     // انتقال داده‌های محلی (مسیرها/کوکی‌ها) به حساب — یک‌بار
     try {
@@ -125,6 +126,7 @@
   document.getElementById('btn-logout').addEventListener('click', () => {
     BilitFast.setSessionToken('');
     localStorage.removeItem('bilitfast_license_cache');
+    sessionStorage.removeItem('bilitfast_license_cache');
     location.reload();
   });
 

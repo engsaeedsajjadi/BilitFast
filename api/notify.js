@@ -6,13 +6,19 @@
 const { getSessionUser } = require('../lib/auth');
 const { guardApi } = require('../lib/guard');
 const notify = require('../lib/notify');
-const db = require('../lib/db');
+const { readJsonBody, isProductionLike } = require('../lib/http');
 
-function readBody(req) {
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body || '{}'); } catch (e) { return {}; }
-  }
-  return req.body || {};
+function adminUsers() {
+  return String(process.env.BILITFAST_ADMIN_USERS || '')
+    .split(',')
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isWebhookAdmin(user) {
+  const admins = adminUsers();
+  if (!admins.length) return !isProductionLike();
+  return !!(user && admins.includes(String(user.username || '').toLowerCase()));
 }
 
 module.exports = async (req, res) => {
@@ -22,7 +28,7 @@ module.exports = async (req, res) => {
   }
   if (!guardApi(req, res, { name: 'notify', limit: 60, windowMs: 60000 })) return;
 
-  const body = readBody(req);
+  const body = readJsonBody(req);
   const action = body.action || 'send';
   const user = getSessionUser(req, body);
   if (!user) {
@@ -52,15 +58,20 @@ module.exports = async (req, res) => {
       if (!notify.telegramToken()) {
         return res.status(200).json({ ok: false, error: 'ربات تلگرام روی این استقرار پیکربندی نشده است (TELEGRAM_BOT_TOKEN).' });
       }
-      const code = notify.makeConnectCode(user);
+      const issued = notify.makeConnectCode(user);
       return res.status(200).json({
         ok: true,
-        code,
+        code: issued.code,
+        expires_at: issued.expiresAt,
+        expires_in_seconds: Math.max(0, Math.round((issued.expiresAt - Date.now()) / 1000)),
         hint: 'این کد را در چت با ربات تلگرام ما ارسال کنید تا حساب شما متصل شود.',
       });
     }
 
     if (action === 'setup-webhook') {
+      if (!isWebhookAdmin(user)) {
+        return res.status(403).json({ ok: false, error: 'راه‌اندازی وب‌هوک فقط برای مدیران مجاز است.' });
+      }
       const r = await notify.setupTelegramWebhook();
       return res.status(r.ok ? 200 : 400).json(r);
     }

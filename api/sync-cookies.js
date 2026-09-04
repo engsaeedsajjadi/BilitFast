@@ -3,10 +3,29 @@
 // توجه: این قابلیت فقط در اجرای محلی (دسترسی به فایل‌سیستم کاربر) کار می‌کند.
 const { readFirefoxCookies } = require('../lib/cookies');
 const { readChromeCookies } = require('../lib/chrome-cookies');
-const { guardApi } = require('../lib/guard');
+const { guardApi, getClientIp } = require('../lib/guard');
+const { isLoopbackIp, isLocalHostname, getRequestHost } = require('../lib/http');
+
+function assertLocalOnly(req, res) {
+  const ip = getClientIp(req);
+  const host = getRequestHost(req);
+  if (!isLoopbackIp(ip) || (host && !isLocalHostname(host))) {
+    res.status(403).json({
+      ok: false,
+      error: 'همگام‌سازی مستقیم کوکی از فایل‌های مرورگر فقط در اجرای محلی و از طریق localhost مجاز است.',
+    });
+    return false;
+  }
+  return true;
+}
 
 module.exports = async (req, res) => {
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.status(405).json({ ok: false, error: 'Method Not Allowed' });
+    return;
+  }
   if (!guardApi(req, res, { name: 'sync-cookies', limit: 10, windowMs: 60000 })) return;
+  if (!assertLocalOnly(req, res)) return;
   const source = (req.query && req.query.source) || 'all';
   try {
     const all = [];

@@ -173,7 +173,8 @@
     if (r.ok) {
       document.getElementById('tg-code-box').style.display = 'block';
       document.getElementById('tg-code').textContent = r.code;
-      showAlert('notify-alert', r.hint || 'کد اتصال ساخته شد.', true);
+      const extra = r.expires_in_seconds ? (' این کد حدود ' + Math.max(1, Math.round(r.expires_in_seconds / 60)) + ' دقیقه اعتبار دارد.') : '';
+      showAlert('notify-alert', (r.hint || 'کد اتصال ساخته شد.') + extra, true);
     } else {
       showAlert('notify-alert', r.error || 'خطا در ساخت کد اتصال', false);
     }

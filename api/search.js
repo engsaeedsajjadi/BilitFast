@@ -2,6 +2,7 @@
 const { searchOnce } = require('../lib/core');
 const { filterAndRankTrains } = require('../lib/agent');
 const { guardApi } = require('../lib/guard');
+const { readJsonBody } = require('../lib/http');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -10,7 +11,7 @@ module.exports = async (req, res) => {
   }
   if (!guardApi(req, res, { name: 'search', limit: 240, windowMs: 60000 })) return;
 
-  const body = (typeof req.body === 'string') ? JSON.parse(req.body || '{}') : (req.body || {});
+  const body = readJsonBody(req);
   try {
     const result = await searchOnce(body);
     if (!result.ok) {

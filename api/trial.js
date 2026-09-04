@@ -9,6 +9,7 @@ const { getSessionUser } = require('../lib/auth');
 const subscription = require('../lib/subscription');
 const { guardApi } = require('../lib/guard');
 const db = require('../lib/db');
+const { readJsonBody } = require('../lib/http');
 
 const TRIAL_DAYS = Number.isFinite(config.trial_period_days) ? config.trial_period_days : 2;
 
@@ -47,7 +48,7 @@ module.exports = async (req, res) => {
   }
   if (!guardApi(req, res, { name: 'trial', limit: 60, windowMs: 60000 })) return;
 
-  const body = (typeof req.body === 'string') ? safeParse(req.body) : (req.body || {});
+  const body = readJsonBody(req);
   const action = body.action || 'status';
 
   try {
@@ -85,7 +86,3 @@ module.exports = async (req, res) => {
     res.status(500).json({ ok: false, error: e && e.message ? e.message : String(e) });
   }
 };
-
-function safeParse(s) {
-  try { return JSON.parse(s || '{}'); } catch (e) { return {}; }
-}

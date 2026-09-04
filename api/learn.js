@@ -10,16 +10,12 @@
 const db = require('../lib/db');
 const { guardApi } = require('../lib/guard');
 const { getSessionUser } = require('../lib/auth');
+const { readJsonBody } = require('../lib/http');
+const { verifyCaptchaLearnToken } = require('../lib/license');
+const { hashCaptchaDataUri } = require('../lib/reserve');
 
 const MAX_SAMPLES = 500;      // سقف نگهداری نمونه (مدل با چند صد نمونه هم بهتر می‌شود)
 const MAX_IMAGE_CHARS = 200000; // ≈150KB تصویر base64
-
-function readBody(req) {
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body || '{}'); } catch (e) { return {}; }
-  }
-  return req.body || {};
-}
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -28,7 +24,7 @@ module.exports = async (req, res) => {
   }
   if (!guardApi(req, res, { name: 'learn', limit: 20, windowMs: 60000 })) return;
 
-  const body = readBody(req);
+  const body = readJsonBody(req);
   const action = body.action || 'captcha-sample';
 
   try {
@@ -42,6 +38,21 @@ module.exports = async (req, res) => {
       }
       if (!/^[A-Za-z0-9]{3,8}$/.test(text)) {
         return res.status(400).json({ ok: false, error: 'متن کپچا معتبر نیست.' });
+      }
+
+      const proof = verifyCaptchaLearnToken(String(body.learnToken || ''));
+      if (!proof) {
+        return res.status(403).json({ ok: false, error: 'نمونه یادگیری فقط بعد از عبور موفق از کپچا پذیرفته می‌شود.' });
+      }
+      if (String(proof.captcha_text || '').toUpperCase() !== text.toUpperCase()) {
+        return res.status(400).json({ ok: false, error: 'متن کپچا با توکن یادگیری سازگار نیست.' });
+      }
+      const imageHash = hashCaptchaDataUri(image);
+      if (!imageHash || imageHash !== String(proof.image_hash || '')) {
+        return res.status(400).json({ ok: false, error: 'تصویر کپچا با توکن یادگیری سازگار نیست.' });
+      }
+      if (db.findOne('captcha_samples', (s) => s.proof_id === proof.proof_id)) {
+        return res.status(200).json({ ok: true, duplicate: true, chars_learned: 0 });
       }
 
       // استخراج بردار کاراکترها برای تطبیق نمونه‌محور (k-NN) — بهترین تلاش؛
@@ -60,6 +71,9 @@ module.exports = async (req, res) => {
         image, text, source,
         user_id: user ? user.id : null,
         char_vectors: charVectors,
+        proof_id: proof.proof_id,
+        workflow_id: proof.workflow_id || '',
+        image_hash: imageHash,
       });
 
       // محدودنگه‌داشتن تعداد نمونه‌ها (حذف قدیمی‌ترین‌ها)

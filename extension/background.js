@@ -15,6 +15,13 @@ chrome.action.onClicked.addListener(async () => {
   try {
     const cfg = await chrome.storage.local.get({ appUrl: DEFAULT_APP_URL });
     const appUrl = String(cfg.appUrl || DEFAULT_APP_URL).replace(/\/+$/, '');
+    const appBase = new URL(appUrl);
+    const pairCookie = await chrome.cookies.get({ url: appBase.origin + '/', name: 'bf_cookie_sync_pair' });
+    const pairToken = pairCookie && pairCookie.value;
+    if (!pairToken) {
+      setBadge('✗', '#c0392b', 'ابتدا در صفحه ورود بیلیت فست روی «دریافت کوکی از افزونه» بزنید، سپس دوباره آیکون افزونه را کلیک کنید.');
+      return;
+    }
 
     // خواندن همه کوکی‌های دامنه صفیر ریل (شامل کوکی‌های HttpOnly)
     const cookies = await chrome.cookies.getAll({ domain: 'safirrail.ir' });
@@ -28,7 +35,10 @@ chrome.action.onClicked.addListener(async () => {
 
     const resp = await fetch(appUrl + '/api/cookie-sync', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-BilitFast-Pair': pairToken,
+      },
       body: JSON.stringify({ action: 'push', cookies: list, source: 'extension' }),
     });
     const data = await resp.json();

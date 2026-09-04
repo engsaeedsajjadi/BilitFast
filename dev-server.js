@@ -6,6 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
+const { securityHeaders } = require('./lib/http');
 
 const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
@@ -57,7 +58,7 @@ function readBody(req) {
 }
 
 function send(res, status, body, headers = {}) {
-  res.writeHead(status, headers);
+  res.writeHead(status, { ...securityHeaders(), ...headers });
   res.end(body);
 }
 

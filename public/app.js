@@ -32,12 +32,27 @@ const BilitFast = (function () {
 
   function readCache() {
     try {
-      const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-      return (c && typeof c === 'object' && c.state) ? c : null;
+      const cur = sessionStorage.getItem(CACHE_KEY);
+      if (cur) {
+        const c = JSON.parse(cur || 'null');
+        return (c && typeof c === 'object' && c.state) ? c : null;
+      }
+      const legacy = localStorage.getItem(CACHE_KEY);
+      if (!legacy) return null;
+      const parsed = JSON.parse(legacy || 'null');
+      if (parsed && typeof parsed === 'object' && parsed.state) {
+        sessionStorage.setItem(CACHE_KEY, legacy);
+        localStorage.removeItem(CACHE_KEY);
+        return parsed;
+      }
+      return null;
     } catch (e) { return null; }
   }
   function writeCache(st) {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...st, ts: Date.now() })); } catch (e) { /* ignore */ }
+    try {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ...st, ts: Date.now() }));
+      localStorage.removeItem(CACHE_KEY);
+    } catch (e) { /* ignore */ }
   }
 
   /** وضعیت مجوز از سرور: اشتراک فعال > فعال‌سازی دائمی > دوره آزمایشی. */

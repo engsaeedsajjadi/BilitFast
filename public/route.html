@@ -608,15 +608,16 @@
    * وقتی کپچایی (دستی یا با OCR) حل شد و سرور عبور از مرحله کپچا را تأیید
    * کرد، تصویر + متن همان کپچا به‌عنوان نمونه برچسب‌خورده واقعی ثبت می‌شود
    * تا بعداً مدل با آن بازآموزی شود. بهترین تلاش است و هرگز جریان را مختل نمی‌کند. */
-  function reportCaptchaSample(attempt) {
+  function reportCaptchaSample(attempt, learnToken) {
     try {
       const src = $('reserve-captcha-img').src;
       if (!src || !/^data:image/i.test(src)) return;
       if (!/^\d{3,8}$/.test(attempt.text || '')) return;
+      if (!learnToken) return;
       fetch('/api/learn', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'captcha-sample', image: src, text: attempt.text, source: attempt.source }),
+        body: JSON.stringify({ action: 'captcha-sample', image: src, text: attempt.text, source: attempt.source, learnToken }),
       }).catch(() => {});
     } catch (e) { /* ignore */ }
   }
@@ -699,9 +700,9 @@
       showReserveError((data && data.error) || 'خطا در رزرو');
       return;
     }
-    // حلقه یادگیری: عبور از مرحله کپچا یعنی متن ارسال‌شده درست بوده است
+    // حلقه یادگیری: فقط با proof token صادرشده از سرور، نمونه پذیرفته می‌شود.
     if (lastCaptchaAttempt && data.step !== 'captcha') {
-      reportCaptchaSample(lastCaptchaAttempt);
+      reportCaptchaSample(lastCaptchaAttempt, data.learnToken || '');
       lastCaptchaAttempt = null;
     }
     if (data.stateToken) reserveCtx.token = data.stateToken;
@@ -826,6 +827,7 @@
     }
     const data = await callReserve({ action: 'captcha-image', captchaImageUrl: url, stateToken: reserveCtx.token });
     if (data && data.ok && data.dataUri) {
+      if (data.stateToken) reserveCtx.token = data.stateToken;
       img.src = data.dataUri;
     } else {
       img.alt = 'دریافت کپچا ناموفق';

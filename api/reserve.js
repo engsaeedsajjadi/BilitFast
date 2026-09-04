@@ -7,14 +7,7 @@ const {
   solveCaptchaImage,
 } = require('../lib/reserve');
 const { guardApi } = require('../lib/guard');
-
-function readBody(req) {
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body || '{}'); }
-    catch (e) { return {}; }
-  }
-  return req.body || {};
-}
+const { readJsonBody } = require('../lib/http');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -23,7 +16,7 @@ module.exports = async (req, res) => {
   }
   if (!guardApi(req, res, { name: 'reserve', limit: 120, windowMs: 60000 })) return;
 
-  const body = readBody(req);
+  const body = readJsonBody(req);
   const action = body.action || (req.query && req.query.action) || 'start';
 
   try {

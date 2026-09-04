@@ -6,13 +6,7 @@
 const { getSessionUser } = require('../lib/auth');
 const { guardApi } = require('../lib/guard');
 const db = require('../lib/db');
-
-function readBody(req) {
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body || '{}'); } catch (e) { return {}; }
-  }
-  return req.body || {};
-}
+const { readJsonBody } = require('../lib/http');
 
 const VALID_RESULTS = {
   paid: 'paid_confirmed',
@@ -27,7 +21,7 @@ module.exports = async (req, res) => {
   }
   if (!guardApi(req, res, { name: 'bookings', limit: 120, windowMs: 60000 })) return;
 
-  const body = readBody(req);
+  const body = readJsonBody(req);
   const action = body.action || 'list';
   const user = getSessionUser(req, body);
   if (!user) {

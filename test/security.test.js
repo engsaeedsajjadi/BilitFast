@@ -5,9 +5,12 @@
 const { encryptState, decryptState } = require('../lib/token');
 const {
   signPayload, verifyPayload, licenseStatus, makeLicenseToken, makeTrialToken, isActivated,
+  makeCaptchaLearnToken, verifyCaptchaLearnToken,
 } = require('../lib/license');
 const { checkRate, sweepExpired } = require('../lib/guard');
 const { isValidNationalCode, isValidIranMobile } = require('../lib/validation');
+const { getRequiredEnv } = require('../lib/http');
+const { isAllowedSafirUrl, hashCaptchaDataUri } = require('../lib/reserve');
 
 let failures = 0;
 function test(name, cond) {
@@ -75,6 +78,42 @@ test('وضعیت: دوره آزمایشی منقضی', (() => {
 test('توکن جعلی کلاینت (بدون امضای سرور) رد می‌شود', (() => {
   const fake = Buffer.from(JSON.stringify({ type: 'license', activated: true }), 'utf8').toString('base64url') + '.fake';
   return verifyPayload(fake) === null && !isActivated(fake);
+})());
+
+test('توکن یادگیری کپچا معتبر و زمان‌دار است', (() => {
+  const t = makeCaptchaLearnToken({ workflow_id: 'wf1', captcha_text: '72914', image_hash: 'abc123', proof_id: 'p1' });
+  const v = verifyCaptchaLearnToken(t);
+  return !!(v && v.workflow_id === 'wf1' && v.captcha_text === '72914' && v.image_hash === 'abc123' && v.proof_id === 'p1');
+})());
+
+test('توکن یادگیری کپچای منقضی رد می‌شود', (() => {
+  const t = makeCaptchaLearnToken({ workflow_id: 'wf1', captcha_text: '72914', image_hash: 'abc123', proof_id: 'p2', ttlMs: -1 });
+  return verifyCaptchaLearnToken(t) === null;
+})());
+
+test('فقط URLهای safirrail برای fetch کپچا مجازند', isAllowedSafirUrl('https://safirrail.ir/etrain/captcha.php') && !isAllowedSafirUrl('http://127.0.0.1:3000/') && !isAllowedSafirUrl('https://example.com/captcha.png'));
+
+test('هش data-URI کپچا پایدار است', (() => {
+  const d = 'data:image/png;base64,' + Buffer.from('hello').toString('base64');
+  return !!hashCaptchaDataUri(d) && hashCaptchaDataUri(d) === hashCaptchaDataUri(d);
+})());
+
+test('در محیط توسعه fallback secret مجاز است', getRequiredEnv('BILITFAST_LICENSE_KEY', { devFallback: 'dev-secret' }) === 'dev-secret');
+
+test('در محیط تولید نبودن secret خطا می‌دهد', (() => {
+  const prev = process.env.NODE_ENV;
+  const prevKey = process.env.BILITFAST_LICENSE_KEY;
+  delete process.env.BILITFAST_LICENSE_KEY;
+  process.env.NODE_ENV = 'production';
+  let ok = false;
+  try {
+    getRequiredEnv('BILITFAST_LICENSE_KEY', { devFallback: 'dev-secret' });
+  } catch (e) {
+    ok = /BILITFAST_LICENSE_KEY/.test(String(e && e.message ? e.message : e));
+  }
+  if (prev === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = prev;
+  if (prevKey === undefined) delete process.env.BILITFAST_LICENSE_KEY; else process.env.BILITFAST_LICENSE_KEY = prevKey;
+  return ok;
 })());
 
 /* ---------------- محدودسازی نرخ ---------------- */
