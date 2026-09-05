@@ -763,7 +763,8 @@
           }
         } else if (activeCaptchaMode() === 'auto') {
           showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true });
-          autoSolveLoop(data.captchaImageUrl, { untilAccepted: true });
+          // فقط اگر حلقه از قبل فعال نیست، حلقه جدید شروع کن
+          if (!autoSolving) autoSolveLoop(data.captchaImageUrl, { untilAccepted: true });
         } else {
           showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: false });
         }
@@ -931,13 +932,12 @@
    * untilAccepted=true  → حالت «قطار خاص»: تلاش‌ها تا پذیرفته‌شدن کپچا توسط
    *                        صفیر ریل ادامه می‌یابد (یا کاربر «توقف» بزند یا
    *                        خطای غیرقابل‌ادامه رخ دهد).
+   *                        نکته مهم: در این حالت handleReserveStep هرگز برای
+   *                        کپچای اشتباه صدا زده نمی‌شود — کل چرخه retry
+   *                        (رفرش + OCR + ارسال) داخل همین حلقه انجام می‌شود
+   *                        تا reserveCtx.steps بالا نرود و حلقه متوقف نشود.
    * untilAccepted=false → درخواست موردی (مثلاً در حالت دستی): فقط یک دور تلاش،
-   *                        سپس نتیجه به کاربر واگذار می‌شود.
-   *
-   * نکته مهم: هر تلاش با یک کپچای تازه انجام می‌شود. چون ارسال کپچای اشتباه
-   * فقط صفحه کپچا را دوباره برمی‌گرداند (جریمه/بلاکی ندارد)، می‌توانیم چند بار
-   * تلاش کنیم و شانس موفقیت کلی را به‌شدت بالا ببریم. تصویر در طول این مدت
-   * همیشه نمایش داده می‌شود تا کاربر بتواند هر لحظه دستی وارد کند. */
+   *                        سپس نتیجه به کاربر واگذار می‌شود. */
   async function autoSolveLoop(captchaImageUrl, opts) {
     if (autoSolving) return;
     autoSolving = true;
@@ -946,14 +946,24 @@
 
     let currentUrl = captchaImageUrl;
     const perRound = BilitFast.getCaptchaMaxAttempts() || CAPTCHA_MAX_AUTO_ATTEMPTS;
-    // سقف کل تلاش‌ها: در حالت «تا پذیرش»، مقدار از تنظیمات می‌آید (۰ = نامحدود).
     const hardCap = untilAccepted ? (BilitFast.getCaptchaAutoSolveMaxTotal() || 0) : perRound;
-    const AUTO_RETRY_DELAY_MS = 900; // مکث کوتاه بین تلاش‌ها (پرهیز از فشار پشت‌سرهم)
+    const AUTO_RETRY_DELAY_MS = 900;
+    const CAPTCHA_REFRESH_RETRIES = 3; // تعداد تلاش مجدد برای گرفتن کپچای جدید
     let total = 0;
     let capReached = false;
     let fatal = false;
     let accepted = false;
-    let keepSuggestion = false; // پیشنهاد کم‌اعتماد داخل ورودی حفظ شود
+    let keepSuggestion = false;
+
+    /** رفرش کپچا با retry — اگر سرور پاسخ ندهد، چند بار تلاش می‌کند. */
+    async function refreshWithRetry() {
+      for (let r = 0; r < CAPTCHA_REFRESH_RETRIES; r++) {
+        const url = await refreshCaptchaImage();
+        if (url) return url;
+        await sleep(AUTO_RETRY_DELAY_MS * (r + 1));
+      }
+      return null;
+    }
 
     try {
     outer:
@@ -971,12 +981,6 @@
 
         if (autoSolveStop) break;
 
-        // قاعده ارسال (BilitFast.shouldAutoSubmit):
-        //  - حالت «تا پذیرش» (قطار مشخص): هر حدس معتبر الفبایی-عددی ارسال می‌شود،
-        //    حتی با اعتماد پایین؛ ارسال اشتباه جریمه‌ای ندارد و کپچای تازه
-        //    برمی‌گرداند. (نسخه قبل فقط نتایج «مطمئن» را ارسال می‌کرد و روی
-        //    کپچاهای واقعی معمولاً هیچ ارسال انجام نمی‌شد → فقط پیام متنی.)
-        //  - حالت موردی (دکمه حل یک‌بار): فقط نتیجه مطمئن خودکار ارسال می‌شود.
         if (solved && solved.text && BilitFast.shouldAutoSubmit(solved, untilAccepted)) {
           $('reserve-captcha-input').value = solved.text;
           setStatus('کد خوانده‌شده: ' + solved.text +
@@ -998,61 +1002,58 @@
             if (resp.stateToken) reserveCtx.token = resp.stateToken;
 
             if (resp.step !== 'captcha') {
-              // صفیر ریل کد را پذیرفت (فرم مسافر/پرداخت/موفقیت) → پایان حلقه
+              // ✅ صفیر ریل کد را پذیرفت → فقط حالا handleReserveStep صدا زده می‌شود
               lastCaptchaAttempt = { text: solved.text, source: 'ocr' };
               accepted = true;
               handleReserveStep(resp);
               break outer;
             }
 
-            // کد اشتباه بود → سرور کپچای تازه فرستاده؛ رفرش انجام شده، با همان ادامه می‌دهیم
-            setStatus('کپچای «' + solved.text + '» اشتباه بود — کپچای جدید گرفته شد و دوباره تلاش می‌شود...', 'orange');
+            // ❌ کد اشتباه بود — handleReserveStep صدا زده نمی‌شود (reserveCtx.steps بالا نمی‌رود)
+            // خودمان کپچای جدید می‌گیریم و ادامه می‌دهیم
+            setStatus('کپچای «' + solved.text + '» اشتباه بود — در حال دریافت کپچای جدید و تلاش مجدد...', 'orange');
+
+            // اول از پاسخ سرور، بعد proactive refresh
             if (resp.captchaImageUrl) {
               currentUrl = resp.captchaImageUrl;
               reserveCtx.captchaImageUrl = resp.captchaImageUrl;
               await loadCaptchaImage(currentUrl);
             } else {
-              // سرور تصویر تازه نفرستاده → خودمان رفرش می‌گیریم تا روی همان
-              // کپچای ردشده گیر نکنیم (وگرنه همان متن اشتباه دوباره ارسال می‌شد).
-              const refreshed = await refreshCaptchaImage();
-              if (!refreshed) { fatal = true; break outer; }
-              currentUrl = refreshed;
+              const fresh = await refreshWithRetry();
+              if (fresh) {
+                currentUrl = fresh;
+              } else {
+                // حتی رفرش هم شکست خورد → آخرین تلاش
+                setStatus('خطا در دریافت کپچای جدید — تلاش مجدد با کپچای فعلی...', 'red');
+                // currentUrl همان قبلی می‌ماند؛ سرور ممکن است دوباره قبول کند
+              }
             }
             await sleep(AUTO_RETRY_DELAY_MS);
+            // ادامه حلقه — attempt بعدی با کپچای جدید
             continue;
           }
 
-          // خطای شبکه/سرور در ارسال → ادامه حلقه ممکن نیست
+          // خطای شبکه/سرور
           fatal = true;
           break outer;
         }
 
-        // حدس کم‌اعتماد در حالت موردی (دستی): ارسال خودکار انجام نمی‌شود تا
-        // کپچای فعلیِ قابل‌خواندن برای کاربر عوض نشود؛ متن پیشنهادی فقط داخل
-        // ورودی گذاشته می‌شود تا خود کاربر تأیید/اصلاح و ارسال کند.
-        if (!untilAccepted && solved && solved.text && /^[A-Za-z0-9]{3,8}$/.test(solved.text)) {
-          $('reserve-captcha-input').value = solved.text;
-          keepSuggestion = true;
-          setStatus('پیشنهاد مدل (اطمینان پایین): «' + solved.text +
-            '» — در صورت درست‌بودن، خودتان «ادامه رزرو» بزنید یا کد را اصلاح کنید.', 'orange');
+        // OCR ناموفق → کپچای جدید بگیر
+        const refreshed = await refreshWithRetry();
+        if (refreshed) {
+          currentUrl = refreshed;
+        } else {
+          fatal = true;
           break outer;
         }
-
-        // OCR نامطمئن/ناموفق → کپچای تازه بگیر و دوباره تلاش کن
-        const refreshed = await refreshCaptchaImage();
-        if (!refreshed) { fatal = true; break outer; }
-        currentUrl = refreshed;
         await sleep(AUTO_RETRY_DELAY_MS);
       }
-      if (!untilAccepted) break; // درخواست موردی: فقط یک دور
+      if (!untilAccepted) break;
     }
     } catch (errLoop) {
-      // هر خطای غیرمنتظره نباید رزرو را قفل کند؛ به حالت دستی برمی‌گردیم.
       fatal = true;
       try { console.error('autoSolveLoop:', errLoop); } catch (e) { /* ignore */ }
     } finally {
-      // پایان حلقه → واگذاری به کاربر (تصویر فعلی برای ورود دستی).
-      // مهم: پرچم حل خودکار همیشه (حتی در خطا) پاک می‌شود تا تلاش بعدی قفل نشود.
       autoSolving = false;
       if (!accepted) {
         if (fatal) {
