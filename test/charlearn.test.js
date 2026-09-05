@@ -6,7 +6,7 @@ const Jimp = require('jimp');
 const ops = require('../lib/imageops');
 const { renderDigit } = require('../lib/digitsynth');
 const { mulberry32 } = require('../lib/ml');
-const { extractCharVectors, cosineDist, matchPrototype, loadPrototypes } = require('../lib/charlearn');
+const { extractCharVectors, matchPrototype, loadPrototypes } = require('../lib/charlearn');
 
 let failures = 0;
 function test(name, cond) {
