@@ -829,6 +829,10 @@
     }
     $('reserve-captcha').style.display = 'block';
     $('reserve-captcha-input').value = '';
+    // دکمه «ادامه رزرو» بعد از هر ارسال غیرفعال می‌شود؛ اگر کپچا اشتباه بود
+    // و صفحه دوباره نمایش داده شد، باید دوباره فعال شود — وگرنه در حالت دستی
+    // کاربر دیگر راهی برای ارسال کد جدید نداشت.
+    $('btn-captcha-submit').disabled = false;
     const imgUrl = (data && data.captchaImageUrl) || reserveCtx.captchaImageUrl;
     if (imgUrl) loadCaptchaImage(imgUrl);
     setStatus(wrongCaptcha ? 'کپچا اشتباه بود — دوباره وارد کنید' : (auto ? 'کپچا نمایش داده شد — کد را وارد کنید' : 'کد امنیتی (کپچا) را دستی وارد کنید'), 'orange');
@@ -927,7 +931,9 @@
     let total = 0;
     let capReached = false;
     let fatal = false;
+    let accepted = false;
 
+    try {
     outer:
     while (!autoSolveStop) {
       for (let attempt = 1; attempt <= perRound && !autoSolveStop; attempt++) {
@@ -943,9 +949,17 @@
 
         if (autoSolveStop) break;
 
-        if (solved && solved.ok && solved.text) {
+        // قاعده ارسال (BilitFast.shouldAutoSubmit):
+        //  - حالت «تا پذیرش» (قطار مشخص): هر حدس معتبر الفبایی-عددی ارسال می‌شود،
+        //    حتی با اعتماد پایین؛ ارسال اشتباه جریمه‌ای ندارد و کپچای تازه
+        //    برمی‌گرداند. (نسخه قبل فقط نتایج «مطمئن» را ارسال می‌کرد و روی
+        //    کپچاهای واقعی معمولاً هیچ ارسال انجام نمی‌شد → فقط پیام متنی.)
+        //  - حالت موردی (دکمه حل یک‌بار): فقط نتیجه مطمئن خودکار ارسال می‌شود.
+        if (solved && solved.text && BilitFast.shouldAutoSubmit(solved, untilAccepted)) {
           $('reserve-captcha-input').value = solved.text;
-          setStatus('کد خوانده‌شده: ' + solved.text + ' — در حال ارسال به صفیر ریل...', 'blue');
+          setStatus('کد خوانده‌شده: ' + solved.text +
+            (solved.ok ? '' : ' (اطمینان پایین — برای امتحان ارسال می‌شود)') +
+            ' — در حال ارسال به صفیر ریل...', 'blue');
 
           const resp = await callReserve({
             action: 'submit',
@@ -964,9 +978,9 @@
             if (resp.step !== 'captcha') {
               // صفیر ریل کد را پذیرفت (فرم مسافر/پرداخت/موفقیت) → پایان حلقه
               lastCaptchaAttempt = { text: solved.text, source: 'ocr' };
-              autoSolving = false;
+              accepted = true;
               handleReserveStep(resp);
-              return;
+              break outer;
             }
 
             // کد اشتباه بود → سرور کپچای تازه فرستاده؛ رفرش انجام شده، با همان ادامه می‌دهیم
@@ -975,6 +989,12 @@
               currentUrl = resp.captchaImageUrl;
               reserveCtx.captchaImageUrl = resp.captchaImageUrl;
               await loadCaptchaImage(currentUrl);
+            } else {
+              // سرور تصویر تازه نفرستاده → خودمان رفرش می‌گیریم تا روی همان
+              // کپچای ردشده گیر نکنیم (وگرنه همان متن اشتباه دوباره ارسال می‌شد).
+              const refreshed = await refreshCaptchaImage();
+              if (!refreshed) { fatal = true; break outer; }
+              currentUrl = refreshed;
             }
             await sleep(AUTO_RETRY_DELAY_MS);
             continue;
@@ -982,6 +1002,16 @@
 
           // خطای شبکه/سرور در ارسال → ادامه حلقه ممکن نیست
           fatal = true;
+          break outer;
+        }
+
+        // حدس کم‌اعتماد در حالت موردی (دستی): ارسال خودکار انجام نمی‌شود تا
+        // کپچای فعلیِ قابل‌خواندن برای کاربر عوض نشود؛ متن پیشنهادی فقط داخل
+        // ورودی گذاشته می‌شود تا خود کاربر تأیید/اصلاح و ارسال کند.
+        if (!untilAccepted && solved && solved.text && /^[A-Za-z0-9]{3,8}$/.test(solved.text)) {
+          $('reserve-captcha-input').value = solved.text;
+          setStatus('پیشنهاد مدل (اطمینان پایین): «' + solved.text +
+            '» — در صورت درست‌بودن، خودتان «ادامه رزرو» بزنید یا کد را اصلاح کنید.', 'orange');
           break outer;
         }
 
@@ -993,17 +1023,25 @@
       }
       if (!untilAccepted) break; // درخواست موردی: فقط یک دور
     }
-
-    // پایان حلقه → واگذاری به کاربر (تصویر فعلی برای ورود دستی)
-    autoSolving = false;
-    if (fatal) {
-      setStatus('خطا در ادامه حل خودکار — ادامه را به‌صورت دستی انجام دهید.', 'red');
-    } else if (capReached) {
-      setStatus('سقف تلاش‌های خودکار (' + hardCap + ') پر شد — کد را دستی وارد کنید.', 'orange');
-    } else if (autoSolveStop) {
-      setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
+    } catch (errLoop) {
+      // هر خطای غیرمنتظره نباید رزرو را قفل کند؛ به حالت دستی برمی‌گردیم.
+      fatal = true;
+      try { console.error('autoSolveLoop:', errLoop); } catch (e) { /* ignore */ }
+    } finally {
+      // پایان حلقه → واگذاری به کاربر (تصویر فعلی برای ورود دستی).
+      // مهم: پرچم حل خودکار همیشه (حتی در خطا) پاک می‌شود تا تلاش بعدی قفل نشود.
+      autoSolving = false;
+      if (!accepted) {
+        if (fatal) {
+          setStatus('خطا در ادامه حل خودکار — ادامه را به‌صورت دستی انجام دهید.', 'red');
+        } else if (capReached) {
+          setStatus('سقف تلاش‌های خودکار (' + hardCap + ') پر شد — کد را دستی وارد کنید.', 'orange');
+        } else if (autoSolveStop) {
+          setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
+        }
+        showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl });
+      }
     }
-    showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl });
   }
 
   async function refreshCaptchaImage() {

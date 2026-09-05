@@ -36,6 +36,28 @@ function dataUri(file) {
   test('شماره قطار null/undefined → دستی', BF.captchaModeForTrain(null) === 'manual' && BF.captchaModeForTrain(undefined) === 'manual');
   test('صدور تابع سقف تلاش‌های خودکار', typeof BF.getCaptchaAutoSolveMaxTotal === 'function');
 
+  /* --- ۱-ب) قاعده ارسال نتیجه حل (رفع باگ «فقط پیام متنی») ---
+   * نسخه قبلی فقط نتیجه «مطمئن» (ok=true) را ارسال می‌کرد؛ روی کپچاهای
+   * واقعیِ دیده‌نشده اعتماد معمولاً پایین است و حلقه هرگز ارسال نمی‌کرد. */
+  test('صدور تابع تصمیم ارسال', typeof BF.shouldAutoSubmit === 'function');
+  test('تا پذیرش: حدس کم‌اعتماد ولی معتبر ارسال می‌شود',
+    BF.shouldAutoSubmit({ ok: false, text: '4a7H4', confidence: 12 }, true) === true);
+  test('تا پذیرش: متن نامعتبر (نمادهای غیرالفبایی) ارسال نمی‌شود',
+    BF.shouldAutoSubmit({ ok: true, text: '=====', confidence: 90 }, true) === false);
+  test('تا پذیرش: متن خالی/ناموجود ارسال نمی‌شود',
+    BF.shouldAutoSubmit({ ok: true, text: '', confidence: 90 }, true) === false &&
+    BF.shouldAutoSubmit(null, true) === false);
+  test('حالت موردی: فقط نتیجه مطمئن ارسال می‌شود',
+    BF.shouldAutoSubmit({ ok: false, text: '4a7H4' }, false) === false &&
+    BF.shouldAutoSubmit({ ok: true, text: '4a7H4' }, false) === true);
+
+  /* --- ۱-ج) رگرسیون فرانت‌اند: حلقه و دکمه ارسال در route.html --- */
+  const routeSrc = fs.readFileSync(path.join(__dirname, '..', 'public', 'route.html'), 'utf8');
+  test('حلقه حل خودکار از قاعده shouldAutoSubmit استفاده می‌کند (نه فقط solved.ok)',
+    routeSrc.includes('BilitFast.shouldAutoSubmit(solved, untilAccepted)'));
+  test('دکمه «ادامه رزرو» هنگام نمایش کپچا دوباره فعال می‌شود (رفع قفل حالت دستی)',
+    /\$\('btn-captcha-submit'\)\.disabled\s*=\s*false/.test(routeSrc));
+
   /* --- ۲) تنظیمات سرور --- */
   const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8'));
   test('captcha.auto_solve_max_total وجود دارد و >= 0 است (۰ = نامحدود)',

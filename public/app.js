@@ -319,6 +319,26 @@ const BilitFast = (function () {
     const n = parseInt(c.auto_solve_max_total, 10);
     return (Number.isFinite(n) && n >= 0) ? n : 0;
   }
+  /** تصمیم ارسالِ خودکارِ نتیجهٔ حل کپچا.
+   *
+   * مشکل نسخه قبل: حلقهٔ «تلاش تا پذیرش» فقط وقتی نتیجهٔ حل «مطمئن»
+   * (ok=true) بود ارسال می‌کرد؛ روی کپچاهای واقعیِ دیده‌نشده، اعتماد مدل
+   * معمولاً پایین است و در نتیجه حلقه هرگز چیزی ارسال نمی‌کرد و فقط رفرش +
+   * پیام متنی تولید می‌شد.
+   *
+   * قاعده جدید:
+   *  - حالت «تا پذیرش» (untilAccepted=true، قطار مشخص): هر حدس معتبرِ
+   *    الفبایی-عددی ارسال می‌شود، حتی با اعتماد پایین؛ چون ارسال اشتباه در
+   *    صفیر ریل جریمه‌ای ندارد و فقط کپچای تازه برمی‌گرداند.
+   *  - حالت موردی (تا پذیرش نیست): فقط نتیجهٔ مطمئن خودکار ارسال می‌شود؛
+   *    حدس کم‌اعتماد فقط داخل ورودی نمایش داده می‌شود تا کاربر تأیید/اصلاح کند.
+   */
+  function shouldAutoSubmit(solveResult, untilAccepted) {
+    const text = String((solveResult && solveResult.text) || '').trim();
+    if (!/^[A-Za-z0-9]{3,8}$/.test(text)) return false;
+    if (untilAccepted) return true;
+    return !!(solveResult && solveResult.ok);
+  }
   /** (سازگاری با نسخه‌های قبل) — حالت مؤثر دیگر از شماره قطار مشتق می‌شود. */
   function getCaptchaMode() {
     const c = (sharedConfig && sharedConfig.captcha) || {};
@@ -367,7 +387,7 @@ const BilitFast = (function () {
     // تنظیمات
     loadSharedConfig, getPollIntervalMs, getCaptchaMaxAttempts,
     isDebugMode, setDebugMode,
-    captchaModeForTrain, getCaptchaAutoSolveMaxTotal, getCaptchaMode,
+    captchaModeForTrain, getCaptchaAutoSolveMaxTotal, getCaptchaMode, shouldAutoSubmit,
     // پایش همزمان
     activeMonitors, heartbeatMonitor, unregisterMonitor, monitorSlotAvailable,
     monitorIntervalMs, MAX_CONCURRENT_MONITORS,

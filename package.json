@@ -7,6 +7,7 @@
     "start": "node dev-server.js",
     "test": "node test/classification.test.js && node test/security.test.js && node test/account.test.js && node test/captcha.test.js && node test/ml.test.js && node test/cookie-sync.test.js && node test/rateplan.test.js && node test/search-validation.test.js && node test/charlearn.test.js && node test/swt.test.js && node test/captures.test.js && node test/captcha-modes.test.js && node test/ocr-config.test.js && node test/ocr-vision.test.js && node test/synthgen.test.js",
     "test:ocr": "node test/ocr-config.test.js && node test/ocr-vision.test.js && node test/synthgen.test.js && node test/ocr-integration.test.js",
+    "test:e2e": "node scripts/e2e-captcha-loop.js",
     "benchmark": "node scripts/benchmark.js",
     "benchmark:quick": "node scripts/benchmark.js --quick"
   },
