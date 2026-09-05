@@ -126,10 +126,7 @@
       <div id="reserve-captcha" style="display:none">
         <div class="field" style="margin-bottom:10px;padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">
           <label style="font-weight:600">روش حل کپچا:</label>
-          <div class="radio-group">
-            <label><input type="radio" name="captcha-mode" value="auto"> 🤖 خودکار (مدل + OCR)</label>
-            <label><input type="radio" name="captcha-mode" value="manual"> ✋ دستی (توسط شما)</label>
-          </div>
+          <div id="captcha-mode-badge" class="alert" style="margin:6px 0 0;padding:6px 10px"></div>
           <p class="muted small" id="captcha-mode-hint" style="margin:6px 0 0"></p>
         </div>
         <p class="muted small">کد امنیتی تصویر زیر را وارد کنید:</p>
@@ -236,6 +233,9 @@
     // اعمال فیلدهای ذخیره‌شده
     const route = BilitFast.getRoute(ROUTE_ID);
     if (route) applyFields(route.fields);
+    // فیلدها به‌صورت ناهمزمان اعمال شدند → نشانگر حالت کپچا و عنوان را تازه کن
+    applyCaptchaModeUI();
+    updateTitle();
   }
 
   function getFields() {
@@ -581,6 +581,20 @@
   let autoSolveStop = false;
   let lastCaptchaAttempt = null; // { text, source: 'manual'|'ocr' } — برای حلقه یادگیری
 
+  /* --- حالت حل کپچا: مشتق‌شده از «انتخاب شماره قطار» (طبق درخواست کاربر) ---
+   * شماره قطار مشخص وارد شده → خودکار (حل + ارسال + رفرش تا پذیرش کد).
+   * شماره قطار وارد نشده      → دستی (کاربر بعد از انتخاب قطار کد را وارد می‌کند).
+   * حالت مؤثر هر رزرو در لحظهٔ شروع رزرو قفل می‌شود (reserveCtx.mode) تا تغییر
+   * فیلدها در میانهٔ رزرو رفتار را عوض نکند؛ نشانگر صفحه از فیلد زنده می‌آید. */
+  function derivedCaptchaMode() {
+    return BilitFast.captchaModeForTrain($('bf_train').value);
+  }
+  function activeCaptchaMode() {
+    return (reserveCtx && reserveCtx.mode) || derivedCaptchaMode();
+  }
+
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
   /* --- تازه‌سازی نتایج قبل از رزرو ---
    * توکن «srvc» هر قطار موقع جستجو ساخته می‌شود و ممکن است منقضی شود؛ در آن
    * حالت سرور خطای «101-ارائه سرویس امکان‌پذیر نمی‌باشد» برمی‌گرداند. اگر
@@ -654,7 +668,11 @@
       steps: 0,
       captchaImageUrl: null,
       formHtml: null,
+      mode: null,
     };
+    // حالت حل کپچا در لحظهٔ شروع رزرو قفل می‌شود: با شماره قطار مشخص → خودکار؛
+    // بدون آن → دستی. (برای رزرو خودکارِ پایش، اینجا همیشه «خودکار» است.)
+    reserveCtx.mode = BilitFast.captchaModeForTrain(reserveCtx.fields.train_number);
 
     $('reserve-section').style.display = 'block';
     renderReservePassengers(reserveCtx.passengers);
@@ -719,16 +737,16 @@
 
     switch (data.step) {
       case 'captcha':
-        // رفتار بر اساس «روش حل کپچا» که کاربر انتخاب کرده است:
-        // خودکار → حلقه حل خودکار اجرا می‌شود؛ دستی → فقط نمایش برای کاربر.
+        // رفتار بر اساس حالت مشتق‌شده از «شماره قطار»:
+        // خودکار → حلقه حل خودکار (تا پذیرش کد)؛ دستی → فقط نمایش برای کاربر.
         applyCaptchaModeUI();
         if (data.captchaError) {
           // کپچای قبلی اشتباه بود → کپچای جدید از سرور رسیده است
           showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, wrongCaptcha: true });
-          if (BilitFast.getCaptchaMode() === 'auto') autoSolveLoop(data.captchaImageUrl);
-        } else if (BilitFast.getCaptchaMode() === 'auto') {
+          if (activeCaptchaMode() === 'auto') autoSolveLoop(data.captchaImageUrl, { untilAccepted: true });
+        } else if (activeCaptchaMode() === 'auto') {
           showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true });
-          autoSolveLoop(data.captchaImageUrl);
+          autoSolveLoop(data.captchaImageUrl, { untilAccepted: true });
         } else {
           showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: false });
         }
@@ -834,20 +852,30 @@
     }
   }
 
-  /* --- انتخاب روش حل کپچا (خودکار/دستی) ---
-   * خودکار: برنامه با مدل اختصاصی/OCR تلاش می‌کند (رفتار قبلی).
-   * دستی: حلقه خودکار اصلاً اجرا نمی‌شود؛ کاربر کد را وارد می‌کند و در صورت
-   * نیاز می‌تواند با یک دکمه، حل خودکارِ همان کپچا را درخواست دهد. */
+  /* --- روش حل کپچا (خودکار/دستی) — مشتق‌شده از «شماره قطار» ---
+   * خودکار: برنامه با مدل اختصاصی/OCR حل می‌کند، ارسال می‌کند و در صورت ردشدن،
+   * کپچا را رفرش و دوباره حل/ارسال می‌کند تا صفیر ریل کد را بپذیرد.
+   * دستی: حلقه خودکار اجرا نمی‌شود؛ کاربر کد را وارد می‌کند و در صورت نیاز
+   * می‌تواند با یک دکمه، حل خودکارِ همان کپچا را درخواست دهد. */
   function applyCaptchaModeUI() {
-    const mode = BilitFast.getCaptchaMode();
-    document.querySelectorAll('input[name="captcha-mode"]').forEach((r) => {
-      r.checked = (r.value === mode);
-    });
+    const mode = activeCaptchaMode();
+    const badge = $('captcha-mode-badge');
+    if (badge) {
+      if (mode === 'auto') {
+        badge.textContent = '🤖 خودکار — قطار مشخص انتخاب شده؛ برنامه کپچا را حل، ارسال و در صورت اشتباه‌بودن، رفرش و تکرار می‌کند تا کد پذیرفته شود.';
+        badge.style.background = '#e8f5e9';
+        badge.style.borderColor = '#a5d6a7';
+      } else {
+        badge.textContent = '✋ دستی — شماره قطار مشخصی انتخاب نشده؛ بعد از انتخاب قطار از لیست، کد امنیتی را خودتان وارد کنید.';
+        badge.style.background = '#fff8e1';
+        badge.style.borderColor = '#ffe082';
+      }
+    }
     const hint = $('captcha-mode-hint');
     if (hint) {
       hint.textContent = (mode === 'auto')
-        ? 'برنامه ابتدا خودش کپچا را حل می‌کند؛ هر لحظه می‌توانید کد را دستی وارد کنید (حل خودکار متوقف می‌شود).'
-        : 'کپچا فقط با ورود شما حل می‌شود و رفرش خودکار انجام نمی‌شود؛ در صورت نیاز «حل خودکار همین کپچا» را بزنید.';
+        ? 'هر لحظه می‌توانید با دکمه «⏹ توقف» حل خودکار را متوقف کنید و کد را دستی وارد کنید.'
+        : 'در صورت نیاز، دکمه «🤖 حل خودکار همین کپچا» یک‌بار حل خودکار را امتحان می‌کند.';
     }
     const stopBtn = $('btn-captcha-stop-auto');
     const autoNowBtn = $('btn-captcha-auto-now');
@@ -855,22 +883,18 @@
     if (autoNowBtn) autoNowBtn.style.display = (mode === 'manual') ? '' : 'none';
   }
 
-  document.querySelectorAll('input[name="captcha-mode"]').forEach((r) => {
-    r.addEventListener('change', () => {
-      BilitFast.setCaptchaMode(r.value);
-      if (r.value === 'manual') {
-        autoSolveStop = true; // توقف فوری حلقه خودکارِ در حال اجرا
-        if (autoSolving) setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
-      }
-      applyCaptchaModeUI();
-    });
+  // به‌روزرسانی نشانگر حالت با تغییر فیلد شماره قطار (در حین رزرو فعال،
+  // حالت رزرو جاری تغییر نمی‌کند؛ حالت جدید از رزرو بعدی اعمال می‌شود).
+  $('bf_train').addEventListener('input', () => {
+    if (!autoSolving) applyCaptchaModeUI();
   });
 
   $('btn-captcha-auto-now').addEventListener('click', () => {
     if (autoSolving) return;
     autoSolveStop = false;
     setStatus('حل خودکار کپچای فعلی شروع شد...', 'blue');
-    autoSolveLoop(reserveCtx.captchaImageUrl);
+    // درخواست موردی در حالت دستی: فقط یک دور تلاش، بعد واگذاری به کاربر.
+    autoSolveLoop(reserveCtx.captchaImageUrl, { untilAccepted: false });
   });
 
   $('btn-captcha-stop-auto').addEventListener('click', () => {
@@ -878,76 +902,107 @@
     setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
   });
 
-  /* --- حل خودکار کپچا (OCR) با تلاش مجدد تا حداکثر، و واگذاری دستی در پایان --- */
-  async function autoSolveLoop(captchaImageUrl) {
+  /* --- حل خودکار کپچا (OCR) ---
+   * untilAccepted=true  → حالت «قطار خاص»: تلاش‌ها تا پذیرفته‌شدن کپچا توسط
+   *                        صفیر ریل ادامه می‌یابد (یا کاربر «توقف» بزند یا
+   *                        خطای غیرقابل‌ادامه رخ دهد).
+   * untilAccepted=false → درخواست موردی (مثلاً در حالت دستی): فقط یک دور تلاش،
+   *                        سپس نتیجه به کاربر واگذار می‌شود.
+   *
+   * نکته مهم: هر تلاش با یک کپچای تازه انجام می‌شود. چون ارسال کپچای اشتباه
+   * فقط صفحه کپچا را دوباره برمی‌گرداند (جریمه/بلاکی ندارد)، می‌توانیم چند بار
+   * تلاش کنیم و شانس موفقیت کلی را به‌شدت بالا ببریم. تصویر در طول این مدت
+   * همیشه نمایش داده می‌شود تا کاربر بتواند هر لحظه دستی وارد کند. */
+  async function autoSolveLoop(captchaImageUrl, opts) {
     if (autoSolving) return;
     autoSolving = true;
     autoSolveStop = false;
+    const untilAccepted = !!(opts && opts.untilAccepted);
 
     let currentUrl = captchaImageUrl;
+    const perRound = BilitFast.getCaptchaMaxAttempts() || CAPTCHA_MAX_AUTO_ATTEMPTS;
+    // سقف کل تلاش‌ها: در حالت «تا پذیرش»، مقدار از تنظیمات می‌آید (۰ = نامحدود).
+    const hardCap = untilAccepted ? (BilitFast.getCaptchaAutoSolveMaxTotal() || 0) : perRound;
+    const AUTO_RETRY_DELAY_MS = 900; // مکث کوتاه بین تلاش‌ها (پرهیز از فشار پشت‌سرهم)
+    let total = 0;
+    let capReached = false;
+    let fatal = false;
 
-    // نکته مهم: هر تلاش با یک کپچای تازه انجام می‌شود. چون ارسال کپچای اشتباه
-    // فقط صفحه کپچا را دوباره برمی‌گرداند (هیچ جریمه/بلاکی ندارد)، می‌توانیم
-    // تا چند بار خودکار تلاش کنیم و شانس موفقیت کلی را به‌شدت بالا ببریم.
-    // تصویر در طول این مدت همیشه نمایش داده می‌شود تا کاربر بتواند هر لحظه دستی وارد کند.
-    const maxAutoAttempts = BilitFast.getCaptchaMaxAttempts() || CAPTCHA_MAX_AUTO_ATTEMPTS;
-    for (let attempt = 1; attempt <= maxAutoAttempts && !autoSolveStop; attempt++) {
-      setStatus('حل خودکار کپچا (تلاش ' + attempt + '/' + maxAutoAttempts + ')...', 'blue');
+    outer:
+    while (!autoSolveStop) {
+      for (let attempt = 1; attempt <= perRound && !autoSolveStop; attempt++) {
+        total++;
+        if (hardCap > 0 && total > hardCap) { capReached = true; break outer; }
+        setStatus('حل خودکار کپچا (تلاش ' + total + (hardCap > 0 ? '/' + hardCap : '') + ')...', 'blue');
 
-      const solved = await callReserve({
-        action: 'solve-captcha',
-        captchaImageUrl: currentUrl,
-        stateToken: reserveCtx.token,
-      });
-
-      if (autoSolveStop) break;
-
-      if (solved && solved.ok && solved.text) {
-        $('reserve-captcha-input').value = solved.text;
-        setStatus('کپچای خوانده‌شده: ' + solved.text + ' — در حال ارسال...', 'blue');
-
-        const resp = await callReserve({
-          action: 'submit',
+        const solved = await callReserve({
+          action: 'solve-captcha',
+          captchaImageUrl: currentUrl,
           stateToken: reserveCtx.token,
-          captcha: solved.text,
-          captchaCaptureId: solved.captureId || null,
-          passengers: reserveCtx.passengers,
-          phone: reserveCtx.phone,
         });
 
         if (autoSolveStop) break;
 
-        if (resp && resp.ok) {
-          if (resp.stateToken) reserveCtx.token = resp.stateToken;
+        if (solved && solved.ok && solved.text) {
+          $('reserve-captcha-input').value = solved.text;
+          setStatus('کد خوانده‌شده: ' + solved.text + ' — در حال ارسال به صفیر ریل...', 'blue');
 
-          if (resp.step !== 'captcha') {
-            // موفق شد (پرداخت/فرم مسافر/موفقیت/خطا)
-            lastCaptchaAttempt = { text: solved.text, source: 'ocr' };
-            autoSolving = false;
-            handleReserveStep(resp);
-            return;
+          const resp = await callReserve({
+            action: 'submit',
+            stateToken: reserveCtx.token,
+            captcha: solved.text,
+            captchaCaptureId: solved.captureId || null,
+            passengers: reserveCtx.passengers,
+            phone: reserveCtx.phone,
+          });
+
+          if (autoSolveStop) break;
+
+          if (resp && resp.ok) {
+            if (resp.stateToken) reserveCtx.token = resp.stateToken;
+
+            if (resp.step !== 'captcha') {
+              // صفیر ریل کد را پذیرفت (فرم مسافر/پرداخت/موفقیت) → پایان حلقه
+              lastCaptchaAttempt = { text: solved.text, source: 'ocr' };
+              autoSolving = false;
+              handleReserveStep(resp);
+              return;
+            }
+
+            // کد اشتباه بود → سرور کپچای تازه فرستاده؛ رفرش انجام شده، با همان ادامه می‌دهیم
+            setStatus('کپچای «' + solved.text + '» اشتباه بود — کپچای جدید گرفته شد و دوباره تلاش می‌شود...', 'orange');
+            if (resp.captchaImageUrl) {
+              currentUrl = resp.captchaImageUrl;
+              reserveCtx.captchaImageUrl = resp.captchaImageUrl;
+              await loadCaptchaImage(currentUrl);
+            }
+            await sleep(AUTO_RETRY_DELAY_MS);
+            continue;
           }
 
-          // کپچا اشتباه بود → سرور کپچای تازه فرستاده؛ برای تلاش بعدی همان را بگیر
-          if (resp.captchaImageUrl) {
-            currentUrl = resp.captchaImageUrl;
-            reserveCtx.captchaImageUrl = resp.captchaImageUrl;
-            await loadCaptchaImage(currentUrl);
-          }
-          continue; // تلاش بعدی با کپچای جدید
+          // خطای شبکه/سرور در ارسال → ادامه حلقه ممکن نیست
+          fatal = true;
+          break outer;
         }
 
-        // خطای ارسال (شبکه/سرور) → از حلقه خودکار خارج شو
-        break;
+        // OCR نامطمئن/ناموفق → کپچای تازه بگیر و دوباره تلاش کن
+        const refreshed = await refreshCaptchaImage();
+        if (!refreshed) { fatal = true; break outer; }
+        currentUrl = refreshed;
+        await sleep(AUTO_RETRY_DELAY_MS);
       }
-
-      // OCR نامطمئن/ناموفق → کپچای تازه بگیر و دوباره تلاش کن
-      const refreshed = await refreshCaptchaImage();
-      if (refreshed) currentUrl = refreshed;
+      if (!untilAccepted) break; // درخواست موردی: فقط یک دور
     }
 
-    // تلاش‌های خودکار تمام شد → واگذار به کاربر (تصویر فعلی برای ورود دستی)
+    // پایان حلقه → واگذاری به کاربر (تصویر فعلی برای ورود دستی)
     autoSolving = false;
+    if (fatal) {
+      setStatus('خطا در ادامه حل خودکار — ادامه را به‌صورت دستی انجام دهید.', 'red');
+    } else if (capReached) {
+      setStatus('سقف تلاش‌های خودکار (' + hardCap + ') پر شد — کد را دستی وارد کنید.', 'orange');
+    } else if (autoSolveStop) {
+      setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
+    }
     showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl });
   }
 

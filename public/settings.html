@@ -87,15 +87,18 @@
     <section class="card">
       <h3>روش حل کپچا</h3>
       <p class="muted small">
-        <b>خودکار:</b> برنامه با مدل اختصاصی و OCR کپچا را حل می‌کند و در صورت
-        شکست، به شما واگذار می‌کند. <b>دستی:</b> هیچ تلاش خودکار و رفرش خودکاری
-        انجام نمی‌شود و همیشه خودتان کد را وارد می‌کنید. این انتخاب در صفحه
-        مسیر (روی کارت کپچا) هم قابل تغییر است.
+        حالت حل کپچا به‌صورت خودکار از <b>انتخاب شماره قطار</b> در صفحه مسیر
+        تعیین می‌شود و نیازی به انتخاب دستی ندارد:
       </p>
-      <div class="radio-group">
-        <label><input type="radio" name="settings-captcha-mode" value="auto"> 🤖 خودکار</label>
-        <label><input type="radio" name="settings-captcha-mode" value="manual"> ✋ دستی</label>
-      </div>
+      <ul class="muted small" style="margin:6px 20px 0">
+        <li><b>🤖 خودکار:</b> وقتی «شماره قطار» مشخصی وارد کرده باشید — برنامه
+          کپچا را حل و به صفیر ریل ارسال می‌کند؛ اگر کد اشتباه بود، خودش کپچا را
+          رفرش می‌کند، دوباره حل و ارسال می‌کند و این کار تا پذیرفته‌شدن کد ادامه
+          می‌یابد (دکمه «توقف» برای قطع‌کردن همیشه در دسترس است).</li>
+        <li><b>✋ دستی:</b> وقتی شماره قطار وارد نکرده باشید — پس از انتخاب قطار
+          از لیست، کد امنیتی را خودتان وارد می‌کنید (دکمه «حل خودکار همین کپچا»
+          برای درخواست موردی در دسترس است).</li>
+      </ul>
     </section>
   </main>
   <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
@@ -120,11 +123,7 @@
   debugToggle.checked = BilitFast.isDebugMode();
   debugToggle.addEventListener('change', () => BilitFast.setDebugMode(debugToggle.checked));
 
-  // روش حل کپچا (همگام با انتخاب صفحه مسیر)
-  document.querySelectorAll('input[name="settings-captcha-mode"]').forEach((r) => {
-    r.checked = (r.value === BilitFast.getCaptchaMode());
-    r.addEventListener('change', () => BilitFast.setCaptchaMode(r.value));
-  });
+  // روش حل کپچا: از «شماره قطار» در صفحه مسیر مشتق می‌شود (بدون انتخاب دستی).
 
   /* ---------------- بخش اطلاع‌رسانی ---------------- */
   let currentUser = null;

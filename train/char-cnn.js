@@ -15,7 +15,7 @@ const path = require('path');
 // بک‌اند بومی برای سرعت آموزش (اختیاری؛ بدون آن tfjs خالص استفاده می‌شود)
 try { require('@tensorflow/tfjs-node'); } catch (e) { /* pure-JS fallback */ }
 const { mulberry32 } = require('../lib/ml');
-const { loadPrototypes, transformVec } = require('../lib/charlearn');
+const { loadTrainingPrototypes, transformVec } = require('../lib/charlearn');
 const { buildCharCNN, getTf } = require('../lib/cnn');
 
 const OUT = path.join(__dirname, '..', 'models', 'char-cnn.json');
@@ -328,7 +328,14 @@ function saveCharModel(trained, outPath = OUT, protosCount, metaExtra = {}) {
 }
 
 async function main() {
-  const protos = loadPrototypes();
+  // دادهٔ آموزش = همهٔ نمونه‌های حلقه یادگیری (captcha_samples): بردارهای
+  // ذخیره‌شده + استخراج مجددِ نمونه‌هایی که بردار ندارند. یعنی کپچاهایی که
+  // برنامه در رزروهای واقعی حل کرده و صفیر ریل تأییدشان کرده، مستقیماً وارد
+  // بازآموزی CNN می‌شوند.
+  const { protos, stats } = await loadTrainingPrototypes();
+  console.log('دادهٔ آموزش: ' + stats.samples + ' کپچا → ' + protos.length + ' کاراکتر' +
+    ' (بردار ذخیره‌شده: ' + stats.withVectors + '، استخراج هنگام آموزش: ' +
+    stats.extractedNow + '، ردشده: ' + stats.failed + ')');
   if (protos.length < 10) {
     console.log('نمونه کافی نیست. ابتدا نمونه واقعی جمع کنید (حلقه یادگیری یا import-labeled).');
     return;

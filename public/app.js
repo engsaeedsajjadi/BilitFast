@@ -302,18 +302,27 @@ const BilitFast = (function () {
     try { localStorage.setItem('bilitfast_debug', on ? '1' : '0'); } catch (e) { /* ignore */ }
   }
 
-  /* ---------------- روش حل کپچا (خودکار/دستی) ---------------- */
-  /** انتخاب کاربر اولویت دارد؛ وگرنه پیش‌فرض از تنظیمات سرور (captcha.auto_solve). */
+  /* ---------------- روش حل کپچا (خودکار/دستی) ----------------
+   * قاعده اصلی (طبق درخواست کاربر): حالت حل کپچا از «انتخاب شماره قطار»
+   * مشتق می‌شود، نه ترجیح ذخیره‌شده:
+   *   - شماره قطار مشخص وارد شده  → خودکار (حل + ارسال + رفرش و تلاش مجدد
+   *     تا زمانی که صفیر ریل کد را بپذیرد).
+   *   - شماره قطار وارد نشده      → دستی (کاربر از لیست قطارها انتخاب می‌کند
+   *     و کد را خودش وارد می‌کند). */
+  function captchaModeForTrain(trainNumber) {
+    const t = String(trainNumber == null ? '' : trainNumber).trim();
+    return t ? 'auto' : 'manual';
+  }
+  /** سقف کل تلاش‌های خودکار کپچا در حالت «قطار خاص» (۰ = نامحدود). */
+  function getCaptchaAutoSolveMaxTotal() {
+    const c = (sharedConfig && sharedConfig.captcha) || {};
+    const n = parseInt(c.auto_solve_max_total, 10);
+    return (Number.isFinite(n) && n >= 0) ? n : 0;
+  }
+  /** (سازگاری با نسخه‌های قبل) — حالت مؤثر دیگر از شماره قطار مشتق می‌شود. */
   function getCaptchaMode() {
-    try {
-      const saved = localStorage.getItem('bilitfast_captcha_mode');
-      if (saved === 'auto' || saved === 'manual') return saved;
-    } catch (e) { /* ignore */ }
     const c = (sharedConfig && sharedConfig.captcha) || {};
     return (c.auto_solve === false) ? 'manual' : 'auto';
-  }
-  function setCaptchaMode(m) {
-    try { localStorage.setItem('bilitfast_captcha_mode', (m === 'manual') ? 'manual' : 'auto'); } catch (e) { /* ignore */ }
   }
 
   /* ---------------- API ---------------- */
@@ -358,7 +367,7 @@ const BilitFast = (function () {
     // تنظیمات
     loadSharedConfig, getPollIntervalMs, getCaptchaMaxAttempts,
     isDebugMode, setDebugMode,
-    getCaptchaMode, setCaptchaMode,
+    captchaModeForTrain, getCaptchaAutoSolveMaxTotal, getCaptchaMode,
     // پایش همزمان
     activeMonitors, heartbeatMonitor, unregisterMonitor, monitorSlotAvailable,
     monitorIntervalMs, MAX_CONCURRENT_MONITORS,
