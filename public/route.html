@@ -670,9 +670,13 @@
       formHtml: null,
       mode: null,
     };
-    // حالت حل کپچا در لحظهٔ شروع رزرو قفل می‌شود: با شماره قطار مشخص → خودکار؛
-    // بدون آن → دستی. (برای رزرو خودکارِ پایش، اینجا همیشه «خودکار» است.)
-    reserveCtx.mode = BilitFast.captchaModeForTrain(reserveCtx.fields.train_number);
+    // حالت حل کپچا در لحظهٔ شروع رزرو قفل می‌شود:
+    //   - اگر شماره قطار مشخصی در فیلد جستجو وارد شده → خودکار (حل + ارسال + رفرش تا پذیرش).
+    //   - اگر قطار از لیست نتایج انتخاب شده (trainNumber موجود است) → خودکار.
+    //   - فقط اگر هیچ شماره قطاری مشخص نباشد → دستی (کاربر خودش کد کپچا را وارد می‌کند).
+    // نکته: وقتی کاربر روی «انتخاب» در جدول قطارها کلیک می‌کند، trainNumber مقدار
+    // دارد و باید خودکار باشد، حتی اگر فیلد جستجو خالی بوده باشد.
+    reserveCtx.mode = trainNumber ? 'auto' : BilitFast.captchaModeForTrain(reserveCtx.fields.train_number);
 
     $('reserve-section').style.display = 'block';
     renderReservePassengers(reserveCtx.passengers);
