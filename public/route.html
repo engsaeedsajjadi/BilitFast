@@ -746,8 +746,21 @@
         applyCaptchaModeUI();
         if (data.captchaError) {
           // کپچای قبلی اشتباه بود → کپچای جدید از سرور رسیده است
-          showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, wrongCaptcha: true });
-          if (activeCaptchaMode() === 'auto') autoSolveLoop(data.captchaImageUrl, { untilAccepted: true });
+          if (activeCaptchaMode() === 'auto') {
+            // نکته مهم: اگر حلقه autoSolveLoop از قبل فعال است، نباید حلقه جدید
+            // شروع کنیم (دو حلقه همزمان = رقابت و ارسال تکراری). حلقه موجود
+            // خودش کپچای جدید را در iter بعدی می‌گیرد و retry می‌کند.
+            // فقط اگر حلقه قبلاً متوقف شده (fatal/stop)، حلقه تازه شروع می‌شود.
+            if (!autoSolving) {
+              showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true, wrongCaptcha: true });
+              autoSolveLoop(data.captchaImageUrl || reserveCtx.captchaImageUrl, { untilAccepted: true });
+            } else {
+              // حلقه فعال است → فقط تصویر جدید را نمایش بده (حلقه خودش ادامه می‌دهد)
+              showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true, wrongCaptcha: true });
+            }
+          } else {
+            showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, wrongCaptcha: true });
+          }
         } else if (activeCaptchaMode() === 'auto') {
           showReserveCaptcha({ captchaImageUrl: data.captchaImageUrl, autoSolving: true });
           autoSolveLoop(data.captchaImageUrl, { untilAccepted: true });
@@ -824,7 +837,9 @@
     hideReserveAll();
     const auto = !!(data && data.autoSolving);
     const wrongCaptcha = !!(data && data.wrongCaptcha);
-    if (wrongCaptcha) {
+    if (wrongCaptcha && auto) {
+      $('reserve-message').textContent = 'کپچای واردشده اشتباه بود — کپچای جدید دریافت شد و در حال حل خودکار مجدد...';
+    } else if (wrongCaptcha) {
       $('reserve-message').textContent = 'کپچای واردشده اشتباه بود. کد تصویر جدید را وارد کنید:';
     } else if (auto) {
       $('reserve-message').textContent = 'کد امنیتی تصویر زیر را وارد کنید (در حال حل خودکار در پس‌زمینه...):';
