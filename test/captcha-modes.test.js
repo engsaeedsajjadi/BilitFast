@@ -57,6 +57,9 @@ function dataUri(file) {
     routeSrc.includes('BilitFast.shouldAutoSubmit(solved, untilAccepted)'));
   test('دکمه «ادامه رزرو» هنگام نمایش کپچا دوباره فعال می‌شود (رفع قفل حالت دستی)',
     /\$\('btn-captcha-submit'\)\.disabled\s*=\s*false/.test(routeSrc));
+  test('پیشنهاد کم‌اعتماد با نمایش دوباره فرم پاک نمی‌شود (keepInput)',
+    routeSrc.includes('keepInput: keepSuggestion') &&
+    /if \(!\(data && data\.keepInput\)\) \$\('reserve-captcha-input'\)\.value = ''/.test(routeSrc));
 
   /* --- ۲) تنظیمات سرور --- */
   const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8'));

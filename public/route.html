@@ -828,7 +828,9 @@
       $('reserve-message').textContent = 'حالت دستی: لطفاً کد امنیتی تصویر زیر را وارد کنید (رفرش خودکار انجام نمی‌شود):';
     }
     $('reserve-captcha').style.display = 'block';
-    $('reserve-captcha-input').value = '';
+    // اگر پیشنهاد مدل از قبل داخل ورودی گذاشته شده (حل یک‌باره کم‌اعتماد)،
+    // نباید پاک شود؛ در بقیه موارد ورودی خالی شروع می‌شود.
+    if (!(data && data.keepInput)) $('reserve-captcha-input').value = '';
     // دکمه «ادامه رزرو» بعد از هر ارسال غیرفعال می‌شود؛ اگر کپچا اشتباه بود
     // و صفحه دوباره نمایش داده شد، باید دوباره فعال شود — وگرنه در حالت دستی
     // کاربر دیگر راهی برای ارسال کد جدید نداشت.
@@ -932,6 +934,7 @@
     let capReached = false;
     let fatal = false;
     let accepted = false;
+    let keepSuggestion = false; // پیشنهاد کم‌اعتماد داخل ورودی حفظ شود
 
     try {
     outer:
@@ -1010,6 +1013,7 @@
         // ورودی گذاشته می‌شود تا خود کاربر تأیید/اصلاح و ارسال کند.
         if (!untilAccepted && solved && solved.text && /^[A-Za-z0-9]{3,8}$/.test(solved.text)) {
           $('reserve-captcha-input').value = solved.text;
+          keepSuggestion = true;
           setStatus('پیشنهاد مدل (اطمینان پایین): «' + solved.text +
             '» — در صورت درست‌بودن، خودتان «ادامه رزرو» بزنید یا کد را اصلاح کنید.', 'orange');
           break outer;
@@ -1039,7 +1043,7 @@
         } else if (autoSolveStop) {
           setStatus('حل خودکار متوقف شد — کد را دستی وارد کنید.', 'orange');
         }
-        showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl });
+        showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl, keepInput: keepSuggestion });
       }
     }
   }
