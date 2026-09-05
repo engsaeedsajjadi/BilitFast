@@ -39,6 +39,17 @@ module.exports = async (req, res) => {
         passengers: body.passengers,
         phone: body.phone,
       });
+      // حلقه یادگیری: آیا کپچای ارسال‌شده از سد صفیر ریل عبور کرد یا نه؟
+      // پذیرفته‌شده → نمونه آموزشی تأییدشده؛ ردشده → در صف برچسب‌گذاری دستی.
+      // «بهترین تلاش» — هیچ خطایی نباید پاسخ رزرو را تغییر دهد.
+      try {
+        const { markOutcomeBySubmit } = require('../lib/captures');
+        await markOutcomeBySubmit({
+          captureId: body.captchaCaptureId || null,
+          text: body.captcha || '',
+          result,
+        });
+      } catch (e) { /* نادیده بگیر */ }
       return respond(res, result);
     }
 

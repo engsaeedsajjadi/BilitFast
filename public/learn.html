@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>یادگیری کپچا — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>🧠 یادگیری کپچا</h2>
+      <p class="muted small">
+        هر کپچایی که سیستم تلاش می‌کند حل کند به‌صورت خودکار ذخیره می‌شود.
+        کپچاهایی که صفیر ریل <b>تأیید</b> کند خودکار به داده آموزشی تبدیل می‌شوند؛
+        کپچاهای <b>ردشده</b> اینجا می‌مانند تا شما متن درست را وارد کنید.
+        هر نمونه برچسب‌خورده، حافظه نمونه‌محور را <b>بلافاصله</b> تقویت می‌کند و در
+        بازآموزی بعدی مدل (<code dir="ltr">node train/char-cnn.js</code>) هم استفاده می‌شود.
+      </p>
+      <p class="muted small" id="stats-line">در حال بارگذاری آمار...</p>
+    </section>
+
+    <section class="card">
+      <h3>کپچاهای در صف برچسب‌گذاری</h3>
+      <p class="muted small">
+        متن درست هر تصویر را با دقت وارد کنید (حروف کوچک/بزرگ مهم است) و «ثبت» را بزنید.
+        اگر تصویر خوانا نیست، «حذف» را بزنید.
+      </p>
+      <div id="queue"></div>
+      <p class="muted small" id="empty-msg" style="display:none">صف خالی است — با هر رزرو واقعی، کپچاهای جدید اینجا جمع می‌شوند.</p>
+      <button class="btn" type="button" id="btn-reload">🔄 تازه‌سازی</button>
+    </section>
+  </main>
+
+  <script>
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+
+    async function api(payload) {
+      const resp = await fetch('/api/learn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return resp.json();
+    }
+
+    async function loadStats() {
+      try {
+        const d = await api({ action: 'stats' });
+        if (!d.ok) return;
+        const cap = d.captures || {};
+        $('stats-line').innerHTML =
+          'نمونه‌های آموزشی ثبت‌شده: <b>' + (d.count || 0) + '</b> · ' +
+          'در صف: <b>' + (cap.queue || 0) + '</b> (ردشده: ' + (cap.failed || 0) + ')';
+      } catch (e) { /* ignore */ }
+    }
+
+    async function loadQueue() {
+      let d;
+      try {
+        d = await api({ action: 'captures', limit: 50 });
+      } catch (e) { return; }
+      const box = $('queue');
+      box.innerHTML = '';
+      const caps = (d && d.captures) || [];
+      $('empty-msg').style.display = caps.length ? 'none' : 'block';
+
+      for (const c of caps) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #eee;padding:10px 0';
+
+        const img = document.createElement('img');
+        img.src = c.image;
+        img.style.cssText = 'height:56px;background:#fff;border:1px solid #ddd;border-radius:6px;image-rendering:pixelated';
+        img.alt = 'captcha';
+
+        const info = document.createElement('div');
+        info.style.cssText = 'font-size:12px;color:#666;min-width:150px';
+        const when = c.created_at ? new Date(c.created_at).toLocaleString('fa-IR') : '';
+        const guess = c.text ? ('پیش‌بینی مدل: <b dir="ltr">' + c.text + '</b> (اطمینان ' + (c.confidence == null ? '—' : c.confidence) + ')') : 'پیش‌بینی: —';
+        const badge = c.outcome === 'failed'
+          ? '<span style="color:#c0392b">❌ ردشده توسط صفیر ریل</span>'
+          : '<span style="color:#888">⏳ در انتظار</span>';
+        info.innerHTML = guess + '<br>' + badge + '<br>' + when;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.dir = 'ltr';
+        input.placeholder = 'متن درست';
+        input.style.cssText = 'width:110px;padding:6px;border:1px solid #ccc;border-radius:6px;text-align:left';
+        if (c.text) input.value = c.text; // پیش‌فرض: پیش‌بینی مدل (اصلاح کنید)
+
+        const btnOk = document.createElement('button');
+        btnOk.className = 'btn btn-primary';
+        btnOk.type = 'button';
+        btnOk.textContent = 'ثبت';
+        btnOk.addEventListener('click', async () => {
+          btnOk.disabled = true;
+          const out = await api({ action: 'label-capture', id: c.id, text: input.value.trim() });
+          if (out.ok) { row.remove(); loadStats(); }
+          else { alert(out.error || 'خطا در ثبت'); btnOk.disabled = false; }
+        });
+
+        const btnDel = document.createElement('button');
+        btnDel.className = 'btn';
+        btnDel.type = 'button';
+        btnDel.textContent = 'حذف';
+        btnDel.addEventListener('click', async () => {
+          btnDel.disabled = true;
+          const out = await api({ action: 'delete-capture', id: c.id });
+          if (out.ok) row.remove();
+          else { alert('خطا در حذف'); btnDel.disabled = false; }
+        });
+
+        row.appendChild(img);
+        row.appendChild(info);
+        row.appendChild(input);
+        row.appendChild(btnOk);
+        row.appendChild(btnDel);
+        box.appendChild(row);
+      }
+    }
+
+    $('btn-reload').addEventListener('click', () => { loadStats(); loadQueue(); });
+    loadStats();
+    loadQueue();
+  </script>
+</body>
+</html>

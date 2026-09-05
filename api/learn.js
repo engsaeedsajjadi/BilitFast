@@ -44,6 +44,11 @@ module.exports = async (req, res) => {
         return res.status(400).json({ ok: false, error: 'متن کپچا معتبر نیست.' });
       }
 
+      // جلوگیری از ثبت تکراری (مثلاً وقتی همان کپچا قبلاً از مسیر خودکارِ
+      // markOutcomeBySubmit به‌عنوان نمونه تأییدشده ثبت شده است).
+      const dup = db.findOne('captcha_samples', (s) => s.text === text && s.image === image);
+      if (dup) return res.status(200).json({ ok: true, duplicate: true, chars_learned: 0 });
+
       // استخراج بردار کاراکترها برای تطبیق نمونه‌محور (k-NN) — بهترین تلاش؛
       // اگر استخراج ممکن نبود، نمونه همچنان برای بازآموزی ذخیره می‌شود.
       let charVectors = null;
@@ -73,10 +78,29 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'stats') {
+      const { stats: captureStats } = require('../lib/captures');
+      const cs = captureStats();
       const all = db.find('captcha_samples', () => true);
       const bySource = { manual: 0, ocr: 0 };
       for (const s of all) bySource[s.source === 'ocr' ? 'ocr' : 'manual']++;
-      return res.status(200).json({ ok: true, count: all.length, bySource });
+      return res.status(200).json({ ok: true, count: all.length, bySource, captures: cs });
+    }
+
+    if (action === 'captures') {
+      const { listCaptures } = require('../lib/captures');
+      const limit = Math.min(Math.max(parseInt(body.limit, 10) || 30, 1), 100);
+      return res.status(200).json({ ok: true, captures: listCaptures(limit) });
+    }
+
+    if (action === 'label-capture') {
+      const { labelCapture } = require('../lib/captures');
+      const out = await labelCapture(String(body.id || ''), body.text);
+      return res.status(out.ok ? 200 : 400).json(out);
+    }
+
+    if (action === 'delete-capture') {
+      const ok = db.remove('captcha_captures', String(body.id || ''));
+      return res.status(ok ? 200 : 404).json({ ok });
     }
 
     return res.status(400).json({ ok: false, error: 'اکشن ناشناخته: ' + action });

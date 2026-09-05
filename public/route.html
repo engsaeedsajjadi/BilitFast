@@ -612,7 +612,9 @@
     try {
       const src = $('reserve-captcha-img').src;
       if (!src || !/^data:image/i.test(src)) return;
-      if (!/^\d{3,8}$/.test(attempt.text || '')) return;
+      // کپچای صفیر ریل الفبایی-عددی است؛ محدودسازی قبلی به رقم خالص باعث
+      // می‌شد تقریباً همه نمونه‌های تأییدشده هرگز ثبت نشوند.
+      if (!/^[A-Za-z0-9]{3,8}$/.test(attempt.text || '')) return;
       fetch('/api/learn', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -908,6 +910,7 @@
           action: 'submit',
           stateToken: reserveCtx.token,
           captcha: solved.text,
+          captchaCaptureId: solved.captureId || null,
           passengers: reserveCtx.passengers,
           phone: reserveCtx.phone,
         });
