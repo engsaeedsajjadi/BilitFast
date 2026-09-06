@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bilit Fast — مسیرها</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+        <span class="brand-sub">سامانه خرید بلیط قطار</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+        <a href="trial.html">وضعیت مجوز</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card toolbar">
+      <button class="btn btn-primary" id="btn-add-route">➕ افزودن مسیر جدید</button>
+      <button class="btn btn-primary" id="btn-group-start">▶ شروع پایش گروهی</button>
+      <button class="btn btn-danger" id="btn-close-all">✖ بستن همه مسیرها</button>
+      <span id="monitor-badge" class="badge"></span>
+      <span id="trial-badge" class="badge"></span>
+    </section>
+
+    <section class="card" id="group-links" style="display:none"></section>
+
+    <section class="card">
+      <h2>مسیرهای جستجو</h2>
+      <p class="muted small">
+        برای پایش همزمان، حداکثر ۵ مسیر را تیک بزنید و «شروع پایش گروهی» را بزنید.
+        فاصله درخواست‌ها به نسبت تعداد مسیرهای فعال به‌صورت خودکار زیاد می‌شود تا
+        فشار روی سایت صفیر ریل ثابت بماند و درخواست‌ها محدود نشوند.
+      </p>
+      <table class="table" id="routes-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>route_id</th>
+            <th>مبدا</th>
+            <th>مقصد</th>
+            <th>تاریخ</th>
+            <th>شماره قطار</th>
+            <th>ظرفیت جستجو</th>
+            <th>وضعیت</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="empty-row"><td colspan="8">هیچ مسیری تعریف نشده است.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+
+  <script src="jalaali.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+  const STATUS_COLORS = {
+    'gray': '#999', 'black': '#333', 'red': '#c0392b', 'orange': '#e67e22',
+    'green': '#27ae60', 'blue': '#2980b9'
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  function renderRoutes() {
+    const routes = BilitFast.loadRoutes();
+    const tbody = document.querySelector('#routes-table tbody');
+    // حفظ تیک‌های انتخاب‌شده هنگام باز رسم جدول (رفرش هر ۳ ثانیه)
+    const selectedIds = new Set(selectedRouteIds());
+    if (!routes.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">هیچ مسیری تعریف نشده است.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = routes.map((r) => {
+      const status = r.status || 'در انتظار جستجو';
+      const color = STATUS_COLORS[r.statusColor] || '#333';
+      const cap = (r.searchData && r.searchData.passCnt) || '';
+      const checked = selectedIds.has(r.id) ? 'checked' : '';
+      return `
+        <tr data-id="${r.id}">
+          <td style="text-align:center"><input type="checkbox" class="route-check" data-id="${r.id}" ${checked}></td>
+          <td>${esc(r.id)}</td>
+          <td>${esc(r.fields.from_city || '-')}</td>
+          <td>${esc(r.fields.to_city || '-')}</td>
+          <td>${esc(r.fields.date || '-')}</td>
+          <td>${esc(r.fields.train_number || '-')}</td>
+          <td>${esc(cap)}</td>
+          <td><span style="color:${color}">●</span> ${esc(status)}</td>
+          <td>
+            <button class="btn btn-sm" onclick="openRoute(${parseInt(r.id, 10)})">باز کردن</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteRoute(${parseInt(r.id, 10)})">حذف</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  /* ---------------- پایش گروهی (تا ۵ مسیر همزمان) ---------------- */
+  function selectedRouteIds() {
+    return [...document.querySelectorAll('.route-check:checked')].map((c) => parseInt(c.getAttribute('data-id'), 10));
+  }
+
+  document.getElementById('routes-table').addEventListener('change', (e) => {
+    if (!e.target.classList || !e.target.classList.contains('route-check')) return;
+    if (selectedRouteIds().length > BilitFast.MAX_CONCURRENT_MONITORS) {
+      e.target.checked = false;
+      alert('حداکثر ' + BilitFast.MAX_CONCURRENT_MONITORS + ' مسیر همزمان قابل انتخاب است.');
+    }
+  });
+
+  document.getElementById('btn-group-start').addEventListener('click', () => {
+    const ids = selectedRouteIds();
+    if (!ids.length) { alert('ابتدا حداقل یک مسیر را با تیک انتخاب کنید.'); return; }
+    ids.forEach((id) => {
+      const r = BilitFast.getRoute(id);
+      if (!r) return;
+      BilitFast.upsertRoute({ ...r, running: true, status: 'آماده پایش — تب مسیر را باز کنید', statusColor: 'blue' });
+    });
+    const panel = document.getElementById('group-links');
+    panel.style.display = 'block';
+    panel.innerHTML = '<h3>تب‌های پایش</h3>' +
+      '<p class="muted small">مرورگر اجازه باز کردن چند تب را با یک کلیک نمی‌دهد؛ هر مسیر را با کلیک خودش در تب جدا باز کنید. جستجو در هر تب به‌صورت خودکار شروع می‌شود و فاصله درخواست‌ها بر اساس تعداد مسیرهای فعال تنظیم می‌شود.</p>' +
+      ids.map((id) => '<a class="btn btn-primary" style="margin:4px" href="route.html?id=' + id + '" target="_blank" rel="noopener">باز کردن مسیر ' + id + ' ▶</a>').join('');
+    renderRoutes();
+  });
+
+  async function refresh() {
+    // کنترل مجوز/دوره آزمایشی از سرور (با کش کوتاه برای کاهش درخواست‌ها)
+    const ts = await BilitFast.fetchLicenseState();
+    if (ts.state === 'expired') { window.location.href = 'trial.html'; return; }
+    const badge = document.getElementById('trial-badge');
+    badge.textContent = ts.message;
+    badge.className = 'badge badge-' + ts.state;
+    // نشانگر پایش همزمان (مسیرهایی که تب باز و فعال دارند)
+    const monCount = Object.keys(BilitFast.activeMonitors()).length;
+    const monBadge = document.getElementById('monitor-badge');
+    if (monCount > 0) {
+      monBadge.textContent = 'پایش همزمان: ' + monCount + ' از ' + BilitFast.MAX_CONCURRENT_MONITORS;
+      monBadge.className = 'badge badge-active';
+    } else {
+      monBadge.textContent = '';
+      monBadge.className = 'badge';
+    }
+    renderRoutes();
+  }
+
+  function openRoute(id) {
+    window.open('route.html?id=' + id, '_blank');
+  }
+
+  function deleteRoute(id) {
+    if (!confirm('مسیر ' + id + ' حذف شود؟')) return;
+    BilitFast.removeRoute(id);
+    renderRoutes();
+  }
+
+  document.getElementById('btn-add-route').addEventListener('click', async () => {
+    const ts = await BilitFast.fetchLicenseState();
+    if (ts.state === 'not_started' || ts.state === 'expired') { window.location.href = 'trial.html'; return; }
+    const id = BilitFast.nextRouteId();
+    BilitFast.upsertRoute({
+      id,
+      fields: { from_city: 'تهران', to_city: 'مشهد', date: BilitFast.todayJalali(), gender: 'عادی', train_number: '' },
+      passengers: [{ quota_type: 'بزرگسال', national_code: '', birth_day: '1', birth_month: '1', birth_year: '1370', first_name: '', last_name: '' }],
+      searchData: null,
+      status: 'در انتظار جستجو',
+      statusColor: 'gray',
+      running: false,
+      foundTrains: [],
+    });
+    openRoute(id);
+    renderRoutes();
+  });
+
+  document.getElementById('btn-close-all').addEventListener('click', () => {
+    const routes = BilitFast.loadRoutes();
+    routes.forEach((r) => { r.running = false; r.status = 'جستجو متوقف شد'; r.statusColor = 'red'; });
+    BilitFast.saveRoutes(routes);
+    renderRoutes();
+  });
+
+  refresh();
+  setInterval(refresh, 3000);
+  </script>
+</body>
+</html>
