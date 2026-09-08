@@ -31,6 +31,20 @@
     </div>
   </header>
   <main class="container">
+    <!-- راهنمای شروع سریع — با ساخته شدن اولین مسیر، جمع می‌شود -->
+    <section class="card quickstart" id="quickstart">
+      <div class="qs-head">
+        <h2>🚀 برای شروع</h2>
+        <button class="btn btn-sm" id="qs-hide" title="بستن راهنما">بستن</button>
+      </div>
+      <ol class="qs-steps">
+        <li id="qs-1"><b>یک مسیر جدید بسازید</b><span class="muted small">مبدا، مقصد و تاریخ سفر را مشخص کنید.</span></li>
+        <li id="qs-2"><b>اطلاعات مسافران را وارد کنید</b><span class="muted small">کد ملی و تاریخ تولد برای رزرو لازم است.</span></li>
+        <li id="qs-3"><b>به صفیر ریل وارد شوید</b><span class="muted small">تا برنامه بتواند از طرف شما رزرو کند. <a href="login.html">صفحه ورود</a></span></li>
+        <li id="qs-4"><b>جستجو را شروع کنید</b><span class="muted small">برنامه تا پیدا شدن ظرفیت خودکار تلاش می‌کند.</span></li>
+      </ol>
+    </section>
+
     <section class="card toolbar">
       <button class="btn btn-primary" id="btn-add-route">➕ افزودن مسیر جدید</button>
       <button class="btn btn-primary" id="btn-group-start">▶ شروع پایش گروهی</button>
@@ -231,7 +245,23 @@
     renderRoutes();
   });
 
+  /* راهنمای شروع: اگر کاربر مسیری ساخته یا خودش بسته، دیگر نمایش داده نمی‌شود. */
+  const QS_KEY = 'bilitfast_quickstart_hidden';
+  function updateQuickstart() {
+    const el = document.getElementById('quickstart');
+    if (!el) return;
+    let hidden = false;
+    try { hidden = localStorage.getItem(QS_KEY) === '1'; } catch (e) { /* ignore */ }
+    const hasRoutes = BilitFast.loadRoutes().length > 0;
+    el.style.display = (hidden || hasRoutes) ? 'none' : 'block';
+  }
+  document.getElementById('qs-hide').addEventListener('click', () => {
+    try { localStorage.setItem(QS_KEY, '1'); } catch (e) { /* ignore */ }
+    updateQuickstart();
+  });
+
   refresh();
+  updateQuickstart();
   setInterval(refresh, 3000);
   </script>
 </body>

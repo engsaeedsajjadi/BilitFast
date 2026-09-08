@@ -589,3 +589,176 @@ body.page-leave { animation: page-leave .18s ease both; }
   font-size: 13px; color: #475569; line-height: 1.9; cursor: pointer;
 }
 .check-line input { margin-top: 5px; flex: none; }
+
+/* ============================================================
+ * انتخابگر شهر با جستجو
+ * ============================================================ */
+.city-picker { position: relative; }
+.city-picker .city-native { display: none; }
+.city-input {
+  width: 100%; box-sizing: border-box; padding: 9px 12px;
+  border: 1px solid var(--border, #cbd5e1); border-radius: 8px;
+  font: inherit; background: #fff; cursor: text;
+}
+.city-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+.city-caret {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  color: #94a3b8; pointer-events: auto; cursor: pointer; font-size: 12px;
+}
+.city-list {
+  display: none; position: absolute; z-index: 60; top: calc(100% + 4px);
+  right: 0; left: 0; max-height: 280px; overflow-y: auto;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.14);
+}
+.city-picker.open .city-list { display: block; animation: city-in .14s ease both; }
+@keyframes city-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.city-group {
+  padding: 7px 12px; font-size: 11px; font-weight: 700; color: #64748b;
+  background: #f8fafc; position: sticky; top: 0;
+}
+.city-item {
+  padding: 9px 12px; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.city-item:hover, .city-item.active { background: #eff6ff; }
+.city-item.selected { background: #dbeafe; font-weight: 700; }
+.city-item.selected::after { content: '✓'; color: #2563eb; }
+.city-badge {
+  font-size: 10px; background: #e0e7ff; color: #3730a3;
+  padding: 2px 7px; border-radius: 20px;
+}
+.city-empty { padding: 14px 12px; color: #94a3b8; font-size: 13px; text-align: center; }
+
+/* ============================================================
+ * فرم مسافران — روی موبایل به «کارت هر مسافر» تبدیل می‌شود
+ * ============================================================ */
+@media (max-width: 760px) {
+  .pass-table thead { display: none; }
+  .pass-table, .pass-table tbody, .pass-table tr, .pass-table td { display: block; width: 100%; }
+  .pass-table tr {
+    border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;
+    margin-bottom: 12px; background: #fff; position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .pass-table tr::before {
+    content: 'مسافر ' counter(passenger-row);
+    counter-increment: passenger-row;
+    display: block; font-weight: 700; font-size: 13px; color: #2563eb;
+    margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #e2e8f0;
+  }
+  .pass-table tbody { counter-reset: passenger-row; }
+  .pass-table td { border: 0; padding: 6px 0; }
+  .pass-table td::before {
+    content: attr(data-label); display: block;
+    font-size: 11px; color: #64748b; margin-bottom: 4px;
+  }
+  .pass-table td[data-label=""]::before { display: none; }
+  .pass-table td input, .pass-table td select {
+    width: 100%; box-sizing: border-box; padding: 10px;
+    border: 1px solid #cbd5e1; border-radius: 8px; font: inherit;
+  }
+  .pass-table td.pass-actions { padding-top: 10px; }
+  .pass-table td.pass-actions .btn { width: 100%; }
+  /* تاریخ تولد: سه فیلد کنار هم به‌جای سه ردیف */
+  .pass-table td[data-label="روز تولد"],
+  .pass-table td[data-label="ماه تولد"],
+  .pass-table td[data-label="سال تولد"] {
+    display: inline-block; width: 32%; vertical-align: top;
+  }
+  .pass-table td[data-label="ماه تولد"] { margin: 0 1.5%; }
+}
+
+/* ============================================================
+ * پنل ارتباط: حالت ساده (پیش‌فرض) و حالت فنی
+ * ============================================================ */
+.live-toggle {
+  margin-right: auto; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: #64748b; cursor: pointer; user-select: none;
+}
+.live-toggle input { cursor: pointer; }
+.live-simple {
+  margin: 10px 0 0; font-size: 14px; color: #0f172a;
+  line-height: 1.9; font-weight: 500;
+}
+/* پیش‌فرض = ساده: جزئیات فنی پنهان */
+#live-panel .live-metrics,
+#live-panel #live-log-details,
+#live-panel #live-sub { display: none; }
+#live-panel.tech-mode .live-metrics { display: flex; }
+#live-panel.tech-mode #live-log-details { display: block; }
+#live-panel.tech-mode #live-sub { display: inline; }
+#live-panel.tech-mode .live-simple { color: #475569; font-size: 13px; }
+
+/* ============================================================
+ * صفحه ورود: کارت روش پیشنهادی، بخش پیشرفته، پیش‌نیازها
+ * ============================================================ */
+.method-card.recommended { border: 2px solid #2563eb; position: relative; }
+.method-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.method-head h3 { margin: 0; }
+.method-badge {
+  background: #2563eb; color: #fff; font-size: 11px; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px;
+}
+.steps-list { margin: 10px 0; padding-right: 20px; font-size: 13px; color: #475569; line-height: 2.1; }
+.steps-list li { margin-bottom: 2px; }
+
+.advanced-block > summary {
+  cursor: pointer; padding: 6px 0; list-style: none;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.advanced-block > summary::-webkit-details-marker { display: none; }
+.advanced-block > summary::before { content: '▸ '; color: #64748b; }
+.advanced-block[open] > summary::before { content: '▾ '; }
+.adv-title { font-weight: 700; font-size: 15px; color: #0f172a; }
+.advanced-body { margin-top: 14px; animation: page-enter .2s ease both; }
+.adv-item {
+  padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px;
+  margin-bottom: 12px; background: #fafbfc;
+}
+.adv-item h4 { margin: 0 0 6px; font-size: 14px; color: #0f172a; }
+
+.prereq-box {
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+  padding: 12px 14px; margin: 0 0 16px; font-size: 13px; color: #1e3a8a;
+}
+.prereq-box.all-done { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.prereq-steps { list-style: none; margin: 10px 0 0; padding: 0; }
+.prereq-steps li {
+  display: flex; gap: 9px; align-items: flex-start;
+  margin-bottom: 8px; line-height: 1.9;
+}
+.prereq-mark {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  background: #dbeafe; color: #1d4ed8; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; margin-top: 2px;
+}
+.prereq-steps li.done .prereq-mark { background: #16a34a; color: #fff; }
+.prereq-steps li.done { opacity: .75; }
+.prereq-steps li.pending { opacity: .55; }
+
+/* ============================================================
+ * راهنمای شروع سریع در صفحه اصلی
+ * ============================================================ */
+.quickstart {
+  background: linear-gradient(135deg, #eff6ff, #f8fafc);
+  border: 1px solid #bfdbfe;
+}
+.qs-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.qs-head h2 { margin: 0; font-size: 17px; }
+.qs-steps {
+  list-style: none; counter-reset: qs; margin: 14px 0 0; padding: 0;
+  display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.qs-steps li {
+  counter-increment: qs; position: relative;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 12px 14px 12px 14px; padding-top: 34px;
+  display: flex; flex-direction: column; gap: 4px; font-size: 13px;
+}
+.qs-steps li::before {
+  content: counter(qs); position: absolute; top: 10px; right: 12px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #2563eb; color: #fff; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}

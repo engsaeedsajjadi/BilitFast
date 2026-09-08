@@ -112,7 +112,7 @@
 
     <section class="card">
       <h3>مشخصات مسافران</h3>
-      <table class="table" id="passengers-table">
+      <table class="table pass-table" id="passengers-table">
         <thead>
           <tr>
             <th>نوع سهمیه</th>
@@ -152,8 +152,14 @@
           <span class="live-dot" id="live-dot"></span>
           <span class="live-title" id="live-title">ارتباط با صفیر ریل</span>
           <span class="muted small" id="live-sub"></span>
+          <label class="live-toggle" title="نمایش جزئیات فنی ارتباط">
+            <input type="checkbox" id="live-tech-toggle">
+            <span>جزئیات فنی</span>
+          </label>
         </div>
-        <div class="live-metrics">
+        <!-- حالت ساده: یک جمله روشن برای کاربر عادی -->
+        <p class="live-simple" id="live-simple">آماده جستجو</p>
+        <div class="live-metrics" id="live-metrics">
           <span class="live-metric">درخواست موفق: <b id="m-ok">۰</b></span>
           <span class="live-metric">ناموفق: <b id="m-fail">۰</b></span>
           <span class="live-metric">آخرین پاسخ: <b id="m-code">—</b></span>
@@ -164,7 +170,7 @@
         </div>
         <div class="next-bar"><i id="next-bar-fill"></i></div>
         <p class="muted small" style="margin:8px 0 0" id="next-text"></p>
-        <details style="margin-top:8px">
+        <details style="margin-top:8px" id="live-log-details">
           <summary class="muted small" style="cursor:pointer">گزارش زنده درخواست‌ها (رسید ارتباط)</summary>
           <div class="live-log" id="live-log"></div>
         </details>
@@ -290,6 +296,7 @@
 
   <script src="jalaali.min.js"></script>
   <script src="secure-store.js"></script>
+  <script src="city-picker.js"></script>
   <script src="app.js"></script>
   <script src="datepicker.js"></script>
   <script>
@@ -428,9 +435,14 @@
     }
     const route = BilitFast.getRoute(ROUTE_ID);
     if (route) applyFields(route.fields);
+    // انتخابگر شهر با جستجو (فهرست شهرها بلند است؛ اسکرول طولانی حذف می‌شود)
+    try {
+      cityPickers = BilitCityPicker.attach(['bf_src', 'bf_dst'], { placeholder: 'نام شهر را بنویسید…' });
+    } catch (e) { /* اگر بارگذاری نشد، select معمولی کار می‌کند */ }
     applyCaptchaModeUI();
     updateTitle();
   }
+  let cityPickers = null;
 
   function getFields() {
     const gender = document.querySelector('input[name="gender"]:checked');
@@ -447,6 +459,7 @@
     if (!f) return;
     if (f.from_city) $('bf_src').value = f.from_city;
     if (f.to_city) $('bf_dst').value = f.to_city;
+    if (cityPickers) cityPickers.forEach((p) => p && p.refresh());
     if (f.date) $('bf_dt').value = f.date;
     if (f.gender) {
       const r = document.querySelector('input[name="gender"][value="' + f.gender + '"]');
@@ -560,19 +573,19 @@
     data = data || { quota_type: 'بزرگسال' };
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><select class="quota-select">
+      <td data-label="نوع سهمیه"><select class="quota-select">
         <option value="بزرگسال" ${data.quota_type==='بزرگسال'?'selected':''}>بزرگسال</option>
         <option value="خردسال" ${data.quota_type==='خردسال'?'selected':''}>خردسال</option>
         <option value="کودک" ${data.quota_type==='کودک'?'selected':''}>کودک</option>
         <option value="اتباع" ${data.quota_type==='اتباع'?'selected':''}>اتباع</option>
       </select></td>
-      <td><input class="col-national" value="${esc(data.national_code||'')}" placeholder="کد ملی"></td>
-      <td><input class="col-day" value="${esc(data.birth_day||'')}" placeholder="روز"></td>
-      <td><input class="col-month" value="${esc(data.birth_month||'')}" placeholder="ماه"></td>
-      <td><input class="col-year" value="${esc(data.birth_year||'')}" placeholder="سال"></td>
-      <td><input class="col-name" value="${esc(data.first_name||'')}" placeholder="نام"></td>
-      <td><input class="col-family" value="${esc(data.last_name||'')}" placeholder="نام خانوادگی"></td>
-      <td><button class="btn btn-sm btn-danger btn-remove-row" type="button">حذف</button></td>
+      <td data-label="کد ملی"><input class="col-national" inputmode="numeric" value="${esc(data.national_code||'')}" placeholder="کد ملی"></td>
+      <td data-label="روز تولد"><input class="col-day" inputmode="numeric" value="${esc(data.birth_day||'')}" placeholder="روز"></td>
+      <td data-label="ماه تولد"><input class="col-month" inputmode="numeric" value="${esc(data.birth_month||'')}" placeholder="ماه"></td>
+      <td data-label="سال تولد"><input class="col-year" inputmode="numeric" value="${esc(data.birth_year||'')}" placeholder="سال"></td>
+      <td data-label="نام"><input class="col-name" value="${esc(data.first_name||'')}" placeholder="نام"></td>
+      <td data-label="نام خانوادگی"><input class="col-family" value="${esc(data.last_name||'')}" placeholder="نام خانوادگی"></td>
+      <td data-label="" class="pass-actions"><button class="btn btn-sm btn-danger btn-remove-row" type="button">حذف مسافر</button></td>
     `;
     $('passengers-table').querySelector('tbody').appendChild(tr);
     const select = tr.querySelector('.quota-select');
@@ -615,6 +628,17 @@
       };
     });
   }
+
+  // کلید تغییر حالت ساده/فنی پنل ارتباط
+  (function initLiveToggle() {
+    const cb = document.getElementById('live-tech-toggle');
+    if (!cb) return;
+    cb.addEventListener('change', () => {
+      try { localStorage.setItem(TECH_KEY, cb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      applyLiveMode();
+    });
+    applyLiveMode();
+  })();
 
   $('btn-add-row').addEventListener('click', () => addPassengerRow());
 
@@ -749,6 +773,7 @@
   function stopSearchingUI() {
     setSearchingUI(false);
     setLive('idle', 'جستجو متوقف است');
+    setSimpleLine('جستجو متوقف است.');
     stopNextBar();
   }
 
@@ -760,6 +785,26 @@
    * ============================================================ */
   const liveStats = { ok: 0, fail: 0 };
   let nextBarTimer = null;
+
+  /* حالت نمایش پنل: «ساده» برای کاربر عادی، «فنی» برای اشکال‌زدایی.
+   * انتخاب کاربر ذخیره می‌شود تا هر بار دوباره تنظیم نکند. */
+  const TECH_KEY = 'bilitfast_live_tech_mode';
+  function isTechMode() {
+    try { return localStorage.getItem(TECH_KEY) === '1' || BilitFast.isDebugMode(); }
+    catch (e) { return false; }
+  }
+  function applyLiveMode() {
+    const tech = isTechMode();
+    const panel = $('live-panel');
+    if (panel) panel.classList.toggle('tech-mode', tech);
+    const cb = $('live-tech-toggle');
+    if (cb) cb.checked = tech;
+  }
+  /** جمله ساده و بدون اصطلاح فنی برای کاربر عادی. */
+  function setSimpleLine(text) {
+    const el = $('live-simple');
+    if (el) el.textContent = text;
+  }
 
   function setLive(state, title, sub) {
     const panel = $('live-panel');
@@ -805,6 +850,13 @@
       trainsCount ? 'ok' : '');
     setLive('on', 'ارتباط با صفیر ریل برقرار است ✓',
       'پاسخ واقعی سرور دریافت شد (کد ' + BilitFast.faNum(receipt.httpStatus || 200) + ')');
+    // جمله ساده: بدون کد HTTP و اصطلاح فنی
+    if (trainsCount) {
+      setSimpleLine('✅ ظرفیت پیدا شد — ' + BilitFast.faNum(trainsCount) + ' قطار موجود است.');
+    } else {
+      setSimpleLine('🔎 سامانه پاسخ داد؛ فعلاً ظرفیتی نیست. تلاش ' +
+        BilitFast.faNum(liveStats.ok + liveStats.fail) + ' انجام شد — جستجو ادامه دارد.');
+    }
   }
 
   /** ثبت یک تلاش ناموفق. */
@@ -814,6 +866,7 @@
     $('m-last').textContent = new Date().toLocaleTimeString('fa-IR');
     liveLog('خطا: ' + msg, 'err');
     setLive('err', 'آخرین درخواست ناموفق بود', msg);
+    setSimpleLine('⚠️ سامانه پاسخ نداد؛ برنامه دوباره تلاش می‌کند.');
   }
 
   /** نوار شمارش معکوس تا درخواست بعدی — نشان می‌دهد برنامه بی‌کار نمانده. */
@@ -887,6 +940,7 @@
     setSearchingUI(true);
     stopNextBar();
     setLive('warn', 'در حال ارسال درخواست به صفیر ریل...', 'تلاش شماره ' + BilitFast.faNum(searchAttempts));
+    setSimpleLine('⏳ در حال جستجو در سامانه صفیر ریل… (تلاش ' + BilitFast.faNum(searchAttempts) + ')');
     const tSend = Date.now();
     const fields = getFields();
     const dates = rangeDates();
@@ -941,6 +995,8 @@
       stopNextBar();
       setLive('on', '✅ قطار پیدا شد — جستجو متوقف شد',
         BilitFast.faNum(data.trains.length) + ' قطار با ظرفیت کافی');
+      setSimpleLine('🎉 ظرفیت پیدا شد و جستجو متوقف شد — ' +
+        BilitFast.faNum(data.trains.length) + ' قطار موجود است.');
       stopPolling();
       $('btn-start').disabled = false;
       $('btn-stop').disabled = true;
@@ -1014,6 +1070,8 @@
     const logEl = $('live-log'); if (logEl) logEl.innerHTML = '';
     ['m-ok', 'm-fail'].forEach((id) => { const e = $(id); if (e) e.textContent = '۰'; });
     setLive('warn', 'شروع جستجو...', 'در حال برقراری ارتباط با صفیر ریل');
+    setSimpleLine('⏳ جستجو شروع شد…');
+    applyLiveMode();
     liveLog('شروع جستجوی خودکار', 'ok');
     // نشست صفیر را در طول جستجو خودکار زنده نگه می‌داریم تا در لحظه پیدا شدن
     // ظرفیت، رزرو با خطای «نیاز به ورود» شکست نخورد.

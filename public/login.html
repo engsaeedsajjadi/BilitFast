@@ -55,10 +55,27 @@
         <label class="check-line">
           <input type="checkbox" id="keep-session" checked>
           <span>
-            <b>نشست را خودکار زنده نگه دار</b> — هر ۵ دقیقه کوکی‌ها به‌صورت خودکار تازه می‌شوند
-            (نیازمند ورود به حساب برنامه؛ گذرواژه رمزنگاری‌شده ذخیره می‌شود و هرگز نمایش داده نمی‌شود).
+            <b>نشست را خودکار زنده نگه دار</b> — هر ۵ دقیقه کوکی‌ها به‌صورت خودکار تازه می‌شوند.
+            گذرواژه رمزنگاری‌شده ذخیره می‌شود و هرگز نمایش داده نمی‌شود.
           </span>
         </label>
+
+        <!-- شرط دو حسابی، صریح و با وضعیت زنده -->
+        <div class="prereq-box" id="prereq-box">
+          <b>برای تازه‌سازی خودکار، دو ورود لازم است:</b>
+          <ol class="prereq-steps">
+            <li id="prereq-1">
+              <span class="prereq-mark">۱</span>
+              <span>ورود به <b>حساب BilitFast</b> (برای نگهداری امن اطلاعات شما)
+                <a href="account.html" id="prereq-link">— ورود / ساخت حساب</a>
+              </span>
+            </li>
+            <li id="prereq-2">
+              <span class="prereq-mark">۲</span>
+              <span>ثبت <b>شناسه و گذرواژه صفیر ریل</b> در همین فرم بالا</span>
+            </li>
+          </ol>
+        </div>
         <button class="btn btn-primary btn-lg" type="submit">ورود و انتقال کوکی‌ها</button>
       </form>
       <p class="muted small">در صورت بروز خطا در ورود (مثلاً کپچا)، از روش‌های انتقال کوکی پایین استفاده کنید.</p>
@@ -86,64 +103,89 @@
       </div>
     </section>
 
-    <section class="card narrow" id="account-cookie-card" style="display:none">
-      <h3>📱 دریافت کوکی از حساب (موبایل / دستگاه دیگر)</h3>
+    <!-- ============ روش پیشنهادی: افزونه مرورگر ============ -->
+    <section class="card narrow method-card recommended">
+      <div class="method-head">
+        <span class="method-badge">روش پیشنهادی</span>
+        <h3>🧩 انتقال کوکی با افزونه مرورگر</h3>
+      </div>
       <p class="muted small">
-        اگر قبلاً روی دستگاه دیگری (مثلاً دسکتاپ) کوکی صفیر ریل را گرفته باشید و وارد حساب
-        بوده‌اید، کوکی در حسابتان ذخیره شده است. با دکمه زیر آن را روی همین دستگاه تحویل بگیرید.
+        اگر ورود مستقیم بالا با خطای کد امنیتی (کپچا) روبه‌رو شد، این مطمئن‌ترین راه است.
+        فقط روی کامپیوتر (کروم/فایرفاکس) کار می‌کند.
       </p>
-      <button class="btn btn-primary" id="btn-account-cookies">📥 دریافت کوکی ذخیره‌شده از حساب</button>
-      <div id="account-cookie-result" class="muted small" style="margin-top:8px"></div>
+      <ol class="steps-list">
+        <li>در همان مرورگر، وارد سایت <code>safirrail.ir</code> شوید.</li>
+        <li>دکمه زیر را بزنید تا یک <b>کد ۶ رقمی</b> نمایش داده شود.</li>
+        <li>روی آیکون افزونه «بیلیت فست» کلیک کنید و کد را وارد کنید.</li>
+      </ol>
+      <button class="btn btn-primary btn-lg" id="btn-ext-sync">🔑 گرفتن کد و دریافت کوکی</button>
+      <div id="ext-sync-result" class="muted small" style="margin-top:10px"></div>
+      <p class="muted small" style="margin-top:8px">
+        افزونه را نصب نکرده‌اید؟ راهنما: <code>docs/EXTENSION.md</code>
+      </p>
     </section>
 
+    <!-- ============ روش‌های جایگزین (پیشرفته) ============ -->
     <section class="card narrow">
-      <h3>🔄 همگام‌سازی یک‌کلیکی با افزونه (فقط دسکتاپ — کروم/فایرفاکس)</h3>
-      <p class="muted small">
-        اگر در مرورگر وارد <code>safirrail.ir</code> هستید:
-        ابتدا دکمه زیر را بزنید تا یک <b>کد جفت‌سازی ۶ رقمی</b> نمایش داده شود،
-        سپس روی آیکون افزونه «بیلیت فست» کلیک کنید و همان کد را در آن وارد کنید.
-        کوکی‌ها (شامل کوکی نشست HttpOnly) فقط برای همین صفحه ارسال می‌شوند و
-        پس از یک بار تحویل، حذف می‌گردند.
-        راهنمای نصب افزونه: <code>docs/EXTENSION.md</code>
-      </p>
-      <button class="btn btn-primary" id="btn-ext-sync">دریافت کوکی از افزونه</button>
-      <div id="ext-sync-result" class="muted small" style="margin-top:8px"></div>
+      <details class="advanced-block">
+        <summary>
+          <span class="adv-title">⚙️ روش‌های جایگزین انتقال کوکی</span>
+          <span class="muted small">اگر روش‌های بالا جواب نداد — نیاز به دانش فنی دارد</span>
+        </summary>
+
+        <div class="advanced-body">
+          <div class="adv-item" id="account-cookie-card" style="display:none">
+            <h4>📱 دریافت کوکی از حساب (موبایل یا دستگاه دیگر)</h4>
+            <p class="muted small">
+              اگر قبلاً روی دستگاه دیگری کوکی گرفته و وارد حساب بوده‌اید،
+              کوکی در حسابتان ذخیره شده و اینجا قابل تحویل است.
+            </p>
+            <button class="btn btn-primary" id="btn-account-cookies">📥 دریافت کوکی ذخیره‌شده از حساب</button>
+            <div id="account-cookie-result" class="muted small" style="margin-top:8px"></div>
+          </div>
+
+          <div class="adv-item">
+            <h4>💻 خواندن مستقیم از پروفایل مرورگر (فقط اجرای محلی)</h4>
+            <p class="muted small">
+              اگر برنامه را روی همین کامپیوتر اجرا می‌کنید و در مرورگر وارد
+              <code>safirrail.ir</code> هستید، کوکی‌ها مستقیماً از پروفایل مرورگر خوانده می‌شود.
+            </p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-primary" id="btn-sync-firefox">🔄 از Firefox</button>
+              <button class="btn btn-primary" id="btn-sync-chrome">🔄 از Chrome</button>
+            </div>
+            <div id="sync-result" class="muted small" style="margin-top:8px"></div>
+          </div>
+
+          <div class="adv-item">
+            <h4>📋 چسباندن دستی کوکی</h4>
+            <div class="field">
+              <label for="cookie-input">کوکی‌ها (مثلاً: PHPSESSID=...; other=...):</label>
+              <textarea id="cookie-input" rows="3" style="font-family:monospace;direction:ltr;text-align:left"></textarea>
+            </div>
+            <button class="btn btn-primary" id="btn-save-cookies">ذخیره کوکی‌ها</button>
+            <div id="cookie-warn" class="muted small" style="margin-top:6px"></div>
+
+            <details style="margin-top:12px">
+              <summary class="muted small" style="cursor:pointer">
+                چرا کپی کردن کوکی از کنسول مرورگر کار نمی‌کند؟ (توضیح فنی)
+              </summary>
+              <div class="alert alert-error" style="font-size:12px; margin-top:8px">
+                کوکی نشست (<code>PHPSESSID</code>) از نوع <b>HttpOnly</b> است؛ یعنی
+                دستور <code>document.cookie</code> آن را نشان نمی‌دهد. برای گرفتن آن:
+                <br>۱) روش افزونه یا خواندن از پروفایل مرورگر (بالا) — توصیه‌شده.
+                <br>۲) یا در ابزار توسعه‌دهنده، تب
+                <b>Application → Cookies → safirrail.ir</b> مقدار <code>PHPSESSID</code> را
+                کپی کرده و به‌صورت
+                <code style="direction:ltr;display:inline-block">PHPSESSID=مقدار</code>
+                در کادر بالا بگذارید.
+              </div>
+            </details>
+          </div>
+        </div>
+      </details>
     </section>
 
-    <section class="card narrow">
-      <h3>همگام‌سازی خودکار کوکی (اجرای محلی — بدون افزونه)</h3>
-      <p class="muted small">
-        اگر در مرورگر وارد سایت <code>safirrail.ir</code> شده باشید، با زدن دکمه زیر،
-        کوکی‌های ورود به‌صورت خودکار از پروفایل مرورگر خوانده و به برنامه منتقل می‌شود
-        (دقیقاً مثل نسخه دسکتاپی).
-      </p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn btn-primary" id="btn-sync-firefox">🔄 از Firefox</button>
-        <button class="btn btn-primary" id="btn-sync-chrome">🔄 از Chrome</button>
-      </div>
-      <div id="sync-result" class="muted small" style="margin-top:8px"></div>
-    </section>
-
-    <section class="card narrow">
-      <h3>ورود با چسباندن دستی کوکی</h3>
-      <p class="muted small">
-        چون ورود خودکار ممکن است با کپچا مسدود شود، مطمئن‌ترین راه این است که در مرورگر خود وارد
-        <code>safirrail.ir</code> شوید و کوکی‌های آن را اینجا جای‌گذاری کنید.
-      </p>
-      <div class="alert alert-error" style="font-size:12px">
-        ⚠️ <b>مهم:</b> کوکی سشن (<code>PHPSESSID</code>) معمولاً <b>HttpOnly</b> است و دستور
-        <code>document.cookie</code> آن را نشان نمی‌دهد! برای گرفتن کامل کوکی‌ها از یکی از این دو روش استفاده کنید:
-        <br>۱) دکمه «همگام‌سازی از Firefox/Chrome» بالا (بهترین روش — کوکی HttpOnly را هم می‌خواند).
-        <br>۲) در تب <b>Application → Cookies → safirrail.ir</b> مقدار <code>PHPSESSID</code> را دستی کپی کنید و به‌صورت
-        <code style="direction:ltr;display:inline-block">PHPSESSID=مقدار</code> در کادر زیر قرار دهید.
-      </div>
-      <div class="field">
-        <label for="cookie-input">کوکی‌ها (مثلاً: PHPSESSID=...; other=...):</label>
-        <textarea id="cookie-input" rows="3" style="font-family:monospace;direction:ltr;text-align:left"></textarea>
-      </div>
-      <button class="btn btn-primary" id="btn-save-cookies">ذخیره کوکی‌ها</button>
-      <div id="cookie-warn" class="muted small" style="margin-top:6px"></div>
-    </section>
   </main>
   <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
 
@@ -230,6 +272,13 @@
     }
     const d = await BilitFast.safirSession('status');
     if (!d || !d.ok) return;
+    lastSessionEnabled = !!d.enabled;
+    const s2 = document.getElementById('prereq-2');
+    if (s2) {
+      s2.classList.toggle('done', !!d.enabled);
+      s2.querySelector('.prereq-mark').textContent = d.enabled ? '✓' : '۲';
+    }
+    refreshPrereq();
     document.getElementById('ses-count').textContent = BilitFast.faNum(d.cookiesCount || 0);
     document.getElementById('ses-last').textContent = fmtTime(d.cookiesAt);
     document.getElementById('ses-next').textContent = d.enabled
@@ -288,8 +337,27 @@
     refreshSessionStatus();
   });
 
+  /** به‌روزرسانی وضعیت دو مرحله پیش‌نیاز (تیک سبز وقتی انجام شده). */
+  function refreshPrereq() {
+    const box = document.getElementById('prereq-box');
+    if (!box) return;
+    const loggedIn = BilitFast.isLoggedIn();
+    const s1 = document.getElementById('prereq-1');
+    const s2 = document.getElementById('prereq-2');
+    const link = document.getElementById('prereq-link');
+    s1.classList.toggle('done', loggedIn);
+    s1.querySelector('.prereq-mark').textContent = loggedIn ? '✓' : '۱';
+    if (link) link.style.display = loggedIn ? 'none' : '';
+    // مرحله ۲ فقط وقتی معنا دارد که مرحله ۱ انجام شده باشد
+    s2.classList.toggle('pending', !loggedIn);
+    box.classList.toggle('all-done', loggedIn && lastSessionEnabled);
+  }
+  let lastSessionEnabled = false;
+
+  refreshPrereq();
   refreshSessionStatus();
   setInterval(refreshSessionStatus, 15000);
+  setInterval(refreshPrereq, 3000);
   BilitFast.startSafirSessionAutoSync();
 
   // بررسی سلامت اتصال
