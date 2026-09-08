@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>یادگیری کپچا — Bilit Fast</title>
   <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2563eb">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -52,6 +56,19 @@
   <script>
     'use strict';
     const $ = (id) => document.getElementById(id);
+
+    function toast(message, type = 'info') {
+      let el = document.getElementById('bf-toast');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'bf-toast';
+        document.body.appendChild(el);
+      }
+      el.textContent = message;
+      el.className = 'bf-toast show bf-toast-' + type;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => { el.className = 'bf-toast'; }, 3500);
+    }
 
     async function api(payload) {
       const resp = await fetch('/api/learn', {
@@ -116,7 +133,7 @@
           btnOk.disabled = true;
           const out = await api({ action: 'label-capture', id: c.id, text: input.value.trim() });
           if (out.ok) { row.remove(); loadStats(); }
-          else { alert(out.error || 'خطا در ثبت'); btnOk.disabled = false; }
+          else { toast(out.error || 'خطا در ثبت', 'error'); btnOk.disabled = false; }
         });
 
         const btnDel = document.createElement('button');
@@ -127,7 +144,7 @@
           btnDel.disabled = true;
           const out = await api({ action: 'delete-capture', id: c.id });
           if (out.ok) row.remove();
-          else { alert('خطا در حذف'); btnDel.disabled = false; }
+          else { toast('خطا در حذف', 'error'); btnDel.disabled = false; }
         });
 
         row.appendChild(img);

@@ -40,6 +40,16 @@ module.exports = async (req, res) => {
       if (!/^data:image\//i.test(image) || image.length > MAX_IMAGE_CHARS) {
         return res.status(400).json({ ok: false, error: 'تصویر کپچا معتبر نیست.' });
       }
+      // اعتبارسنجی امضای بایتی: ورودی غیرتصویری/خراب نباید به موتور پردازش
+      // تصویر برسد (مسیر آسیب‌پذیر پارسر در زنجیره وابستگی‌ها).
+      {
+        const { inspectImageBuffer } = require('../lib/image-guard');
+        const b64part = image.split(',')[1] || '';
+        let probe;
+        try { probe = Buffer.from(b64part, 'base64'); } catch (e) { probe = null; }
+        const chk = inspectImageBuffer(probe);
+        if (!chk.ok) return res.status(400).json({ ok: false, error: chk.error });
+      }
       if (!/^[A-Za-z0-9]{3,8}$/.test(text)) {
         return res.status(400).json({ ok: false, error: 'متن کپچا معتبر نیست.' });
       }

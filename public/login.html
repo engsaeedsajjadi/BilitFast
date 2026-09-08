@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ورود — Bilit Fast</title>
   <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2563eb">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,34 +24,86 @@
         <a href="login.html">ورود صفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
         <a href="account.html">حساب</a>
+        <a href="privacy.html">حریم خصوصی</a>
       </nav>
     </div>
   </header>
   <main class="container">
     <section class="card narrow">
       <h2>ورود به سامانه صفیر ریل</h2>
-      <p class="muted">برای انجام رزرو، ابتدا با حساب صفیر ریل خود وارد شوید.</p>
+      <div class="notice-box">
+        <b>⚠️ مهم:</b> در کادر زیر باید <b>دقیقاً همان شناسه و گذرواژه‌ای</b> را وارد کنید که با آن در
+        سایت اصلی <code>safirrail.ir</code> وارد می‌شوید. با همین ورود، کوکی‌های نشست شما به برنامه
+        منتقل می‌شود و رزرو انجام می‌گیرد. اگر گزینه «تازه‌سازی خودکار» را روشن کنید،
+        برنامه <b>هر ۵ دقیقه</b> خودش دوباره وارد می‌شود و کوکی‌ها را تازه نگه می‌دارد تا
+        نشست شما هیچ‌وقت منقضی نشود.
+      </div>
       <div id="alert" style="display:none"></div>
+      <div style="margin-bottom:14px">
+        <button class="btn" type="button" id="btn-health">🔍 بررسی اتصال به سامانه</button>
+        <div id="health-result" class="muted small" style="margin-top:8px"></div>
+      </div>
       <form id="login-form">
         <div class="field">
-          <label>شناسه (نام کاربری):</label>
-          <input type="text" id="username" required autocomplete="username">
+          <label for="username">شناسه صفیر ریل (همان که در سایت اصلی وارد می‌کنید):</label>
+          <input type="text" id="username" required autocomplete="username" style="direction:ltr;text-align:left" placeholder="مثلاً کد ملی یا نام کاربری شما">
         </div>
         <div class="field">
-          <label>گذرواژه:</label>
-          <input type="password" id="password" required autocomplete="current-password">
+          <label for="password">گذرواژه صفیر ریل:</label>
+          <input type="password" id="password" required autocomplete="current-password" style="direction:ltr;text-align:left">
         </div>
-        <button class="btn btn-primary" type="submit">ورود</button>
+        <label class="check-line">
+          <input type="checkbox" id="keep-session" checked>
+          <span>
+            <b>نشست را خودکار زنده نگه دار</b> — هر ۵ دقیقه کوکی‌ها به‌صورت خودکار تازه می‌شوند
+            (نیازمند ورود به حساب برنامه؛ گذرواژه رمزنگاری‌شده ذخیره می‌شود و هرگز نمایش داده نمی‌شود).
+          </span>
+        </label>
+        <button class="btn btn-primary btn-lg" type="submit">ورود و انتقال کوکی‌ها</button>
       </form>
-      <p class="muted small">در صورت بروز خطا در ورود (مثلاً کپچا)، از روش «چسباندن کوکی» پایین استفاده کنید.</p>
+      <p class="muted small">در صورت بروز خطا در ورود (مثلاً کپچا)، از روش‌های انتقال کوکی پایین استفاده کنید.</p>
+    </section>
+
+    <section class="card narrow" id="session-keeper-card">
+      <h3>🔄 وضعیت نشست خودکار صفیر ریل</h3>
+      <div class="live-panel" style="margin-top:0">
+        <div class="live-head">
+          <span class="live-dot" id="ses-dot"></span>
+          <span class="live-title" id="ses-title">بررسی وضعیت...</span>
+        </div>
+        <div class="live-metrics">
+          <span class="live-metric">وضعیت: <b id="ses-state">—</b></span>
+          <span class="live-metric">کوکی‌های ذخیره‌شده: <b id="ses-count">—</b></span>
+          <span class="live-metric">آخرین تازه‌سازی: <b id="ses-last">—</b></span>
+          <span class="live-metric">تازه‌سازی بعدی: <b id="ses-next">—</b></span>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" id="btn-ses-refresh">🔄 همین حالا تازه کن</button>
+          <button class="btn btn-sm" id="btn-ses-pull">📥 دریافت کوکی تازه</button>
+          <button class="btn btn-danger btn-sm" id="btn-ses-clear">✖ خاموش کردن تازه‌سازی خودکار</button>
+        </div>
+        <p class="muted small" style="margin:10px 0 0" id="ses-hint"></p>
+      </div>
+    </section>
+
+    <section class="card narrow" id="account-cookie-card" style="display:none">
+      <h3>📱 دریافت کوکی از حساب (موبایل / دستگاه دیگر)</h3>
+      <p class="muted small">
+        اگر قبلاً روی دستگاه دیگری (مثلاً دسکتاپ) کوکی صفیر ریل را گرفته باشید و وارد حساب
+        بوده‌اید، کوکی در حسابتان ذخیره شده است. با دکمه زیر آن را روی همین دستگاه تحویل بگیرید.
+      </p>
+      <button class="btn btn-primary" id="btn-account-cookies">📥 دریافت کوکی ذخیره‌شده از حساب</button>
+      <div id="account-cookie-result" class="muted small" style="margin-top:8px"></div>
     </section>
 
     <section class="card narrow">
-      <h3>🔄 همگام‌سازی یک‌کلیکی با افزونه (پیشنهادی)</h3>
+      <h3>🔄 همگام‌سازی یک‌کلیکی با افزونه (فقط دسکتاپ — کروم/فایرفاکس)</h3>
       <p class="muted small">
-        اگر در مرورگر وارد <code>safirrail.ir</code> هستید، روی آیکون افزونه
-        «بیلیت فست» کلیک کنید تا کوکی‌ها (شامل کوکی نشست که از صفحه وب قابل
-        خواندن نیست) ارسال شود؛ سپس دکمه زیر را بزنید تا دریافت شوند.
+        اگر در مرورگر وارد <code>safirrail.ir</code> هستید:
+        ابتدا دکمه زیر را بزنید تا یک <b>کد جفت‌سازی ۶ رقمی</b> نمایش داده شود،
+        سپس روی آیکون افزونه «بیلیت فست» کلیک کنید و همان کد را در آن وارد کنید.
+        کوکی‌ها (شامل کوکی نشست HttpOnly) فقط برای همین صفحه ارسال می‌شوند و
+        پس از یک بار تحویل، حذف می‌گردند.
         راهنمای نصب افزونه: <code>docs/EXTENSION.md</code>
       </p>
       <button class="btn btn-primary" id="btn-ext-sync">دریافت کوکی از افزونه</button>
@@ -82,15 +138,16 @@
         <code style="direction:ltr;display:inline-block">PHPSESSID=مقدار</code> در کادر زیر قرار دهید.
       </div>
       <div class="field">
-        <label>کوکی‌ها (مثلاً: PHPSESSID=...; other=...):</label>
+        <label for="cookie-input">کوکی‌ها (مثلاً: PHPSESSID=...; other=...):</label>
         <textarea id="cookie-input" rows="3" style="font-family:monospace;direction:ltr;text-align:left"></textarea>
       </div>
       <button class="btn btn-primary" id="btn-save-cookies">ذخیره کوکی‌ها</button>
       <div id="cookie-warn" class="muted small" style="margin-top:6px"></div>
     </section>
   </main>
-  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+  <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
 
+  <script src="secure-store.js"></script>
   <script src="app.js"></script>
   <script>
   function showAlert(msg, ok) {
@@ -104,58 +161,251 @@
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const keep = document.getElementById('keep-session').checked;
     const btn = e.target.querySelector('button[type=submit]');
     btn.disabled = true;
+    btn.textContent = 'در حال ورود به صفیر ریل...';
+
+    // اگر «زنده نگه داشتن نشست» تیک خورده و کاربر وارد حساب برنامه است،
+    // ورود از مسیر نگهدارنده نشست انجام می‌شود تا اعتبارنامه رمزشده ذخیره
+    // شود و تازه‌سازی خودکار هر ۵ دقیقه فعال گردد.
+    if (keep && BilitFast.isLoggedIn()) {
+      const d = await BilitFast.safirSession('save', {
+        safir_username: username, safir_password: password,
+      });
+      btn.disabled = false;
+      btn.textContent = 'ورود و انتقال کوکی‌ها';
+      if (d && d.ok && d.refresh && d.refresh.ok) {
+        BilitFast.setCookies(d.cookies || []);
+        showAlert('✅ ورود موفق بود؛ ' + BilitFast.faNum((d.cookies || []).length) +
+          ' کوکی منتقل شد. از این پس هر ۵ دقیقه به‌صورت خودکار تازه می‌شود.', true);
+        BilitFast.startSafirSessionAutoSync();
+        refreshSessionStatus();
+        return;
+      }
+      const why = (d && d.refresh && (d.refresh.error || d.refresh.reason)) || (d && d.error) || 'ورود ناموفق بود';
+      if (d && d.refresh && d.refresh.reason === 'captcha_required') {
+        showAlert('🛡 صفیر ریل برای ورود کد امنیتی (کپچا) می‌خواهد؛ ورود خودکار ممکن نیست. ' +
+          'از روش‌های انتقال کوکی پایین استفاده کنید.', false);
+      } else {
+        showAlert('ورود ناموفق: ' + why, false);
+      }
+      refreshSessionStatus();
+      return;
+    }
+
+    // مسیر قدیمی: ورود یک‌باره بدون ذخیره اعتبارنامه
     const data = await BilitFast.apiLogin(username, password);
     btn.disabled = false;
+    btn.textContent = 'ورود و انتقال کوکی‌ها';
     if (data.ok) {
       BilitFast.setCookies(data.cookies || []);
-      showAlert(data.message || 'ورود موفقیت‌آمیز بود.', true);
+      showAlert((data.message || 'ورود موفقیت‌آمیز بود.') +
+        (keep ? ' (برای تازه‌سازی خودکار باید وارد حساب برنامه شوید.)' : ''), true);
+      BilitFast.pushCookiesToAccount(data.cookies || []).catch(() => {});
+    } else if (data.captchaRequired) {
+      showAlert('🛡 ' + (data.error || data.message || 'ورود خودکار ممکن نیست'), false);
     } else {
       showAlert(data.error || data.message || 'ورود ناموفق بود.', false);
     }
   });
 
+  /* ---------------- پنل وضعیت نشست خودکار ---------------- */
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleTimeString('fa-IR'); } catch (e) { return '—'; }
+  }
+
+  async function refreshSessionStatus() {
+    const card = document.getElementById('session-keeper-card');
+    const dot = document.getElementById('ses-dot');
+    const hint = document.getElementById('ses-hint');
+    if (!BilitFast.isLoggedIn()) {
+      document.getElementById('ses-title').textContent = 'برای تازه‌سازی خودکار، وارد حساب برنامه شوید';
+      document.getElementById('ses-state').textContent = 'غیرفعال';
+      dot.className = 'live-dot';
+      hint.innerHTML = 'این قابلیت اعتبارنامه را روی حساب شما (رمزنگاری‌شده) نگه می‌دارد. ' +
+        '<a href="account.html">ورود / ساخت حساب برنامه</a>';
+      return;
+    }
+    const d = await BilitFast.safirSession('status');
+    if (!d || !d.ok) return;
+    document.getElementById('ses-count').textContent = BilitFast.faNum(d.cookiesCount || 0);
+    document.getElementById('ses-last').textContent = fmtTime(d.cookiesAt);
+    document.getElementById('ses-next').textContent = d.enabled
+      ? BilitFast.faNum(Math.round((d.nextInMs || 0) / 1000)) + ' ثانیه' : '—';
+    if (d.enabled) {
+      const okLast = !d.last || d.last.ok;
+      dot.className = 'live-dot ' + (okLast ? 'on' : 'warn');
+      document.getElementById('ses-title').textContent = okLast
+        ? '✅ نشست خودکار فعال است' : '⚠️ آخرین تازه‌سازی مشکل داشت';
+      document.getElementById('ses-state').textContent = okLast ? 'فعال' : 'فعال (با خطا)';
+      hint.textContent = okLast
+        ? 'برنامه هر ۵ دقیقه خودکار وارد صفیر ریل می‌شود و کوکی‌ها را تازه می‌کند. نیازی به کار دستی نیست.'
+        : ((d.last && d.last.error) || '') +
+          (d.last && d.last.reason === 'captcha_required'
+            ? ' — صفیر ریل کپچا می‌خواهد؛ کوکی را با افزونه منتقل کنید.' : '');
+    } else {
+      dot.className = 'live-dot';
+      document.getElementById('ses-title').textContent = 'تازه‌سازی خودکار خاموش است';
+      document.getElementById('ses-state').textContent = 'خاموش';
+      hint.textContent = 'برای روشن کردن، بالا شناسه و گذرواژه صفیر ریل را با تیک «نشست را خودکار زنده نگه دار» وارد کنید.';
+    }
+  }
+
+  document.getElementById('btn-ses-refresh').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    const d = await BilitFast.safirSession('refresh');
+    e.target.disabled = false;
+    if (d && d.ok) {
+      BilitFast.setCookies(d.cookies || []);
+      BilitFast.toast('نشست تازه شد؛ ' + BilitFast.faNum(d.count || 0) + ' کوکی دریافت شد.', 'success', 4000);
+    } else {
+      BilitFast.toast((d && (d.error || d.reason)) || 'تازه‌سازی ناموفق بود.', 'error', 6000);
+    }
+    refreshSessionStatus();
+  });
+
+  document.getElementById('btn-ses-pull').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    const r = await BilitFast.pullFreshSafirCookies();
+    e.target.disabled = false;
+    BilitFast.toast(r.ok ? ('کوکی تازه دریافت شد (' + BilitFast.faNum(r.count) + ' مورد).') :
+      (r.error || 'کوکی تازه‌ای نبود.'), r.ok ? 'success' : 'error', 4000);
+    refreshSessionStatus();
+  });
+
+  document.getElementById('btn-ses-clear').addEventListener('click', async () => {
+    const ok = await BilitFast.confirmDialog({
+      title: 'خاموش کردن تازه‌سازی خودکار',
+      message: 'شناسه و گذرواژه ذخیره‌شده صفیر ریل حذف شود؟ پس از این باید کوکی‌ها را دستی همگام کنید.',
+      confirmText: 'خاموش کن', danger: true,
+    });
+    if (!ok) return;
+    await BilitFast.safirSession('clear');
+    BilitFast.stopSafirSessionAutoSync();
+    BilitFast.toast('تازه‌سازی خودکار خاموش شد.', 'info', 3000);
+    refreshSessionStatus();
+  });
+
+  refreshSessionStatus();
+  setInterval(refreshSessionStatus, 15000);
+  BilitFast.startSafirSessionAutoSync();
+
+  // بررسی سلامت اتصال
+  document.getElementById('btn-health').addEventListener('click', async () => {
+    const el = document.getElementById('health-result');
+    const btn = document.getElementById('btn-health');
+    btn.disabled = true;
+    el.textContent = 'در حال بررسی اتصال...';
+    el.style.color = '#5b6472';
+    try {
+      const res = await fetch('/api/health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cookies: BilitFast.getCookies() }),
+      });
+      const d = await res.json();
+      if (!d.ok) { el.textContent = 'بررسی اتصال ناموفق بود.'; el.style.color = '#991b1b'; return; }
+      el.innerHTML =
+        (d.network.reachable
+          ? '✅ دسترسی شبکه به سامانه: برقرار (' + d.network.status + '، حدود ' + d.network.ms + ' میلی‌ثانیه).'
+          : '❌ دسترسی شبکه به سامانه برقرار نیست. باید برنامه را روی سیستمی در ایران اجرا کنید.') +
+        '<br>' +
+        (d.session_cookie
+          ? '✅ کوکی نشست (PHPSESSID) ارسال می‌شود.'
+          : '⚠️ کوکی نشست ذخیره نشده؛ ابتدا وارد صفیر ریل شوید و کوکی بگیرید.');
+      el.style.color = (d.network.reachable && d.session_cookie) ? '#166534' : '#991b1b';
+    } catch (e) {
+      el.textContent = 'خطا در بررسی اتصال.';
+      el.style.color = '#991b1b';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // دریافت کوکی ذخیره‌شده در حساب (روش موبایل)
+  (function () {
+    const card = document.getElementById('account-cookie-card');
+    if (BilitFast.isLoggedIn()) card.style.display = 'block';
+    const btn = document.getElementById('btn-account-cookies');
+    if (btn) btn.addEventListener('click', async () => {
+      const el = document.getElementById('account-cookie-result');
+      btn.disabled = true;
+      el.textContent = 'در حال دریافت...';
+      const r = await BilitFast.pullAccountCookies();
+      btn.disabled = false;
+      if (r.ok) {
+        el.textContent = '✅ ' + r.count + ' کوکی دریافت و ذخیره شد. می‌توانید جستجو و رزرو کنید.';
+        el.style.color = '#166534';
+        document.getElementById('cookie-input').value = r.cookies.join('; ');
+        updateCookieWarn();
+      } else {
+        el.textContent = r.error || 'کوکی‌ای در حساب شما ذخیره نشده است.';
+        el.style.color = '#991b1b';
+      }
+    });
+  })();
+
   // دریافت کوکی از افزونه مرورگر (پنج دقیقه پس از کلیک افزونه اعتبار دارد)
   let extPollTimer = null;
-  document.getElementById('btn-ext-sync').addEventListener('click', () => {
+  document.getElementById('btn-ext-sync').addEventListener('click', async () => {
     const el = document.getElementById('ext-sync-result');
     const btn = document.getElementById('btn-ext-sync');
     if (extPollTimer) { clearInterval(extPollTimer); extPollTimer = null; }
     btn.disabled = true;
-    el.textContent = 'در انتظار کلیک روی آیکون افزونه در صفحه صفیر ریل... (تا ۶۰ ثانیه)';
+    el.textContent = 'در حال ساخت کد جفت‌سازی...';
+
+    // گام ۱: گرفتن کد یک‌بارمصرف. بدون این کد، هیچ‌کس نمی‌تواند کوکی بفرستد
+    // و بدون nonce مخفی (که فقط همین صفحه دارد) نمی‌تواند آن را تحویل بگیرد.
+    let pair;
+    try {
+      pair = await BilitFast.authFetch('/api/cookie-sync', { action: 'pair' });
+    } catch (e) {
+      pair = null;
+    }
+    if (!pair || !pair.ok) {
+      btn.disabled = false;
+      el.innerHTML = '❌ ' + ((pair && pair.error) || 'ساخت کد جفت‌سازی ناموفق بود.') +
+        (pair && pair.loginRequired ? ' <a href="account.html">ورود به حساب</a>' : '');
+      return;
+    }
+
+    const nonce = pair.nonce;
+    el.innerHTML = 'کد جفت‌سازی شما: <b style="font-size:20px;letter-spacing:3px;direction:ltr;display:inline-block">' +
+      pair.code + '</b><br>این کد را در پنجره افزونه وارد کنید (اعتبار: ۲ دقیقه).';
+
     let tries = 0;
     const poll = async () => {
       tries++;
       try {
-        const res = await fetch('/api/cookie-sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'poll' }),
-        });
-        const data = await res.json();
+        const data = await BilitFast.authFetch('/api/cookie-sync', { action: 'poll', nonce });
         if (data && data.ok && data.cookies && data.cookies.length) {
           clearInterval(extPollTimer); extPollTimer = null;
           btn.disabled = false;
           BilitFast.setCookies(data.cookies);
-          // اگر کاربر وارد حساب شده، کوکی‌ها را در حساب هم ذخیره کن
           if (BilitFast.isLoggedIn()) {
             BilitFast.authFetch('/api/auth', { action: 'import-local', cookies: data.cookies }).catch(() => {});
           }
           document.getElementById('cookie-input').value = data.cookies.join('; ');
           updateCookieWarn();
-          el.innerHTML = '✅ ' + data.count + ' کوکی دریافت و ذخیره شد.' +
+          el.innerHTML = '✅ ' + BilitFast.faNum(data.count) + ' کوکی دریافت و ذخیره شد.' +
             (data.has_session ? ' (کوکی نشست موجود است)' : ' ⚠️ کوکی نشست یافت نشد — ابتدا در مرورگر وارد سایت شوید.');
           return;
         }
+        if (data && data.expired) {
+          clearInterval(extPollTimer); extPollTimer = null;
+          btn.disabled = false;
+          el.textContent = 'کد جفت‌سازی منقضی شد. دوباره این دکمه را بزنید.';
+          return;
+        }
       } catch (e) { /* ادامه تلاش */ }
-      if (tries >= 30) {
+      if (tries >= 55) {
         clearInterval(extPollTimer); extPollTimer = null;
         btn.disabled = false;
-        el.textContent = 'کوکی‌ای دریافت نشد. مطمئن شوید افزونه نصب است، سپس در صفحه صفیر ریل روی آیکون افزونه کلیک کنید و دوباره این دکمه را بزنید.';
+        el.textContent = 'کوکی‌ای دریافت نشد. مطمئن شوید افزونه نصب است و کد را در آن وارد کرده‌اید.';
       }
     };
-    poll();
     extPollTimer = setInterval(poll, 2000);
   });
 

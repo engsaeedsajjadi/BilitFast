@@ -1,17 +1,23 @@
 {
   "manifest_version": 3,
   "name": "BilitFast — همگام‌سازی کوکی صفیر ریل",
-  "version": "1.0.0",
-  "description": "با یک کلیک، کوکی‌های ورود سایت صفیر ریل را به برنامه بیلیت فست منتقل می‌کند.",
-  "permissions": ["cookies", "storage"],
+  "version": "1.1.0",
+  "description": "کوکی‌های ورود صفیر ریل را با کد جفت‌سازی یک‌بارمصرف به برنامه بیلیت فست منتقل می‌کند.",
+  "permissions": [
+    "cookies",
+    "storage"
+  ],
   "host_permissions": [
     "https://safirrail.ir/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],
-  "background": { "service_worker": "background.js" },
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
-    "default_title": "همگام‌سازی کوکی صفیر ریل با بیلیت فست"
+    "default_title": "انتقال کوکی صفیر ریل به بیلیت فست",
+    "default_popup": "popup.html"
   },
   "options_ui": {
     "page": "options.html",

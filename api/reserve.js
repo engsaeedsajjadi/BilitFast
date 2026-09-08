@@ -7,6 +7,9 @@ const {
   solveCaptchaImage,
 } = require('../lib/reserve');
 const { guardApi } = require('../lib/guard');
+const { getSessionUser } = require('../lib/auth');
+const { checkAccess } = require('../lib/license');
+const config = require('../config.json');
 
 function readBody(req) {
   if (typeof req.body === 'string') {
@@ -24,6 +27,23 @@ module.exports = async (req, res) => {
   if (!guardApi(req, res, { name: 'reserve', limit: 120, windowMs: 60000 })) return;
 
   const body = readBody(req);
+  // گیت مجوز سمت سرور (در حالت توسعه با کلید پیش‌فرض، آزاد است)
+  try {
+    const user = getSessionUser(req, body);
+    const access = checkAccess({
+      user,
+      licenseToken: String(body.licenseToken || ''),
+      trialToken: String(body.trialToken || ''),
+      trialDays: config.trial_period_days,
+    });
+    if (!access.allowed) {
+      res.status(402).json({ ok: false, licenseRequired: true, error: 'دوره آزمایشی پایان یافته یا مجوز فعال نیست. لطفاً برنامه را فعال کنید.' });
+      return;
+    }
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'خطا در بررسی مجوز دسترسی.' });
+    return;
+  }
   const action = body.action || (req.query && req.query.action) || 'start';
 
   try {

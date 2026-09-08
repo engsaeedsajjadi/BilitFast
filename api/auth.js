@@ -82,6 +82,7 @@ module.exports = async (req, res) => {
         const pn = body.payment_notify;
         patch.payment_notify = {
           enabled: pn.enabled === true,
+          telegram: pn.telegram === true,
           bale: pn.bale === true,
           eitaa: pn.eitaa === true,
           bale_chat_id: String(pn.bale_chat_id || '').trim().slice(0, 120),

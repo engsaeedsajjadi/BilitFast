@@ -13,19 +13,22 @@ const API_DIR = path.join(ROOT, 'api');
 const PORT = process.env.PORT || 3000;
 const MAX_BODY_BYTES = 5 * 1024 * 1024; // ۵ مگابایت (تصاویر کپچا به‌صورت data-URI ارسال می‌شوند)
 
-// بارگذاری .env (برای متغیرهای لایسنس/رمزنگاری). متغیرهای موجود در محیط
-// اولویت دارند و بازنویسی نمی‌شوند.
+// بارگذاری .env و .env.local (برای متغیرهای لایسنس/رمزنگاری/پیام‌رسان‌ها).
+// متغیرهای موجود در محیط اولویت دارند و بازنویسی نمی‌شوند.
 (function loadDotEnv() {
-  const p = path.join(ROOT, '.env');
-  if (!fs.existsSync(p)) return;
-  try {
-    for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
-      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-      if (!m) continue;
-      if (process.env[m[1]] !== undefined) continue;
-      process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-    }
-  } catch (e) { /* ignore */ }
+  const files = ['.env', '.env.local'];
+  for (const f of files) {
+    const p = path.join(ROOT, f);
+    if (!fs.existsSync(p)) continue;
+    try {
+      for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+        const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+        if (!m) continue;
+        if (process.env[m[1]] !== undefined) continue;
+        process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+      }
+    } catch (e) { /* ignore */ }
+  }
 })();
 
 const MIME = {
@@ -118,9 +121,62 @@ const server = http.createServer(async (req, res) => {
   const ext = path.extname(filePath).toLowerCase();
   const stat = fs.statSync(filePath);
   if (stat.isDirectory()) filePath = path.join(filePath, 'index.html');
-  send(res, 200, fs.readFileSync(filePath), { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+  send(res, 200, fs.readFileSync(filePath), {
+    'Content-Type': MIME[ext] || 'application/octet-stream',
+    'Content-Security-Policy': [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '),
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+  });
 });
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('BilitFast dev server: http://0.0.0.0:' + PORT);
+  // بررسی پیکربندی امنیتی و پایداری ذخیره‌سازی هنگام بالا آمدن.
+  // در تولید (NODE_ENV=production یا BILITFAST_ENFORCE_SECURITY=1) نبود کلید
+  // یا ناپایداری ذخیره‌سازی باعث توقف سرویس می‌شود (fail-closed).
+  try {
+    require('./lib/secrets').assertSecureConfig();
+    require('./lib/db').assertReliableStorage();
+    if (require('./lib/secrets').usingEphemeralKeys()) {
+      console.warn('⚠️  حالت توسعه: کلیدهای امنیتی موقتی‌اند و با ری‌استارت، نشست‌ها باطل می‌شوند.');
+      console.warn('    برای تولید: BILITFAST_SESSION_KEY / BILITFAST_LICENSE_KEY / BILITFAST_TOKEN_KEY را تنظیم کنید.');
+    }
+  } catch (e) {
+    console.error('\n❌ ' + (e && e.message ? e.message : e) + '\n');
+    process.exit(1);
+  }
+  // گرم‌کردن اتصال به صفیر ریل: دست‌دادن TCP/TLS همین حالا انجام می‌شود تا
+  // اولین جستجوی کاربر تأخیر برقراری اتصال (۰.۵ تا ۱.۵ ثانیه) را نداشته باشد.
+  try {
+    const { warmUp } = require('./lib/http');
+    const cfg = require('./config.json');
+    warmUp(cfg.base_url).then((ok) => {
+      if (ok) console.log('Safir connection warmed up (keep-alive ready)');
+    }).catch(() => {});
+  } catch (e) { /* اختیاری */ }
+  // نگهدارنده نشست صفیر ریل: هر ۵ دقیقه برای کاربرانی که اعتبارنامه ذخیره
+  // کرده‌اند، ورود مجدد و تازه‌سازی کوکی به‌صورت خودکار انجام می‌شود.
+  try {
+    const keeper = require('./lib/session-keeper');
+    if (keeper.start()) {
+      console.log('Safir session keeper started (every ' +
+        Math.round(keeper.REFRESH_INTERVAL_MS / 60000) + ' min)');
+    }
+  } catch (e) { /* اختیاری */ }
+  // راه‌اندازی مجدد پایشگرهای سمت سرور پس از بالا آمدن سرور
+  try {
+    const n = require('./lib/monitor').resumeAll();
+    if (n) console.log('Server monitors resumed: ' + n);
+  } catch (e) { /* پایشگر اختیاری است */ }
 });

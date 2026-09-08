@@ -5,12 +5,45 @@
  * کاربران واردشده اولویت با «اشتراک فعال» دارند و تاریخچه/اطلاعیه دارند.
  */
 
-const BilitFast = (function () {
+const BilitFast = (function (global) {
   const TRIAL_KEY = 'bilitfast_trial_token';
   const LICENSE_KEY = 'bilitfast_license_token';
   const SESSION_KEY = 'bilitfast_session_token';
   const CACHE_KEY = 'bilitfast_license_cache';
   const CACHE_TTL_MS = 15000;
+
+  /* ---------------- لایه ذخیره‌سازی امن ----------------
+   * داده‌های هویتی (مسیرها و الگوهای مسافر شامل کد ملی، تاریخ تولد، نام و
+   * موبایل) دیگر متن ساده ذخیره نمی‌شوند: با AES-256-GCM و کلید
+   * غیرقابل‌استخراج (IndexedDB) رمز می‌شوند. اگر مرورگر WebCrypto نداشته
+   * باشد، رفتار قبلی حفظ می‌شود تا برنامه نشکند. */
+  const SECURE_KEYS = ['bilitfast_routes', 'bilitfast_passenger_profiles'];
+
+  function secureGet(k) {
+    if (global.BilitSecureStore && global.BilitSecureStore.available) {
+      const v = global.BilitSecureStore.getItem(k);
+      if (v !== null && v !== undefined) return v;
+      // اگر هنوز بارگذاری نشده، از متن ساده قدیمی بخوان (کوچ در حال انجام)
+      const raw = localStorage.getItem(k);
+      return (raw && raw.indexOf('enc1:') === 0) ? null : raw;
+    }
+    return localStorage.getItem(k);
+  }
+  function secureSet(k, v) {
+    if (global.BilitSecureStore && global.BilitSecureStore.available) {
+      global.BilitSecureStore.setItem(k, v);
+      return;
+    }
+    try { localStorage.setItem(k, v); } catch (e) { /* ignore */ }
+  }
+  /** پاک‌کردن کامل داده‌های شخصی این دستگاه (حق فراموش‌شدن). */
+  function purgeLocalData() {
+    try {
+      if (global.BilitSecureStore) global.BilitSecureStore.purge(SECURE_KEYS);
+      SECURE_KEYS.forEach((k) => localStorage.removeItem(k));
+      clearCookies();
+    } catch (e) { /* ignore */ }
+  }
 
   /* ---------------- نشست کاربر ---------------- */
   function getSessionToken() { return localStorage.getItem(SESSION_KEY) || ''; }
@@ -18,12 +51,49 @@ const BilitFast = (function () {
   function isLoggedIn() { return !!getSessionToken(); }
 
   /** فراخوانی API با توکن نشست (هدر + بدنه برای سازگاری). */
+  /* ---------------- نشانه نصب دسکتاپ (رجیستری ویندوز) ---------------- */
+  const INSTALL_INFO_KEY = 'bilitfast_install_info_v1';
+  let installInfoPromise = null;
+
+  function isDesktopShell() {
+    return !!(window.bilitDesktop && window.bilitDesktop.isDesktop);
+  }
+  // اطلاعات نصب (تاریخ نصب + شناسه دستگاه + امضا) را یک بار از پوسته دسکتاپ
+  // می‌گیریم و کش می‌کنیم؛ در نسخه وب (PWA) چیزی برنمی‌گردد.
+  function loadInstallInfo(force = false) {
+    if (!isDesktopShell()) return Promise.resolve(null);
+    if (!force && installInfoPromise) return installInfoPromise;
+    installInfoPromise = (async () => {
+      try {
+        const info = await window.bilitDesktop.getInstallInfo();
+        if (info && info.ok && info.signature) {
+          const compact = {
+            installDate: info.installDate, deviceId: info.deviceId,
+            appVersion: info.appVersion, signature: info.signature, created: !!info.created,
+          };
+          try { localStorage.setItem(INSTALL_INFO_KEY, JSON.stringify(compact)); } catch (e) { /* ignore */ }
+          return compact;
+        }
+        // fallback: اگر پوسته جواب نداد ولی کش قبلی هست، از همان استفاده کن
+        try { return JSON.parse(localStorage.getItem(INSTALL_INFO_KEY) || 'null'); } catch (e) { return null; }
+      } catch (e) {
+        try { return JSON.parse(localStorage.getItem(INSTALL_INFO_KEY) || 'null'); } catch (e2) { return null; }
+      }
+    })();
+    return installInfoPromise;
+  }
+
   async function authFetch(path, payload) {
     const headers = { 'Content-Type': 'application/json' };
     const token = getSessionToken();
     if (token) headers['Authorization'] = 'Bearer ' + token;
     const body = { ...(payload || {}) };
     if (token) body.sessionToken = token;
+    // در نسخه دسکتاپ، اطلاعات امضاشده نصب هم همراه درخواست‌های مجوز/حساب می‌رود.
+    try {
+      const install = await loadInstallInfo();
+      if (install) body.install = install;
+    } catch (e) { /* ignore */ }
     const res = await fetch(path, { method: 'POST', headers, body: JSON.stringify(body) });
     return res.json();
   }
@@ -77,12 +147,10 @@ const BilitFast = (function () {
   /** فعال‌سازی دائمی با کد (برای مهمان‌ها؛ کاربران واردشده اشتراک می‌خرند). */
   async function activate(code) {
     try {
-      const res = await fetch('/api/activate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json();
+      // با authFetch توکن نشست هم فرستاده می‌شود تا اگر کاربر وارد حساب است،
+      // فعال‌سازی روی خود حساب (license_activated) ثبت شود و روی همه دستگاه‌ها
+      // و بعد از خروج/ورود هم فعال بماند.
+      const data = await authFetch('/api/activate', { code });
       if (data && data.ok && data.token) {
         localStorage.setItem(LICENSE_KEY, data.token);
         writeCache({ state: 'activated', message: 'فعال‌سازی دائمی', session: isLoggedIn() });
@@ -94,21 +162,207 @@ const BilitFast = (function () {
     }
   }
 
-  /* ---------------- اشتراک ---------------- */
-  async function getPlans() {
-    try { return await authFetch('/api/subscription', { action: 'plans' }); }
-    catch (e) { return { ok: false, error: 'خطا در ارتباط با سرور' }; }
-  }
-  async function createCheckout(planId) {
-    return authFetch('/api/subscription', { action: 'create', plan: planId });
-  }
-  async function subscriptionStatus() {
-    return authFetch('/api/subscription', { action: 'status' });
+  /* ---------------- کوکی بین‌دستگاهی (از طریق حساب کاربری) ----------------
+   * کاربر روی دسکتاپ کوکی صفیر ریل را می‌گیرد؛ هنگام دریافت/ذخیره، کوکی به
+   * حسابش هم منتقل می‌شود. روی هر دستگاه دیگری (مثل موبایل) پس از ورود به
+   * حساب با pullAccountCookies همان کوکی در localStorage نشسته و آماده
+   * جستجو/رزرو می‌شود. توجه: کوکی نشست عمر محدود دارد و باید گهگاه از
+   * دستگاهی که به صفیر ریل دسترسی دارد دوباره تمدید شود. */
+  async function pushCookiesToAccount(cookies) {
+    if (!isLoggedIn() || !Array.isArray(cookies) || !cookies.length) return { ok: false };
+    try {
+      return await authFetch('/api/auth', { action: 'import-local', cookies: cookies.slice(0, 30) });
+    } catch (e) { return { ok: false, error: String(e) }; }
   }
 
-  /* ---------------- تاریخچه رزرو ---------------- */
+  async function pullAccountCookies() {
+    if (!isLoggedIn()) return { ok: false, error: 'not_logged_in' };
+    try {
+      const data = await authFetch('/api/auth', { action: 'export-local' });
+      if (data && data.ok && Array.isArray(data.cookies) && data.cookies.length) {
+        setCookies(data.cookies);
+        return { ok: true, cookies: data.cookies, count: data.cookies.length };
+      }
+      return { ok: false, error: (data && data.error) || 'هیچ کوکی‌ای در حساب شما ذخیره نشده است.' };
+    } catch (e) {
+      return { ok: false, error: 'خطا در ارتباط با سرور' };
+    }
+  }
+
+  /* ---------------- نشست خودکار صفیر ریل ----------------
+   * کاربر یک بار شناسه/گذرواژه اصلی صفیر ریل خودش را وارد می‌کند؛ سرور آن را
+   * رمزشده نگه می‌دارد و هر ۵ دقیقه کوکی تازه می‌گیرد. این تابع کوکی‌های تازه
+   * را به مرورگر می‌آورد تا جستجو/رزرو هیچ‌وقت با «نیاز به ورود» نخوابد. */
+  const SAFIR_SESSION_POLL_MS = 5 * 60 * 1000;
+  let safirSessionTimer = null;
+
+  async function safirSession(action, payload = {}) {
+    try {
+      return await authFetch('/api/safir-session', { action, ...payload });
+    } catch (e) {
+      return { ok: false, error: 'خطا در ارتباط با سرور' };
+    }
+  }
+
+  /** تحویل گرفتن آخرین کوکی‌های تازه از حساب و نشاندن در مرورگر. */
+  async function pullFreshSafirCookies() {
+    if (!isLoggedIn()) return { ok: false, error: 'not_logged_in' };
+    const d = await safirSession('pull');
+    if (d && d.ok && Array.isArray(d.cookies) && d.cookies.length) {
+      setCookies(d.cookies);
+      return { ok: true, count: d.cookies.length, cookiesAt: d.cookiesAt };
+    }
+    return { ok: false, error: (d && d.error) || 'کوکی تازه‌ای موجود نیست.' };
+  }
+
+  /**
+   * شروع همگام‌سازی خودکار کوکی در این تب: هر ۵ دقیقه کوکی تازه گرفته
+   * می‌شود (سرور خودش ورود مجدد را انجام داده). بی‌صدا کار می‌کند تا کاربر
+   * سردرگم نشود.
+   */
+  function startSafirSessionAutoSync() {
+    if (safirSessionTimer || !isLoggedIn()) return false;
+    const run = async () => {
+      const r = await pullFreshSafirCookies();
+      if (r.ok) {
+        document.dispatchEvent(new CustomEvent('bilitfast:cookies-refreshed', { detail: r }));
+      }
+    };
+    run();
+    safirSessionTimer = setInterval(run, SAFIR_SESSION_POLL_MS);
+    return true;
+  }
+  function stopSafirSessionAutoSync() {
+    if (safirSessionTimer) { clearInterval(safirSessionTimer); safirSessionTimer = null; }
+  }
+
+  /* ---------------- اعلان (Toast) ---------------- */
+  let toastEl = null;
+  let toastTimer = null;
+  function toast(message, type = 'info', ms = 3500) {
+    try {
+      if (!toastEl) {
+        toastEl = document.createElement('div');
+        toastEl.id = 'bf-toast';
+        toastEl.setAttribute('role', 'alert');
+        document.body.appendChild(toastEl);
+      }
+      toastEl.textContent = message;
+      toastEl.className = 'bf-toast show bf-toast-' + type;
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { if (toastEl) toastEl.className = 'bf-toast'; }, ms);
+    } catch (e) { /* در دسترس نبودن DOM */ }
+  }
+
+  /* ---------------- دیالوگ تأیید داخلی (جایگزین confirm مرورگر) ----------------
+   * پنجره‌های بومی مرورگر (confirm/alert/prompt) ظاهر متفاوتی دارند، رابط را
+   * چندپاره نشان می‌دهند و روی موبایل بد جلوه می‌کنند. این دیالوگ هم‌سبک با
+   * خود برنامه است و با انیمیشن باز/بسته می‌شود. */
+  function confirmDialog({ title = 'تأیید', message = '', confirmText = 'تأیید', cancelText = 'انصراف', danger = false } = {}) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'bf-modal-overlay';
+      overlay.innerHTML =
+        '<div class="bf-modal" role="dialog" aria-modal="true">' +
+        '<h3 class="bf-modal-title"></h3>' +
+        '<p class="bf-modal-msg"></p>' +
+        '<div class="bf-modal-actions">' +
+        '<button class="btn bf-modal-cancel"></button>' +
+        '<button class="btn bf-modal-ok ' + (danger ? 'btn-danger' : 'btn-primary') + '"></button>' +
+        '</div></div>';
+      overlay.querySelector('.bf-modal-title').textContent = title;
+      overlay.querySelector('.bf-modal-msg').textContent = message;
+      overlay.querySelector('.bf-modal-cancel').textContent = cancelText;
+      overlay.querySelector('.bf-modal-ok').textContent = confirmText;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('show'));
+
+      const close = (val) => {
+        overlay.classList.remove('show');
+        setTimeout(() => { try { overlay.remove(); } catch (e) { /* ignore */ } }, 200);
+        document.removeEventListener('keydown', onKey);
+        resolve(val);
+      };
+      const onKey = (e) => {
+        if (e.key === 'Escape') close(false);
+        if (e.key === 'Enter') close(true);
+      };
+      overlay.querySelector('.bf-modal-ok').addEventListener('click', () => close(true));
+      overlay.querySelector('.bf-modal-cancel').addEventListener('click', () => close(false));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => { try { overlay.querySelector('.bf-modal-ok').focus(); } catch (e) { /* ignore */ } }, 60);
+    });
+  }
+
+  /** دیالوگ ورودی متنی داخلی (جایگزین prompt مرورگر). */
+  function promptDialog({ title = 'ورودی', message = '', value = '', confirmText = 'ذخیره', placeholder = '' } = {}) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'bf-modal-overlay';
+      overlay.innerHTML =
+        '<div class="bf-modal" role="dialog" aria-modal="true">' +
+        '<h3 class="bf-modal-title"></h3>' +
+        '<p class="bf-modal-msg"></p>' +
+        '<input class="bf-modal-input" type="text">' +
+        '<div class="bf-modal-actions">' +
+        '<button class="btn bf-modal-cancel">انصراف</button>' +
+        '<button class="btn btn-primary bf-modal-ok"></button>' +
+        '</div></div>';
+      overlay.querySelector('.bf-modal-title').textContent = title;
+      overlay.querySelector('.bf-modal-msg').textContent = message;
+      overlay.querySelector('.bf-modal-ok').textContent = confirmText;
+      const input = overlay.querySelector('.bf-modal-input');
+      input.value = value; input.placeholder = placeholder;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('show'));
+
+      const close = (val) => {
+        overlay.classList.remove('show');
+        setTimeout(() => { try { overlay.remove(); } catch (e) { /* ignore */ } }, 200);
+        document.removeEventListener('keydown', onKey);
+        resolve(val);
+      };
+      const onKey = (e) => {
+        if (e.key === 'Escape') close(null);
+        if (e.key === 'Enter') close(input.value);
+      };
+      overlay.querySelector('.bf-modal-ok').addEventListener('click', () => close(input.value));
+      overlay.querySelector('.bf-modal-cancel').addEventListener('click', () => close(null));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => { try { input.focus(); input.select(); } catch (e) { /* ignore */ } }, 60);
+    });
+  }
+
+  /* ---------------- ارقام فارسی ---------------- */
+  function faNum(n) {
+    return String(n == null ? '' : n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+  }
+
+  /* ---------------- تاریخچه رزرو ----------------
+   * saveBooking عمداً با keepalive فرستاده می‌شود: در حالت رزرو خودکار
+   * مرورگر بلافاصله به درگاه بانک می‌رود (window.location) و بدون keepalive
+   * این درخواست پیش از رسیدن به سرور قطع می‌شد و لینک پرداخت به پیام‌رسان
+   * ارسال نمی‌شد. keepalive درخواست را پس از ناوبری هم زنده نگه می‌دارد. */
   async function saveBooking(data) {
-    return authFetch('/api/bookings', { action: 'save', ...data });
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getSessionToken();
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const body = { action: 'save', ...(data || {}) };
+    if (token) body.sessionToken = token;
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        keepalive: true,
+      });
+      return await res.json();
+    } catch (e) {
+      // حتی اگر پاسخ به‌خاطر ناوبری خوانده نشد، درخواست با keepalive ارسال شده
+      return { ok: false, error: String(e) };
+    }
   }
   async function bookingResult(id, result) {
     return authFetch('/api/bookings', { action: 'result', id, result });
@@ -132,15 +386,18 @@ const BilitFast = (function () {
   /* ---------------- مسیرها (ذخیره محلی مرورگر) ---------------- */
   const ROUTES_KEY = 'bilitfast_routes';
 
+  // مسیرها شامل اطلاعات هویتی مسافران (کد ملی، تاریخ تولد، نام، موبایل)
+  // هستند؛ بنابراین از طریق لایه امن ذخیره می‌شوند (AES-256-GCM با کلید
+  // غیرقابل‌استخراج در IndexedDB) نه متن ساده در localStorage.
   function loadRoutes() {
     try {
-      const raw = localStorage.getItem(ROUTES_KEY);
+      const raw = secureGet(ROUTES_KEY);
       const arr = raw ? JSON.parse(raw) : [];
       return Array.isArray(arr) ? arr : [];
     } catch (e) { return []; }
   }
   function saveRoutes(routes) {
-    localStorage.setItem(ROUTES_KEY, JSON.stringify(routes));
+    secureSet(ROUTES_KEY, JSON.stringify(routes));
   }
   function getRoute(id) {
     return loadRoutes().find((r) => r.id === id) || null;
@@ -162,15 +419,52 @@ const BilitFast = (function () {
     return maxId + 1;
   }
 
-  /* ---------------- کوکی‌ها (نشست صفیر ریل) ---------------- */
+  /* ---------------- الگوی مسافران (پرتکرار) ---------------- */
+  const PASSENGER_PROFILES_KEY = 'bilitfast_passenger_profiles';
+
+  function loadPassengerProfiles() {
+    try {
+      const arr = JSON.parse(secureGet(PASSENGER_PROFILES_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  function savePassengerProfiles(list) {
+    // الگوهای مسافر هم داده هویتی دارند → رمزشده ذخیره می‌شوند
+    try { secureSet(PASSENGER_PROFILES_KEY, JSON.stringify(Array.isArray(list) ? list.slice(0, 50) : [])); }
+    catch (e) { /* ignore */ }
+  }
+  function savePassengerProfile(name, passengers) {
+    const list = loadPassengerProfiles().filter((p) => p.name !== name);
+    list.unshift({ name, passengers: passengers || [], savedAt: Date.now() });
+    savePassengerProfiles(list);
+    return list;
+  }
+  function deletePassengerProfile(name) {
+    savePassengerProfiles(loadPassengerProfiles().filter((p) => p.name !== name));
+  }
+
+  /* ---------------- کوکی‌ها (نشست صفیر ریل) ----------------
+   * ⚠️ کوکی نشست صفیر عملاً «کلید حساب» کاربر است. دیگر در localStorage
+   * (که ماندگار است و با پروفایل مشترک/پشتیبان/افزونه خوانده می‌شود)
+   * نگهداری نمی‌شود؛ به sessionStorage منتقل شد که با بستن مرورگر پاک
+   * می‌شود. منبع پایدارِ آن حساب کاربر روی سرور است و نگهدارنده نشست هر
+   * ۵ دقیقه تازه‌اش می‌کند. */
   const COOKIES_KEY = 'bilitfast_cookies';
 
   function getCookies() {
-    try { return JSON.parse(localStorage.getItem(COOKIES_KEY)) || []; }
-    catch (e) { return []; }
+    try {
+      const v = sessionStorage.getItem(COOKIES_KEY);
+      return v ? (JSON.parse(v) || []) : [];
+    } catch (e) { return []; }
   }
   function setCookies(c) {
-    localStorage.setItem(COOKIES_KEY, JSON.stringify(c || []));
+    try { sessionStorage.setItem(COOKIES_KEY, JSON.stringify(c || [])); }
+    catch (e) { /* ignore */ }
+  }
+  /** پاک‌کردن کوکی نشست از این دستگاه. */
+  function clearCookies() {
+    try { sessionStorage.removeItem(COOKIES_KEY); } catch (e) { /* ignore */ }
+    try { localStorage.removeItem(COOKIES_KEY); } catch (e) { /* ignore */ }
   }
 
   /* ---------------- تاریخ شمسی ---------------- */
@@ -201,6 +495,19 @@ const BilitFast = (function () {
     const dt = new Date(g.gy, g.gm - 1, g.gd + days);
     const t = j.toJalaali(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
     return t.jy + '/' + String(t.jm).padStart(2, '0') + '/' + String(t.jd).padStart(2, '0');
+  }
+  // تعداد روزهای باقی‌مانده تا تاریخ شمسی (مثبت=آینده). null اگر نامعتبر.
+  function daysUntilJalali(s) {
+    const m = (s || '').trim().match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+    if (!m) return null;
+    const j = jalali();
+    const y = parseInt(m[1], 10), mo = parseInt(m[2], 10), d = parseInt(m[3], 10);
+    if (!j.isValidJalaaliDate(y, mo, d)) return null;
+    const g = j.toGregorian(y, mo, d);
+    const target = new Date(g.gy, g.gm - 1, g.gd);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((target - today) / 86400000);
   }
 
   /* ---------------- اعتبارسنجی‌ها ---------------- */
@@ -349,11 +656,17 @@ const BilitFast = (function () {
   }
 
   /* ---------------- API ---------------- */
+  function withLicenseTokens(payload) {
+    return Object.assign({
+      trialToken: localStorage.getItem(TRIAL_KEY) || '',
+      licenseToken: localStorage.getItem(LICENSE_KEY) || '',
+    }, payload || {});
+  }
   async function apiSearch(payload) {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(withLicenseTokens(payload)),
     });
     return res.json();
   }
@@ -361,7 +674,7 @@ const BilitFast = (function () {
     const res = await fetch('/api/reserve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(withLicenseTokens(payload)),
     });
     return res.json();
   }
@@ -374,19 +687,85 @@ const BilitFast = (function () {
     return res.json();
   }
 
+  /* ---------------- منوی همبرگری موبایل ----------------
+   * دکمه منو به‌صورت خودکار به ناوبری اضافه می‌شود و فقط در موبایل
+   * (طبق CSS، @media max-width:720px) نمایش داده می‌شود. */
+  function initMobileNav() {
+    try {
+      const nav = document.querySelector('.topnav');
+      if (!nav || nav.dataset.bfNav) return;
+      nav.dataset.bfNav = '1';
+
+      // علامت‌گذاری لینک صفحه فعلی برای دسترس‌پذیری
+      const here = (location.pathname.split('/').pop() || 'index.html');
+      nav.querySelectorAll('a').forEach((a) => {
+        const href = (a.getAttribute('href') || '').split('?')[0];
+        if (href === here || (here === '' && href === 'index.html')) a.setAttribute('aria-current', 'page');
+      });
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'nav-toggle';
+      btn.setAttribute('aria-label', 'منو');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.textContent = '☰';
+      btn.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      nav.addEventListener('click', (e) => {
+        if (e.target.tagName === 'A') {
+          nav.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+      nav.parentNode.insertBefore(btn, nav);
+    } catch (e) { /* ignore */
+    }
+  }
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initMobileNav);
+    else initMobileNav();
+    // در نسخه دسکتاپ، اطلاعات نصب را یک بار در ابتدا آماده کن تا authFetch بفرستد
+    try { loadInstallInfo(); } catch (e) { /* ignore */ }
+    // راه‌اندازی ذخیره‌سازی امن: رمزگشایی داده‌های موجود و کوچ یک‌بارهٔ
+    // داده‌های متن‌سادهٔ نسخه‌های قبلی به حالت رمزشده (بی‌صدا).
+    try {
+      if (global.BilitSecureStore && global.BilitSecureStore.available) {
+        global.BilitSecureStore.init(SECURE_KEYS).then(function () {
+          document.dispatchEvent(new CustomEvent('bilitfast:secure-store-ready'));
+        });
+      }
+    } catch (e) { /* اختیاری */ }
+    // ثبت سرویس‌ورکر برای حالت PWA (نصب روی گوشی/دسکتاپ). فقط در محیط امن
+    // (https یا localhost) فعال است؛ شکست آن بی‌سروصدا نادیده گرفته می‌شود.
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      window.addEventListener('load', () => {
+        try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) { /* ignore */ }
+      });
+    }
+  }
+
   return {
     // نشست و حساب
     getSessionToken, setSessionToken, isLoggedIn, authFetch,
     // مجوز و اشتراک
     fetchLicenseState, startTrial, activate,
-    getPlans, createCheckout, subscriptionStatus,
+    isDesktopShell, loadInstallInfo,
+    confirmDialog, promptDialog,
+    safirSession, pullFreshSafirCookies,
+    startSafirSessionAutoSync, stopSafirSessionAutoSync,
+    // انتقال کوکی بین‌دستگاهی، اعلان و ارقام
+    pushCookiesToAccount, pullAccountCookies, toast, faNum,
     // تاریخچه و اطلاع‌رسانی
     saveBooking, bookingResult, notifyPayment, listBookings, sendNotification,
     // داده محلی
     loadRoutes, saveRoutes, getRoute, upsertRoute, removeRoute, nextRouteId,
-    getCookies, setCookies,
+    getCookies, setCookies, clearCookies, purgeLocalData,
+    secureGet, secureSet, SECURE_KEYS,
+    loadPassengerProfiles, savePassengerProfile, deletePassengerProfile,
     // تاریخ و اعتبارسنجی
-    todayJalali, isValidJalaliDate, shiftJalaliDate, isValidNationalCode,
+    todayJalali, isValidJalaliDate, shiftJalaliDate, daysUntilJalali, isValidNationalCode,
     // تنظیمات
     loadSharedConfig, getPollIntervalMs, getCaptchaMaxAttempts,
     isDebugMode, setDebugMode,
@@ -397,4 +776,4 @@ const BilitFast = (function () {
     // API پایه
     apiSearch, apiReserve, apiLogin,
   };
-})();
+})(typeof window !== 'undefined' ? window : globalThis);

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تاریخچه رزروها — Bilit Fast</title>
   <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2563eb">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,6 +24,7 @@
         <a href="login.html">ورود صفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
         <a href="account.html">حساب</a>
+        <a href="privacy.html">حریم خصوصی</a>
       </nav>
     </div>
   </header>
@@ -34,8 +39,9 @@
       <div id="content"><p class="muted">در حال بارگذاری...</p></div>
     </section>
   </main>
-  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+  <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
 
+  <script src="secure-store.js"></script>
   <script src="app.js"></script>
   <script>
   const STATUS_FA = {
@@ -71,7 +77,7 @@
       el.innerHTML = '<p class="muted">هنوز رزروی ثبت نشده است. رزروهایی که به مرحله پرداخت برسند اینجا نمایش داده می‌شوند.</p>';
       return;
     }
-    let html = '<table class="table"><thead><tr>' +
+    let html = '<div class="table-scroll"><table class="table"><thead><tr>' +
       '<th>مسیر</th><th>تاریخ/ساعت حرکت</th><th>قطار</th><th>مسافران</th><th>مبلغ (ریال)</th><th>وضعیت</th><th>ثبت شده</th><th>عملیات</th>' +
       '</tr></thead><tbody>';
     for (const b of data.items) {
@@ -94,20 +100,21 @@
             : '') +
         '</td></tr>';
     }
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     el.innerHTML = html;
   }
 
   async function mark(id, result) {
     const data = await BilitFast.bookingResult(id, result);
-    if (!data.ok) { alert(data.error || 'خطا در ثبت نتیجه'); return; }
+    if (!data.ok) { BilitFast.toast(data.error || 'خطا در ثبت نتیجه', 'error'); return; }
+    BilitFast.toast(result === 'paid' ? 'نتیجه پرداخت ثبت شد.' : 'پرداخت ناموفق ثبت شد.', result === 'paid' ? 'success' : 'info');
     render();
   }
   window.markPaid = (id) => mark(id, 'paid');
   window.markFailed = (id) => mark(id, 'failed');
   window.resendPayment = async (id) => {
     const data = await BilitFast.notifyPayment(id);
-    alert(data.ok ? '✅ لینک پرداخت دوباره ارسال شد.' : (data.error || 'ارسال لینک ناموفق بود.'));
+    BilitFast.toast(data.ok ? '✅ لینک پرداخت دوباره ارسال شد.' : (data.error || 'ارسال لینک ناموفق بود.'), data.ok ? 'success' : 'error');
     render();
   };
 

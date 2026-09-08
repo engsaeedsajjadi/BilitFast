@@ -22,30 +22,46 @@ function mockRes() {
 }
 
 (async () => {
-  // ۱) poll اولیه: چیزی نیست → در انتظار
+  // ⚠️ از نسخه امن به بعد: جریان بر پایه «کد جفت‌سازی یک‌بارمصرف» است.
+  // poll بدون nonce دیگر آخرین رکورد را تحویل نمی‌دهد (رفع ربودن نشست).
+
+  // ۱) poll بدون nonce → رد می‌شود (نه تحویل کوکی)
   let r = mockRes();
   await handler(mockReq({ action: 'poll' }), r);
-  test('poll بدون کوکی → در انتظار', r._json && r._json.waiting === true);
+  test('poll بدون nonce کوکی نمی‌دهد', !r._json.cookies);
 
-  // ۲) push از سمت افزونه
+  // ۲) push بدون کد جفت‌سازی → رد
   r = mockRes();
-  await handler(mockReq({ action: 'push', cookies: ['PHPSESSID=abc123', 'lang=fa'], source: 'extension' }), r);
-  test('push موفق + تشخیص کوکی نشست', r._json.ok === true && r._json.count === 2 && r._json.has_session === true);
+  await handler(mockReq({ action: 'push', cookies: ['PHPSESSID=abc123'] }), r);
+  test('push بدون کد جفت‌سازی رد می‌شود', r._json.ok !== true);
 
-  // ۳) push بدون کوکی رد می‌شود
+  // ۳) ساخت کد جفت‌سازی
   r = mockRes();
-  await handler(mockReq({ action: 'push', cookies: [] }), r);
+  await handler(mockReq({ action: 'pair' }), r);
+  const pair = r._json;
+  test('pair کد و nonce تولید می‌کند', pair.ok === true && /^\d{6}$/.test(pair.code) && !!pair.nonce);
+
+  // ۴) push با کد درست
+  r = mockRes();
+  await handler(mockReq({ action: 'push', code: pair.code, cookies: ['PHPSESSID=abc123', 'lang=fa'], source: 'extension' }), r);
+  test('push با کد درست + تشخیص کوکی نشست',
+    r._json.ok === true && r._json.count === 2 && r._json.has_session === true);
+
+  // ۵) push بدون کوکی رد می‌شود
+  r = mockRes();
+  await handler(mockReq({ action: 'push', code: pair.code, cookies: [] }), r);
   test('push خالی رد می‌شود', r._status === 400 && r._json.ok === false);
 
-  // ۴) poll کوکی‌ها را برمی‌گرداند
+  // ۶) poll با nonce درست → تحویل کوکی
   r = mockRes();
-  await handler(mockReq({ action: 'poll' }), r);
-  test('poll کوکی‌ها را دریافت می‌کند', r._json.ok === true && r._json.cookies.length === 2 && r._json.has_session === true);
+  await handler(mockReq({ action: 'poll', nonce: pair.nonce }), r);
+  test('poll با nonce درست کوکی‌ها را می‌دهد',
+    r._json.ok === true && r._json.cookies.length === 2 && r._json.has_session === true);
 
-  // ۵) poll دوم: رکورد مصرف شده → دوباره در انتظار
+  // ۷) poll دوم با همان nonce → رکورد حذف شده (یک‌بارمصرف)
   r = mockRes();
-  await handler(mockReq({ action: 'poll' }), r);
-  test('poll مجدد → مصرف‌شده (در انتظار)', r._json.waiting === true);
+  await handler(mockReq({ action: 'poll', nonce: pair.nonce }), r);
+  test('poll مجدد → رکورد مصرف/حذف شده', !r._json.cookies);
 
   // ۶) GET رد می‌شود
   r = mockRes();

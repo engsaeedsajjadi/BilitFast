@@ -56,27 +56,36 @@ module.exports = async (req, res) => {
         user_id: user.id,
         status: 'pending_payment',
         payment_url: paymentUrl,
-        payment_notification: { status: 'not_attempted', results: [] },
+        payment_notification: { status: paymentUrl ? 'sending' : 'no_payment_url', results: [] },
         workflow_id: String(body.workflow_id || '').slice(0, 64) || null,
         booking: bookingData,
       });
-      let paymentNotification = { ok: false, skipped: 'no_payment_url' };
+
+      // ارسال لینک پرداخت به پیام‌رسان کاربر باید پاسخ HTTP را بلاک نکند:
+      // در رزرو خودکار مرورگر بلافاصله به درگاه بانک می‌رود و اگر اینجا منتظر
+      // شبکهٔ بله/ایتا بمانیم، ممکن است درخواست (حتی با keepalive) ناقص قطع
+      // شود. پس رکورد را ذخیره و پاسخ می‌دهیم و ارسال در پس‌زمینه انجام می‌شود.
       if (paymentUrl) {
-        try {
-          paymentNotification = await notify.sendPaymentLinkToUser(user, bookingData, paymentUrl);
-          db.update('bookings', rec.id, {
-            payment_notification: {
-              status: paymentNotification.ok ? 'sent' : (paymentNotification.skipped ? paymentNotification.skipped : 'failed'),
-              results: paymentNotification.results || [],
-              sent_at: paymentNotification.ok ? Date.now() : null,
-            },
-          });
-        } catch (e) {
-          paymentNotification = { ok: false, error: e && e.message ? e.message : String(e) };
-          db.update('bookings', rec.id, { payment_notification: { status: 'failed', results: [], error: paymentNotification.error } });
-        }
+        setImmediate(() => {
+          notify.sendPaymentLinkToUser(user, bookingData, paymentUrl)
+            .then((pn) => {
+              db.update('bookings', rec.id, {
+                payment_notification: {
+                  status: pn.ok ? 'sent' : (pn.skipped ? pn.skipped : 'failed'),
+                  results: pn.results || [],
+                  sent_at: pn.ok ? Date.now() : null,
+                },
+              });
+            })
+            .catch((e) => {
+              db.update('bookings', rec.id, {
+                payment_notification: { status: 'failed', results: [], error: e && e.message ? e.message : String(e) },
+              });
+            });
+        });
+        return res.status(200).json({ ok: true, id: rec.id, paymentNotification: { ok: null, pending: true } });
       }
-      return res.status(200).json({ ok: true, id: rec.id, paymentNotification });
+      return res.status(200).json({ ok: true, id: rec.id, paymentNotification: { ok: false, skipped: 'no_payment_url' } });
     }
 
     if (action === 'notify-payment') {

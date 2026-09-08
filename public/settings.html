@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تنظیمات — Bilit Fast</title>
   <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2563eb">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,6 +24,7 @@
         <a href="login.html">ورود صفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
         <a href="account.html">حساب</a>
+        <a href="privacy.html">حریم خصوصی</a>
       </nav>
     </div>
   </header>
@@ -37,6 +42,9 @@
       <h4 style="margin-top:14px">💳 ارسال خودکار لینک پرداخت بلیت</h4>
       <p class="muted small">پس از رزرو موفق، لینک پرداخت واقعی سفیر ریل برای مقصدی که در اینجا تعیین می‌کنید ارسال می‌شود. پرداخت بلیت توسط خود کاربر BilitFast انجام می‌شود.</p>
       <label style="display:flex;gap:8px;align-items:center;cursor:pointer;margin:6px 0"><input type="checkbox" id="payment-notify-enabled"> فعال‌سازی ارسال خودکار</label>
+      <label style="display:flex;gap:8px;align-items:center;cursor:pointer;margin:6px 0">
+        <input type="checkbox" id="payment-notify-telegram"> ارسال به تلگرام (اگر ربات متصل است)
+      </label>
       <div class="field" style="max-width:420px">
         <label style="display:block;margin-bottom:6px">پیام‌رسان بله:</label>
         <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="payment-notify-bale"> ارسال به بله</label>
@@ -60,7 +68,9 @@
         <input type="checkbox" id="notify-sms"> پیامک (به شماره بالا — در صورت فعال‌بودن پنل پیامکی)
       </label>
       <button class="btn btn-primary" id="btn-save-notify" type="button">ذخیره تنظیمات اطلاع‌رسانی</button>
+      <div id="channel-config-status" class="muted small" style="margin:8px 0"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" id="btn-test-bale" type="button">تست بله</button><button class="btn" id="btn-test-eitaa" type="button">تست ایتا</button></div>
+      <p class="muted small">برای تست: شناسه مقصد (Chat ID) خود را وارد کنید؛ این شناسه عددی با ارسال یک پیام به ربات و گرفتن شناسه چت به‌دست می‌آید. توکن ربات باید در فایل <b>.env</b> کنار برنامه قرار داشته باشد و سرور دوباره اجرا شده باشد.</p>
 
       <h4 style="margin-top:18px">🤖 اتصال ربات تلگرام</h4>
       <p class="muted small">
@@ -76,6 +86,36 @@
         <p class="muted small">این کد را در چت ربات تلگرام ارسال کنید:</p>
         <code id="tg-code" style="direction:ltr;display:inline-block;font-size:18px;background:#f1f5f9;padding:8px 16px;border-radius:8px"></code>
         <button class="btn btn-sm" id="btn-tg-check" type="button">بررسی اتصال</button>
+      </div>
+
+      <h4 style="margin-top:18px">🤖 اتصال خودکار ربات بله</h4>
+      <p class="muted small">
+        به‌جای پیداکردن دستی Chat ID: روی «دریافت کد اتصال بله» بزنید، سپس همان کد را
+        در چت ربات بلهٔ خود بفرستید — شناسهٔ چت به‌صورت خودکار ثبت و ارسال به بله فعال می‌شود.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="btn-bale-code" type="button">دریافت کد اتصال بله</button>
+        <button class="btn" id="btn-bale-webhook" type="button">برقراری وب‌هوک بله (مدیریت)</button>
+        <button class="btn btn-sm" id="btn-bale-check" type="button">بررسی اتصال</button>
+      </div>
+      <div id="bale-code-box" style="display:none;margin-top:10px">
+        <p class="muted small">این کد را در چت ربات بله ارسال کنید:</p>
+        <code id="bale-code" style="direction:ltr;display:inline-block;font-size:18px;background:#f1f5f9;padding:8px 16px;border-radius:8px"></code>
+      </div>
+
+      <h4 style="margin-top:18px">🤖 اتصال خودکار ربات ایتا</h4>
+      <p class="muted small">
+        روی «دریافت کد اتصال ایتا» بزنید و همان کد را در چت ربات ایتای خود بفرستید —
+        شناسهٔ چت به‌صورت خودکار ثبت و ارسال به ایتا فعال می‌شود.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="btn-eitaa-code" type="button">دریافت کد اتصال ایتا</button>
+        <button class="btn" id="btn-eitaa-webhook" type="button">برقراری وب‌هوک ایتا (مدیریت)</button>
+        <button class="btn btn-sm" id="btn-eitaa-check" type="button">بررسی اتصال</button>
+      </div>
+      <div id="eitaa-code-box" style="display:none;margin-top:10px">
+        <p class="muted small">این کد را در چت ربات ایتا ارسال کنید:</p>
+        <code id="eitaa-code" style="direction:ltr;display:inline-block;font-size:18px;background:#f1f5f9;padding:8px 16px;border-radius:8px"></code>
       </div>
 
       <h4 style="margin-top:18px">🧪 تست ارسال</h4>
@@ -120,8 +160,9 @@
       </ul>
     </section>
   </main>
-  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+  <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
 
+  <script src="secure-store.js"></script>
   <script src="app.js"></script>
   <script>
   function showAlert(id, msg, ok) {
@@ -163,12 +204,14 @@
     document.getElementById('notify-sms').checked = currentUser.notify.sms === true;
     const pn = currentUser.payment_notify || {};
     document.getElementById('payment-notify-enabled').checked = pn.enabled === true;
+    document.getElementById('payment-notify-telegram').checked = pn.telegram === true;
     document.getElementById('payment-notify-bale').checked = pn.bale === true;
     document.getElementById('payment-notify-eitaa').checked = pn.eitaa === true;
     document.getElementById('bale-chat-id').value = pn.bale_chat_id || '';
     document.getElementById('eitaa-chat-id').value = pn.eitaa_chat_id || '';
     document.getElementById('payment-template').value = pn.template || '🔔 لینک پرداخت بلیت\n\nمسافر: {passenger_name}\nمسیر: {origin} ← {destination}\nتاریخ: {travel_date}\nقطار: {train_number}\nمبلغ: {amount} ریال\n\n💳 {payment_url}';
     renderTgStatus();
+    loadChannelStatus();
   }
 
   function renderTgStatus() {
@@ -190,6 +233,7 @@
       },
       payment_notify: {
         enabled: document.getElementById('payment-notify-enabled').checked,
+        telegram: document.getElementById('payment-notify-telegram').checked,
         bale: document.getElementById('payment-notify-bale').checked,
         eitaa: document.getElementById('payment-notify-eitaa').checked,
         bale_chat_id: document.getElementById('bale-chat-id').value.trim(),
@@ -200,6 +244,18 @@
     if (r.ok) { currentUser = r.user; showAlert('notify-alert', '✅ تنظیمات ذخیره شد.', true); }
     else showAlert('notify-alert', r.error || 'خطا در ذخیره تنظیمات', false);
   });
+
+  async function loadChannelStatus() {
+    const el = document.getElementById('channel-config-status');
+    if (!el) return;
+    try {
+      const r = await BilitFast.authFetch('/api/notify', { action: 'channels' });
+      if (!r || !r.ok) { el.textContent = ''; return; }
+      const mark = (on) => on ? '✅ تنظیم شده' : '❌ توکن تنظیم نشده (در فایل .env)';
+      el.innerHTML = 'وضعیت توکن‌ها روی سرور: بله ' + mark(r.bale) + ' ، ایتا ' + mark(r.eitaa) +
+        (r.telegram ? '' : '') + '.';
+    } catch (e) { el.textContent = ''; }
+  }
 
   async function testPaymentChannel(channel) {
     const r = await BilitFast.authFetch('/api/notify', {
@@ -238,6 +294,62 @@
         showAlert('notify-alert', '✅ تلگرام با موفقیت متصل شد.', true);
       } else {
         showAlert('notify-alert', 'هنوز اتصال برقرار نشده؛ کد را در چت ربات ارسال کنید و دوباره بررسی کنید.', false);
+      }
+    }
+  });
+
+  document.getElementById('btn-bale-code').addEventListener('click', async () => {
+    const r = await BilitFast.authFetch('/api/notify', { action: 'bale-connect-code' });
+    if (r.ok) {
+      document.getElementById('bale-code-box').style.display = 'block';
+      document.getElementById('bale-code').textContent = r.code;
+      showAlert('notify-alert', r.hint || 'کد اتصال بله ساخته شد.', true);
+    } else {
+      showAlert('notify-alert', r.error || 'خطا در ساخت کد اتصال بله', false);
+    }
+  });
+  document.getElementById('btn-bale-webhook').addEventListener('click', async () => {
+    const r = await BilitFast.authFetch('/api/notify', { action: 'setup-bale-webhook' });
+    showAlert('notify-alert', r.ok ? '✅ وب‌هوک بله ثبت شد.' : (r.error || 'خطا در ثبت وب‌هوک بله (نیاز به APP_BASE_URL).'), !!r.ok);
+  });
+  document.getElementById('btn-bale-check').addEventListener('click', async () => {
+    const data = await BilitFast.authFetch('/api/auth', { action: 'me' });
+    if (data.ok && data.user) {
+      currentUser = data.user;
+      const pn = data.user.payment_notify || {};
+      if (pn.bale && pn.bale_chat_id) {
+        document.getElementById('bale-chat-id').value = pn.bale_chat_id;
+        showAlert('notify-alert', '✅ بله متصل شد (Chat ID: ' + pn.bale_chat_id + ').', true);
+      } else {
+        showAlert('notify-alert', 'هنوز اتصال بله برقرار نشده؛ کد را در چت ربات بله بفرستید و دوباره بررسی کنید.', false);
+      }
+    }
+  });
+
+  document.getElementById('btn-eitaa-code').addEventListener('click', async () => {
+    const r = await BilitFast.authFetch('/api/notify', { action: 'eitaa-connect-code' });
+    if (r.ok) {
+      document.getElementById('eitaa-code-box').style.display = 'block';
+      document.getElementById('eitaa-code').textContent = r.code;
+      showAlert('notify-alert', r.hint || 'کد اتصال ایتا ساخته شد.', true);
+    } else {
+      showAlert('notify-alert', r.error || 'خطا در ساخت کد اتصال ایتا', false);
+    }
+  });
+  document.getElementById('btn-eitaa-webhook').addEventListener('click', async () => {
+    const r = await BilitFast.authFetch('/api/notify', { action: 'setup-eitaa-webhook' });
+    showAlert('notify-alert', r.ok ? '✅ وب‌هوک ایتا ثبت شد.' : (r.error || 'خطا در ثبت وب‌هوک ایتا (نیاز به APP_BASE_URL).'), !!r.ok);
+  });
+  document.getElementById('btn-eitaa-check').addEventListener('click', async () => {
+    const data = await BilitFast.authFetch('/api/auth', { action: 'me' });
+    if (data.ok && data.user) {
+      currentUser = data.user;
+      const pn = data.user.payment_notify || {};
+      if (pn.eitaa && pn.eitaa_chat_id) {
+        document.getElementById('eitaa-chat-id').value = pn.eitaa_chat_id;
+        showAlert('notify-alert', '✅ ایتا متصل شد (Chat ID: ' + pn.eitaa_chat_id + ').', true);
+      } else {
+        showAlert('notify-alert', 'هنوز اتصال ایتا برقرار نشده؛ کد را در چت ربات ایتا بفرستید و دوباره بررسی کنید.', false);
       }
     }
   });

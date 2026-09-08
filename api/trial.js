@@ -1,27 +1,37 @@
-// api/trial.js — وضعیت مجوز: اشتراک (اولویت اول)، فعال‌سازی دائمی، دوره آزمایشی
+// api/trial.js — وضعیت مجوز: فعال‌سازی دائمی یا دوره آزمایشی
+// (بخش فروش اشتراک و درگاه پرداخت از برنامه حذف شده است.)
 // اکشن‌ها:
 //   status → وضعیت فعلی (ورودی: توکن‌های کلاینت + توکن نشست اختیاری)
 //   start  → شروع دوره آزمایشی
 const path = require('path');
 const config = require(path.join(__dirname, '..', 'config.json'));
 const { licenseStatus, makeTrialToken, isActivated } = require('../lib/license');
+const { verifyInstallMarker } = require('../lib/install-marker');
 const { getSessionUser } = require('../lib/auth');
-const subscription = require('../lib/subscription');
 const { guardApi } = require('../lib/guard');
 const db = require('../lib/db');
 
 const TRIAL_DAYS = Number.isFinite(config.trial_period_days) ? config.trial_period_days : 2;
 
-/** وضعیت مجوز با اولویت: اشتراک فعال > فعال‌سازی دائمی > دوره آزمایشی. */
+/** وضعیت مجوز با اولویت: فعال‌سازی دائمی > دوره آزمایشی حساب > دوره آزمایشی مهمان. */
 function resolveStatus({ req, body }) {
-  // ۱) کاربر واردشده با اشتراک فعال → بالاترین اولویت
+  // ۱) کاربر واردشده: دوره آزمایشی ذخیره‌شده در حساب (مستقل از مرورگر)
   const user = getSessionUser(req, body);
   if (user) {
-    const sub = subscription.subscriptionStatus(user);
-    if (sub.active) {
-      return { state: 'activated', message: sub.message, source: 'subscription', subscription: sub };
+    if (user.license_activated) {
+      return { state: 'activated', message: 'فعال‌سازی دائمی', source: 'account' };
     }
-    // دوره آزمایشی ذخیره‌شده در حساب (مستقل از مرورگر)
+    // خودترمیمی: اگر کاربر در این مرورگر فعال‌سازی کرده (توکن لایسنس معتبر دارد)
+    // ولی حسابش هنوز علامت نخورده (مثلاً نسخه قبلی که توکن نشست را نمی‌فرستاد)،
+    // همین‌جا فعال‌سازی را روی حساب ثبت می‌کنیم تا روی همه دستگاه‌ها فعال شود.
+    const licenseToken = String(body.licenseToken || '');
+    if (isActivated(licenseToken)) {
+      db.update('users', user.id, {
+        license_activated: true,
+        license_activated_at: new Date().toISOString(),
+      });
+      return { state: 'activated', message: 'فعال‌سازی دائمی', source: 'account' };
+    }
     if (user.trial && user.trial.startDate) {
       const start = new Date(user.trial.startDate).getTime();
       const expiry = start + TRIAL_DAYS * 86400000;
@@ -37,7 +47,36 @@ function resolveStatus({ req, body }) {
   const licenseToken = String(body.licenseToken || '');
   const trialToken = String(body.trialToken || '');
   const st = licenseStatus({ licenseToken, trialToken }, TRIAL_DAYS);
+  // در نسخه دسکتاپ، تاریخ شروع به تاریخ واقعی نصب روی دستگاه گره می‌خورد
+  // (توکن امضاشده که صفحه از رجیستری خوانده) تا با نصب مجدد تمدید نشود.
+  const install = readValidInstall(body);
+  if (install && st.state === 'not_started') {
+    return { state: guestStateFromInstall(install), message: messageForInstall(install), source: 'guest-install' };
+  }
   return { ...st, source: 'guest' };
+}
+
+function readValidInstall(body) {
+  try {
+    const info = body && body.install;
+    if (!info || !info.signature) return null;
+    const p = verifyInstallMarker(info.signature);
+    if (!p) return null;
+    if (p.deviceId !== String(info.deviceId || '')) return null;
+    return p;
+  } catch (e) { return null; }
+}
+
+function guestStateFromInstall(install) {
+  const days = TRIAL_DAYS;
+  const start = new Date(install.installDate).getTime();
+  if (isNaN(start)) return 'not_started';
+  return Date.now() > start + days * 86400000 ? 'expired' : 'active';
+}
+function messageForInstall(install) {
+  return guestStateFromInstall(install) === 'active'
+    ? 'دوره آزمایشی فعال (از تاریخ نصب)'
+    : 'دوره آزمایشی به پایان رسیده';
 }
 
 module.exports = async (req, res) => {
@@ -74,7 +113,23 @@ module.exports = async (req, res) => {
         const st = licenseStatus({ licenseToken, trialToken: '' }, TRIAL_DAYS);
         return res.status(200).json({ ok: true, ...st, source: 'guest' });
       }
-      const token = makeTrialToken(String(body.trialToken || '') || null);
+      // در نسخه دسکتاپ: توکن آزمایشی به تاریخ نصب دستگاه گره می‌خورد تا با
+      // نصب مجدد از نو شروع نشود.
+      const install = readValidInstall(body);
+      let token;
+      if (install) {
+        const days = TRIAL_DAYS;
+        const start = new Date(install.installDate).getTime();
+        const expired = !isNaN(start) && Date.now() > start + days * 86400000;
+        token = makeTrialToken(null, install.installDate);
+        return res.status(200).json({
+          ok: true, trialToken: token,
+          state: expired ? 'expired' : 'active',
+          message: expired ? 'دوره آزمایشی به پایان رسیده' : 'دوره آزمایشی فعال (از تاریخ نصب)',
+          source: 'guest-install',
+        });
+      }
+      token = makeTrialToken(String(body.trialToken || '') || null);
       const st = licenseStatus({ licenseToken, trialToken: token }, TRIAL_DAYS);
       res.status(200).json({ ok: true, trialToken: token, ...st, source: 'guest' });
       return;

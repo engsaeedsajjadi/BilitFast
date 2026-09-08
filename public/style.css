@@ -2,13 +2,22 @@
   --bg: #f4f6f9;
   --card: #ffffff;
   --primary: #2563eb;
+  --primary-dark: #1d4ed8;
   --danger: #dc2626;
   --border: #e2e8f0;
   --text: #1f2937;
-  --muted: #6b7280;
+  --muted: #5b6472;
+  --success-bg: #dcfce7;
+  --success-fg: #166534;
+  --danger-bg: #fee2e2;
+  --danger-fg: #991b1b;
+  --warn-bg: #fef9c3;
+  --warn-fg: #854d0e;
 }
 
 * { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
@@ -16,12 +25,23 @@ body {
   background: var(--bg);
   color: var(--text);
   direction: rtl;
+  line-height: 1.7;
+}
+
+/* دسترس‌پذیری: حالت فوکوس قابل مشاهده */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .topbar {
   background: linear-gradient(135deg, #1e3a8a, #2563eb);
   color: #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  position: sticky;
+  top: 0;
+  z-index: 900;
 }
 
 .topbar-inner {
@@ -33,6 +53,7 @@ body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
+  position: relative;
 }
 
 .brand { display: flex; align-items: center; gap: 10px; }
@@ -40,6 +61,7 @@ body {
 .brand-name { font-size: 22px; font-weight: 700; }
 .brand-sub { font-size: 13px; opacity: .85; }
 
+.topnav { display: flex; align-items: center; flex-wrap: wrap; }
 .topnav a {
   color: #fff;
   text-decoration: none;
@@ -47,8 +69,25 @@ body {
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 14px;
+  white-space: nowrap;
 }
 .topnav a:hover { background: rgba(255,255,255,.15); }
+.topnav a[aria-current="page"] { background: rgba(255,255,255,.22); font-weight: 700; }
+
+/* دکمه منوی همبرگری (فقط موبایل) */
+.nav-toggle {
+  display: none;
+  background: rgba(255,255,255,.15);
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+}
 
 .container { max-width: 1100px; margin: 20px auto; padding: 0 20px; }
 
@@ -76,12 +115,17 @@ body {
   text-decoration: none;
   background: #e5e7eb;
   color: #111827;
-  transition: filter .15s;
+  transition: filter .15s, transform .05s;
+  min-height: 40px;
+  text-align: center;
 }
 .btn:hover { filter: brightness(.95); }
+.btn:active { transform: translateY(1px); }
 .btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); filter: none; }
 .btn-danger { background: var(--danger); color: #fff; }
-.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-sm { padding: 6px 12px; font-size: 13px; min-height: 36px; }
+.btn-lg { padding: 14px 28px; font-size: 16px; font-weight: 700; min-height: 50px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .table {
@@ -98,11 +142,12 @@ body {
 .table th { background: #f8fafc; font-weight: 600; }
 .table input, .table select {
   width: 100%;
-  padding: 5px;
+  padding: 7px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 6px;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
+  min-height: 38px;
 }
 .empty-row td { text-align: center; color: var(--muted); }
 
@@ -113,41 +158,118 @@ body {
 }
 
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 13px; color: var(--muted); }
-.field input, .field select {
-  padding: 9px;
+.field label { font-size: 13px; color: var(--muted); font-weight: 500; }
+.field input, .field select, .field textarea {
+  padding: 10px;
   border: 1px solid var(--border);
   border-radius: 7px;
   font-family: inherit;
   font-size: 14px;
+  min-height: 42px;
+  background: #fff;
 }
+.field textarea { min-height: auto; }
 
-.radio-group { display: flex; gap: 16px; align-items: center; padding-top: 8px; }
-.radio-group label { display: flex; gap: 4px; align-items: center; }
+.radio-group { display: flex; gap: 16px; align-items: center; padding-top: 8px; flex-wrap: wrap; }
+.radio-group label { display: flex; gap: 4px; align-items: center; cursor: pointer; }
+.radio-group input { min-height: auto; }
 
 .route-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .route-header h2 { margin: 0; }
 
 .date-buttons { margin: 14px 0; display: flex; gap: 8px; }
 
-.search-controls { display: flex; gap: 10px; margin-bottom: 12px; }
+.search-controls { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
 
 .status { font-size: 15px; min-height: 22px; margin-top: 8px; }
+.status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 6px; }
+.status-dot.pulse {
+  background: var(--primary);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .4; transform: scale(.8); }
+}
+
+/* شمارنده تلاش‌های جستجو */
+.attempt-badge {
+  display: inline-block;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* اسپینر انتظار */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(37,99,235,.25);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.spinner.spinner-lg { width: 28px; height: 28px; border-width: 3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* نوار مراحل */
+.steps {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 4px 0 18px;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.step .step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: #fff;
+  font-size: 12px;
+}
+.step.active { background: #eff6ff; color: var(--primary-dark); border-color: #bfdbfe; }
+.step.active .step-num { background: var(--primary); }
+.step.done { background: var(--success-bg); color: var(--success-fg); border-color: #bbf7d0; }
+.step.done .step-num { background: #16a34a; }
+.step-sep { color: #cbd5e1; font-size: 16px; }
 
 .badge {
   padding: 4px 12px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
+  display: inline-block;
 }
-.badge-active { background: #dcfce7; color: #166534; }
-.badge-activated { background: #dcfce7; color: #166534; }
-.badge-not_started { background: #fef9c3; color: #854d0e; }
-.badge-expired { background: #fee2e2; color: #991b1b; }
+.badge-active, .badge-activated { background: var(--success-bg); color: var(--success-fg); }
+.badge-not_started { background: var(--warn-bg); color: var(--warn-fg); }
+.badge-expired { background: var(--danger-bg); color: var(--danger-fg); }
 
 .alert { padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 14px; }
-.alert-success { background: #dcfce7; color: #166534; }
-.alert-error { background: #fee2e2; color: #991b1b; }
+.alert-success { background: var(--success-bg); color: var(--success-fg); }
+.alert-error { background: var(--danger-bg); color: var(--danger-fg); }
 
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
@@ -161,19 +283,109 @@ body {
 
 pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; direction: ltr; text-align: left; }
 
+/* اعلان شناور (Toast) */
+#bf-toast, .bf-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 50%;
+  transform: translateX(50%) translateY(80px);
+  background: #1f2937;
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  z-index: 2000;
+  opacity: 0;
+  transition: transform .25s ease, opacity .25s ease;
+  max-width: min(92vw, 480px);
+  text-align: center;
+  pointer-events: none;
+}
+#bf-toast.show, .bf-toast.show {
+  transform: translateX(50%) translateY(0);
+  opacity: 1;
+}
+.bf-toast-success { background: #166534; }
+.bf-toast-error { background: #991b1b; }
+
 /* ---------------- واکنش‌گرایی (موبایل) ---------------- */
 @media (max-width: 720px) {
   .container { margin: 10px auto; padding: 10px; }
   .card { padding: 14px; border-radius: 8px; }
   .card.narrow { margin: 16px auto; }
-  /* جدول‌ها در عرض کم به‌جای شکستن، اسکرول افقی می‌گیرند */
-  .table { display: block; overflow-x: auto; white-space: nowrap; }
+
+  /* منوی همبرگری */
+  .nav-toggle { display: inline-block; }
+  .topnav {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    order: 3;
+    padding-top: 8px;
+  }
+  .topnav.open { display: flex; }
+  .topnav a {
+    margin: 2px 0;
+    padding: 12px 14px;
+    font-size: 15px;
+    min-height: 44px;
+    border-radius: 8px;
+  }
+
   .form-grid { grid-template-columns: 1fr; }
   .topbar-inner { padding: 10px 12px; gap: 6px; }
-  .topnav a { padding: 5px 8px; font-size: 13px; margin: 0 2px; }
   .brand-name { font-size: 18px; }
   .route-header { flex-direction: column; align-items: flex-start; }
   .search-controls { flex-wrap: wrap; }
+
+  /* هدف لمسی بزرگ‌تر برای دکمه‌ها */
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; padding: 8px 14px; }
+
+  /* دکمه‌های شروع/توقف جستجو همیشه در دسترس */
+  .search-bar-sticky {
+    position: sticky;
+    bottom: 8px;
+    z-index: 500;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.12);
+  }
+  .search-bar-sticky .btn { flex: 1; }
+
+  /* جدول عمومی: اسکرول افقی */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll .table { white-space: nowrap; }
+
+  /* جدول مسافران: به‌جای اسکرول افقی، کارت عمودی */
+  #passengers-table, #passengers-table tbody, #passengers-table tr, #passengers-table td {
+    display: block;
+    width: 100%;
+  }
+  #passengers-table thead { display: none; }
+  #passengers-table tr {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 12px;
+    background: #fbfdff;
+  }
+  #passengers-table td {
+    border: none;
+    padding: 4px 0;
+    white-space: normal;
+  }
+  #passengers-table td:last-child { text-align: left; }
+  #passengers-table .quota-select { margin-bottom: 6px; }
+
+  /* نوار مراحل فشرده‌تر */
+  .step { padding: 6px 10px; font-size: 12px; }
+  .step-sep { display: none; }
+
   .plans-grid { grid-template-columns: 1fr; }
 }
 
@@ -187,6 +399,7 @@ pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; fo
   cursor: pointer;
   font-size: 15px;
   line-height: 1.6;
+  min-height: 38px;
 }
 .dp-btn:hover { background: #eef2f7; }
 
@@ -199,6 +412,7 @@ pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; fo
   box-shadow: 0 8px 24px rgba(0,0,0,.14);
   padding: 10px;
   width: 264px;
+  max-width: calc(100vw - 24px);
   direction: rtl;
 }
 .dp-head {
@@ -213,9 +427,10 @@ pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; fo
   border: none;
   background: #f1f5f9;
   border-radius: 6px;
-  padding: 4px 9px;
+  padding: 6px 11px;
   cursor: pointer;
   font-size: 14px;
+  min-height: 36px;
 }
 .dp-nav:hover { background: #e2e8f0; }
 .dp-grid {
@@ -232,10 +447,11 @@ pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; fo
 }
 .dp-day {
   text-align: center;
-  padding: 6px 0;
+  padding: 8px 0;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
+  min-height: 36px;
 }
 .dp-day:hover { background: #eff6ff; }
 .dp-today { box-shadow: inset 0 0 0 1px var(--primary); }
@@ -247,13 +463,14 @@ pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; fo
   background: #eff6ff;
   color: var(--primary);
   border-radius: 6px;
-  padding: 5px 14px;
+  padding: 7px 16px;
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
+  min-height: 36px;
 }
 
-/* ---------------- کارت‌های طرح اشتراک ---------------- */
+/* ---------------- کارت‌های طرح (در صورت استفاده) ---------------- */
 .plans-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -267,3 +484,108 @@ pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; fo
   text-align: center;
 }
 .plan-price { font-size: 18px; font-weight: 700; color: var(--primary); margin: 6px 0; }
+
+/* ============================================================
+ * دیالوگ داخلی (جایگزین confirm/prompt مرورگر) — رابط یکپارچه
+ * ============================================================ */
+.bf-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 23, 42, 0);
+  backdrop-filter: blur(0px);
+  transition: background .2s ease, backdrop-filter .2s ease;
+  padding: 16px;
+}
+.bf-modal-overlay.show {
+  background: rgba(15, 23, 42, .55);
+  backdrop-filter: blur(3px);
+}
+.bf-modal {
+  background: #fff; border-radius: 14px; padding: 22px 22px 16px;
+  width: min(420px, 100%);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .28);
+  transform: translateY(14px) scale(.97); opacity: 0;
+  transition: transform .22s cubic-bezier(.2, .8, .3, 1), opacity .22s ease;
+}
+.bf-modal-overlay.show .bf-modal { transform: translateY(0) scale(1); opacity: 1; }
+.bf-modal-title { margin: 0 0 8px; font-size: 17px; color: #0f172a; }
+.bf-modal-msg { margin: 0 0 16px; color: #475569; font-size: 14px; line-height: 1.9; }
+.bf-modal-input {
+  width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1;
+  border-radius: 8px; font: inherit; margin-bottom: 16px;
+}
+.bf-modal-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .15); }
+.bf-modal-actions { display: flex; gap: 8px; justify-content: flex-start; }
+
+/* ============================================================
+ * انتقال نرم بین صفحه‌ها (به‌جای پرش/باز شدن پنجره جدید)
+ * ============================================================ */
+body { animation: page-enter .28s ease both; }
+body.page-leave { animation: page-leave .18s ease both; }
+@keyframes page-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes page-leave { to { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) {
+  body, body.page-leave { animation: none; }
+  .bf-modal { transition: none; }
+}
+
+.row-leave { animation: row-leave .18s ease both; }
+@keyframes row-leave { to { opacity: 0; transform: translateX(20px); } }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chip-btn { border-radius: 20px; }
+
+/* ============================================================
+ * نشانگر زنده بودن جستجو — «قلب تپنده» ارتباط با صفیر ریل
+ * ============================================================ */
+.live-panel {
+  border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;
+  background: linear-gradient(180deg, #f8fafc, #fff); margin-top: 12px;
+}
+.live-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.live-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: #94a3b8;
+  flex: none; transition: background .2s;
+}
+.live-dot.on { background: #16a34a; animation: live-pulse 1.6s ease-in-out infinite; }
+.live-dot.warn { background: #f59e0b; }
+.live-dot.err { background: #dc2626; }
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, .55); }
+  70% { box-shadow: 0 0 0 9px rgba(22, 163, 74, 0); }
+}
+.live-title { font-weight: 700; font-size: 14px; color: #0f172a; }
+.live-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.live-metric {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 6px 10px; font-size: 12px; color: #334155;
+}
+.live-metric b { color: #0f172a; }
+.live-log {
+  margin-top: 10px; max-height: 150px; overflow: auto;
+  font-size: 12px; direction: ltr; text-align: left;
+  background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 8px 10px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; line-height: 1.7;
+}
+.live-log div { animation: log-in .25s ease both; }
+.live-log .ok { color: #4ade80; }
+.live-log .warn { color: #fbbf24; }
+.live-log .err { color: #f87171; }
+@keyframes log-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* نوار پیشرفت شمارش معکوس تا درخواست بعدی */
+.next-bar { height: 4px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 10px; }
+.next-bar > i { display: block; height: 100%; background: linear-gradient(90deg, #2563eb, #38bdf8); width: 0%; }
+
+/* کادر هشدار/راهنمای مهم در صفحه ورود */
+.notice-box {
+  background: #fffbeb; border: 1px solid #fcd34d; border-right: 4px solid #f59e0b;
+  border-radius: 10px; padding: 12px 14px; margin: 0 0 16px;
+  font-size: 13px; line-height: 2; color: #78350f;
+}
+.notice-box code { background: #fef3c7; padding: 1px 5px; border-radius: 4px; }
+.check-line {
+  display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 16px;
+  font-size: 13px; color: #475569; line-height: 1.9; cursor: pointer;
+}
+.check-line input { margin-top: 5px; flex: none; }

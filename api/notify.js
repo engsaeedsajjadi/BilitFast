@@ -48,11 +48,26 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, delivered: r.ok, results: r.results });
     }
 
+    if (action === 'channels') {
+      return res.status(200).json({
+        ok: true,
+        bale: !!notify.baleToken(),
+        eitaa: !!notify.eitaaToken(),
+        telegram: !!notify.telegramToken(),
+      });
+    }
+
     if (action === 'test-payment-channel') {
       const channel = String(body.channel || '').toLowerCase();
       const chatId = String(body.chat_id || '').trim();
       const text = String(body.text || '✅ تست ارسال BilitFast').slice(0, 1000);
-      if (!chatId) return res.status(200).json({ ok: false, error: 'شناسه مقصد را وارد کنید.' });
+      if (!chatId) return res.status(200).json({ ok: false, error: 'شناسه مقصد (Chat ID) را وارد کنید. ابتدا به ربات خود در پیام‌رسان یک پیام بدهید و شناسه عددی چت را به‌دست آورید.' });
+      if (channel === 'bale' && !notify.baleToken()) {
+        return res.status(200).json({ ok: false, error: 'توکن ربات بله روی سرور تنظیم نشده است. در پوشهٔ برنامه فایلی به نام .env بسازید و خط BALE_BOT_TOKEN=توکن‌ربات را در آن بگذارید، سپس سرور را دوباره (npm start) اجرا کنید.' });
+      }
+      if (channel === 'eitaa' && !notify.eitaaToken()) {
+        return res.status(200).json({ ok: false, error: 'توکن ربات ایتا روی سرور تنظیم نشده است. در فایل .env خط EITAA_BOT_TOKEN=توکن‌ربات را بگذارید و سرور را دوباره اجرا کنید.' });
+      }
       const r = channel === 'bale'
         ? await notify.sendBaleToChat(chatId, text)
         : channel === 'eitaa'
@@ -75,6 +90,32 @@ module.exports = async (req, res) => {
 
     if (action === 'setup-webhook') {
       const r = await notify.setupTelegramWebhook();
+      return res.status(r.ok ? 200 : 400).json(r);
+    }
+
+    if (action === 'bale-connect-code') {
+      if (!notify.baleToken()) {
+        return res.status(200).json({ ok: false, error: 'توکن ربات بله روی سرور تنظیم نشده است (در فایل .env خط BALE_BOT_TOKEN).' });
+      }
+      const code = notify.makeConnectCode(user);
+      return res.status(200).json({ ok: true, code, hint: 'این کد را در چت ربات بلهٔ خود بفرستید تا حساب متصل شود.' });
+    }
+
+    if (action === 'setup-bale-webhook') {
+      const r = await notify.setupBaleWebhook(process.env.APP_BASE_URL || '');
+      return res.status(r.ok ? 200 : 400).json(r);
+    }
+
+    if (action === 'eitaa-connect-code') {
+      if (!notify.eitaaToken()) {
+        return res.status(200).json({ ok: false, error: 'توکن ربات ایتا روی سرور تنظیم نشده است (در فایل .env خط EITAA_BOT_TOKEN).' });
+      }
+      const code = notify.makeConnectCode(user);
+      return res.status(200).json({ ok: true, code, hint: 'این کد را در چت ربات ایتای خود بفرستید تا حساب متصل شود.' });
+    }
+
+    if (action === 'setup-eitaa-webhook') {
+      const r = await notify.setupEitaaWebhook(process.env.APP_BASE_URL || '');
       return res.status(r.ok ? 200 : 400).json(r);
     }
 

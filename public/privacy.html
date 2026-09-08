@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حریم خصوصی و داده‌ها — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card narrow">
+      <h2>حریم خصوصی و نگهداری داده‌ها</h2>
+      <p class="muted small">
+        این صفحه شفاف می‌گوید چه داده‌ای، کجا و چه مدت نگه داشته می‌شود.
+      </p>
+
+      <h3>۱) چه داده‌ای ذخیره می‌شود؟</h3>
+      <div class="table-scroll">
+        <table class="table">
+          <thead>
+            <tr><th>داده</th><th>محل نگهداری</th><th>محافظت</th><th>مدت</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>اطلاعات مسافران (کد ملی، تاریخ تولد، نام، موبایل)</td>
+              <td>فقط مرورگر شما</td>
+              <td>رمزنگاری AES-256-GCM با کلید غیرقابل‌استخراج</td>
+              <td>تا وقتی خودتان حذف کنید</td>
+            </tr>
+            <tr>
+              <td>کوکی نشست صفیر ریل (PHPSESSID)</td>
+              <td>حافظه موقت مرورگر (sessionStorage)</td>
+              <td>با بستن مرورگر پاک می‌شود</td>
+              <td>تا بستن مرورگر</td>
+            </tr>
+            <tr>
+              <td>شناسه/گذرواژه صفیر ریل (فقط اگر «نشست خودکار» را روشن کنید)</td>
+              <td>سرور برنامه، روی حساب شما</td>
+              <td>رمزنگاری AES-256-GCM؛ هرگز نمایش داده نمی‌شود</td>
+              <td>تا وقتی خودتان خاموش کنید</td>
+            </tr>
+            <tr>
+              <td>تاریخچه رزرو (فقط کاربران واردشده)</td>
+              <td>سرور برنامه</td>
+              <td>مرتبط با حساب شما</td>
+              <td>تا حذف حساب</td>
+            </tr>
+            <tr>
+              <td>مسیرهای جستجو</td>
+              <td>فقط مرورگر شما</td>
+              <td>رمزشده</td>
+              <td>تا حذف مسیر</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>۲) چه چیزی ذخیره <u>نمی‌شود</u>؟</h3>
+      <ul class="muted small" style="line-height:2.2">
+        <li>گذرواژه صفیر ریل شما هرگز به‌صورت متن ساده ذخیره نمی‌شود.</li>
+        <li>اطلاعات کارت بانکی هرگز وارد این برنامه نمی‌شود؛ پرداخت مستقیماً در درگاه بانک انجام می‌گیرد.</li>
+        <li>اطلاعات مسافران شما به هیچ سرور بیرونی ارسال نمی‌شود — فقط به خود سایت صفیر ریل برای انجام رزرو.</li>
+      </ul>
+
+      <h3>۳) هشدارهای صادقانه</h3>
+      <div class="notice-box">
+        <b>⚠️ رایانه مشترک:</b> اگر از رایانه یا پروفایل مرورگر مشترک استفاده می‌کنید،
+        پس از پایان کار حتماً دکمه «حذف کامل داده‌های این دستگاه» را بزنید.
+        <br><br>
+        <b>⚠️ محدودیت فنی:</b> هیچ ذخیره‌سازی سمت مرورگر در برابر بدافزار یا افزونه
+        مخربِ نصب‌شده روی همان مرورگر کاملاً مصون نیست. رمزنگاری این برنامه ریسک
+        دسترسی به دیسک، پشتیبان‌گیری و پروفایل مشترک را حذف می‌کند.
+      </div>
+
+      <h3>۴) حذف داده‌ها (حق فراموش‌شدن)</h3>
+      <p class="muted small">
+        با دکمه زیر، همه مسیرها، الگوهای مسافر و کوکی نشست از این دستگاه پاک می‌شود.
+        این کار قابل بازگشت نیست.
+      </p>
+      <button class="btn btn-danger btn-lg" id="btn-purge">🗑 حذف کامل داده‌های این دستگاه</button>
+      <p class="muted small" style="margin-top:10px" id="purge-result"></p>
+
+      <h3>۵) وضعیت امنیتی این نصب</h3>
+      <div class="live-panel" style="margin-top:8px">
+        <div class="live-metrics" id="sec-status">
+          <span class="live-metric">در حال بررسی...</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
+
+  <script src="secure-store.js"></script>
+  <script src="app.js"></script>
+  <script>
+  document.getElementById('btn-purge').addEventListener('click', async () => {
+    const ok = await BilitFast.confirmDialog({
+      title: 'حذف کامل داده‌ها',
+      message: 'همه مسیرها، الگوهای مسافر و کوکی نشست از این دستگاه پاک شود؟ این کار قابل بازگشت نیست.',
+      confirmText: 'بله، پاک کن', danger: true,
+    });
+    if (!ok) return;
+    BilitFast.purgeLocalData();
+    document.getElementById('purge-result').textContent = '✅ همه داده‌های محلی پاک شد.';
+    BilitFast.toast('داده‌های این دستگاه پاک شد.', 'success', 4000);
+  });
+
+  (async function showSecurity() {
+    const el = document.getElementById('sec-status');
+    const enc = (window.BilitSecureStore && window.BilitSecureStore.available);
+    let storage = null;
+    try {
+      const r = await fetch('/api/health', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'storage' }),
+      });
+      storage = await r.json();
+    } catch (e) { storage = null; }
+
+    const items = [
+      ['رمزنگاری داده‌های محلی', enc ? '✅ فعال (AES-256-GCM)' : '⚠️ مرورگر پشتیبانی نمی‌کند'],
+      ['کوکی نشست', '✅ فقط در حافظه موقت (با بستن مرورگر پاک می‌شود)'],
+      ['اتصال', location.protocol === 'https:' ? '✅ HTTPS' : '⚠️ HTTP (فقط برای اجرای محلی مناسب است)'],
+    ];
+    if (storage && storage.storage) {
+      items.push(['ذخیره‌سازی سرور', storage.storage.reliable ? '✅ پایدار' : '⚠️ ' + (storage.storage.warnings[0] || 'ناپایدار')]);
+    }
+    el.innerHTML = items.map((i) => '<span class="live-metric">' + i[0] + ': <b>' + i[1] + '</b></span>').join('');
+  })();
+  </script>
+</body>
+</html>

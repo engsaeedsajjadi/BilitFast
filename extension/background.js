@@ -1,47 +1,12 @@
-// background.js — سرویس‌ورکر افزونه: با کلیک روی آیکون، کوکی‌های صفیر ریل
-// (شامل PHPSESSID که از صفحه وب قابل خواندن نیست) خوانده و به برنامه ارسال می‌شود.
+// background.js — از نسخه ۱.۱ ارسال کوکی از طریق پنجره افزونه (popup.html)
+// انجام می‌شود، چون به «کد جفت‌سازی یک‌بارمصرف» نیاز دارد.
+//
+// دلیل امنیتی: ارسال بی‌قید کوکی با یک کلیک، یعنی هر کسی که به endpoint
+// دسترسی داشته باشد می‌تواند کوکی نشست را تحویل بگیرد. حالا کوکی فقط به
+// صفحه‌ای می‌رسد که کد را ساخته است.
 
-const DEFAULT_APP_URL = 'http://localhost:3000';
-
-function setBadge(text, color, title) {
+chrome.runtime.onInstalled.addListener(() => {
   try {
-    chrome.action.setBadgeText({ text });
-    chrome.action.setBadgeBackgroundColor({ color });
-    if (title) chrome.action.setTitle({ title });
+    chrome.action.setTitle({ title: 'انتقال کوکی صفیر ریل — برای وارد کردن کد کلیک کنید' });
   } catch (e) { /* ignore */ }
-}
-
-chrome.action.onClicked.addListener(async () => {
-  try {
-    const cfg = await chrome.storage.local.get({ appUrl: DEFAULT_APP_URL });
-    const appUrl = String(cfg.appUrl || DEFAULT_APP_URL).replace(/\/+$/, '');
-
-    // خواندن همه کوکی‌های دامنه صفیر ریل (شامل کوکی‌های HttpOnly)
-    const cookies = await chrome.cookies.getAll({ domain: 'safirrail.ir' });
-    if (!cookies.length) {
-      setBadge('✗', '#c0392b', 'کوکی‌ای یافت نشد. ابتدا در مرورگر وارد safirrail.ir شوید.');
-      return;
-    }
-
-    const list = cookies.map((c) => c.name + '=' + c.value);
-    const hasSession = list.some((c) => /^PHPSESSID=/i.test(c));
-
-    const resp = await fetch(appUrl + '/api/cookie-sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'push', cookies: list, source: 'extension' }),
-    });
-    const data = await resp.json();
-
-    if (data && data.ok) {
-      setBadge('✓', '#27ae60',
-        data.count + ' کوکی به برنامه ارسال شد' +
-        (hasSession ? ' (کوکی نشست ✓)' : ' (⚠ کوکی نشست یافت نشد — ابتدا در سایت وارد شوید)'));
-    } else {
-      setBadge('✗', '#c0392b', (data && data.error) || 'خطا در ارسال کوکی‌ها');
-    }
-  } catch (e) {
-    setBadge('✗', '#c0392b',
-      'برنامه در دسترس نیست. مطمئن شوید برنامه اجراست (npm start) و آدرس در تنظیمات افزونه درست است.');
-  }
 });

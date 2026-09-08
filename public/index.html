@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bilit Fast — مسیرها</title>
   <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2563eb">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,6 +25,7 @@
         <a href="login.html">ورود صفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
         <a href="account.html">حساب</a>
+        <a href="privacy.html">حریم خصوصی</a>
         <a href="trial.html">وضعیت مجوز</a>
       </nav>
     </div>
@@ -43,29 +48,32 @@
         فاصله درخواست‌ها به نسبت تعداد مسیرهای فعال به‌صورت خودکار زیاد می‌شود تا
         فشار روی سایت صفیر ریل ثابت بماند و درخواست‌ها محدود نشوند.
       </p>
+      <div class="table-scroll">
       <table class="table" id="routes-table">
         <thead>
           <tr>
             <th></th>
-            <th>route_id</th>
+            <th>شناسه</th>
             <th>مبدا</th>
             <th>مقصد</th>
             <th>تاریخ</th>
             <th>شماره قطار</th>
-            <th>ظرفیت جستجو</th>
+            <th>تعداد مسافر</th>
             <th>وضعیت</th>
             <th>عملیات</th>
           </tr>
         </thead>
         <tbody>
-          <tr class="empty-row"><td colspan="8">هیچ مسیری تعریف نشده است.</td></tr>
+          <tr class="empty-row"><td colspan="9">هیچ مسیری تعریف نشده است.</td></tr>
         </tbody>
       </table>
+      </div>
     </section>
   </main>
-  <footer class="footer">Bilit Fast — نسخه تحت وب (serverless)</footer>
+  <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
 
   <script src="jalaali.min.js"></script>
+  <script src="secure-store.js"></script>
   <script src="app.js"></script>
   <script>
   const STATUS_COLORS = {
@@ -88,6 +96,8 @@
       tbody.innerHTML = '<tr class="empty-row"><td colspan="9">هیچ مسیری تعریف نشده است.</td></tr>';
       return;
     }
+    // رندر ستون وضعیت با نقطه رنگی
+
     tbody.innerHTML = routes.map((r) => {
       const status = r.status || 'در انتظار جستجو';
       const color = STATUS_COLORS[r.statusColor] || '#333';
@@ -104,7 +114,7 @@
           <td>${esc(cap)}</td>
           <td><span style="color:${color}">●</span> ${esc(status)}</td>
           <td>
-            <button class="btn btn-sm" onclick="openRoute(${parseInt(r.id, 10)})">باز کردن</button>
+            <button class="btn btn-sm" onclick="openRoute(${parseInt(r.id, 10)})" title="باز کردن در همین پنجره">باز کردن</button>
             <button class="btn btn-sm btn-danger" onclick="deleteRoute(${parseInt(r.id, 10)})">حذف</button>
           </td>
         </tr>`;
@@ -120,23 +130,28 @@
     if (!e.target.classList || !e.target.classList.contains('route-check')) return;
     if (selectedRouteIds().length > BilitFast.MAX_CONCURRENT_MONITORS) {
       e.target.checked = false;
-      alert('حداکثر ' + BilitFast.MAX_CONCURRENT_MONITORS + ' مسیر همزمان قابل انتخاب است.');
+      BilitFast.toast('حداکثر ' + BilitFast.faNum(BilitFast.MAX_CONCURRENT_MONITORS) + ' مسیر همزمان قابل انتخاب است.', 'error', 4500);
     }
   });
 
   document.getElementById('btn-group-start').addEventListener('click', () => {
     const ids = selectedRouteIds();
-    if (!ids.length) { alert('ابتدا حداقل یک مسیر را با تیک انتخاب کنید.'); return; }
+    if (!ids.length) { BilitFast.toast('ابتدا حداقل یک مسیر را با تیک انتخاب کنید.', 'error'); return; }
     ids.forEach((id) => {
       const r = BilitFast.getRoute(id);
       if (!r) return;
       BilitFast.upsertRoute({ ...r, running: true, status: 'آماده پایش — تب مسیر را باز کنید', statusColor: 'blue' });
     });
+    // پایش گروهی روی سرور اجرا می‌شود؛ نیازی به باز کردن دستی چند تب نیست.
     const panel = document.getElementById('group-links');
     panel.style.display = 'block';
-    panel.innerHTML = '<h3>تب‌های پایش</h3>' +
-      '<p class="muted small">مرورگر اجازه باز کردن چند تب را با یک کلیک نمی‌دهد؛ هر مسیر را با کلیک خودش در تب جدا باز کنید. جستجو در هر تب به‌صورت خودکار شروع می‌شود و فاصله درخواست‌ها بر اساس تعداد مسیرهای فعال تنظیم می‌شود.</p>' +
-      ids.map((id) => '<a class="btn btn-primary" style="margin:4px" href="route.html?id=' + id + '" target="_blank" rel="noopener">باز کردن مسیر ' + id + ' ▶</a>').join('');
+    panel.innerHTML = '<h3>پایش گروهی فعال شد</h3>' +
+      '<p class="muted small">پایش این مسیرها روی سرور برنامه اجرا می‌شود و نیازی به باز نگه‌داشتن چند تب نیست. ' +
+      'برای دیدن جزئیات زنده هر مسیر، روی «باز کردن» همان ردیف بزنید.</p>' +
+      '<div class="chip-row">' +
+      ids.map((id) => '<button class="btn btn-sm chip-btn" onclick="openRoute(' + parseInt(id, 10) + ')">مسیر ' +
+        BilitFast.faNum(id) + ' ↩</button>').join('') + '</div>';
+    BilitFast.toast('پایش گروهی برای ' + BilitFast.faNum(ids.length) + ' مسیر فعال شد.', 'success', 3500);
     renderRoutes();
   });
 
@@ -160,14 +175,34 @@
     renderRoutes();
   }
 
+  // پیمایش یکپارچه: مسیر در همین پنجره باز می‌شود (نه پنجره/تب جدید) تا
+  // رابط کاربری واحد بماند. با انیمیشن محو، انتقال نرم دیده می‌شود.
   function openRoute(id) {
-    window.open('route.html?id=' + id, '_blank');
+    const url = 'route.html?id=' + id;
+    document.body.classList.add('page-leave');
+    setTimeout(() => { window.location.href = url; }, 180);
+  }
+  // باز کردن در تب جدید فقط وقتی کاربر خودش Ctrl/⌘ را نگه دارد
+  function openRouteNewTab(id) {
+    window.open('route.html?id=' + id, '_blank', 'noopener');
   }
 
-  function deleteRoute(id) {
-    if (!confirm('مسیر ' + id + ' حذف شود؟')) return;
-    BilitFast.removeRoute(id);
-    renderRoutes();
+  async function deleteRoute(id) {
+    // به‌جای پنجره confirm مرورگر، دیالوگ داخلی هم‌سبک با برنامه
+    const ok = await BilitFast.confirmDialog({
+      title: 'حذف مسیر',
+      message: 'مسیر شماره ' + BilitFast.faNum(id) + ' حذف شود؟ این کار قابل بازگشت نیست.',
+      confirmText: 'حذف کن',
+      danger: true,
+    });
+    if (!ok) return;
+    const row = document.querySelector('tr[data-id="' + id + '"]');
+    if (row) row.classList.add('row-leave');
+    setTimeout(() => {
+      BilitFast.removeRoute(id);
+      renderRoutes();
+      BilitFast.toast('مسیر حذف شد.', 'info', 2000);
+    }, 180);
   }
 
   document.getElementById('btn-add-route').addEventListener('click', async () => {
@@ -184,8 +219,9 @@
       running: false,
       foundTrains: [],
     });
-    openRoute(id);
     renderRoutes();
+    BilitFast.toast('مسیر جدید ساخته شد.', 'success', 2000);
+    openRoute(id);
   });
 
   document.getElementById('btn-close-all').addEventListener('click', () => {

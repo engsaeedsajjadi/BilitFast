@@ -5,7 +5,6 @@ process.env.BILITFAST_LICENSE_KEY = 'test-license-key';
 
 const db = require('../lib/db');
 const auth = require('../lib/auth');
-const subscription = require('../lib/subscription');
 
 let failures = 0;
 function test(name, cond) {
@@ -50,35 +49,6 @@ test('توکن نشست منقضی رد می‌شود', (() => {
   const fake = Buffer.from(JSON.stringify({ type: 'session', uid: 'x', exp: Date.now() - 1000 }), 'utf8').toString('base64url');
   return auth.verifySession(fake + '.' + 'x') === null;
 })());
-
-/* ---------------- اشتراک ---------------- */
-const plans = subscription.plans();
-test('طرح‌ها از کانفیگ خوانده می‌شوند', plans.length >= 2 && plans.every((p) => p.id && p.days > 0 && p.price_rial > 0));
-
-test('کاربر بدون اشتراک → غیرفعال', !subscription.subscriptionStatus(reg.user).active);
-
-// شبیه‌سازی خرید موفق: درج اشتراک فعال به‌صورت مستقیم (چون زرین‌پال در تست قابل صدا نیست)
-const sub = db.insert('subscriptions', {
-  user_id: reg.user.id, plan: 'monthly', plan_title: 'اشتراک ماهانه',
-  days: 30, amount: 2900000, status: 'active', expires_at: Date.now() + 30 * 86400000,
-});
-const st = subscription.subscriptionStatus(reg.user);
-test('اشتراک فعال تشخیص داده می‌شود', st.active && st.days_left >= 29);
-
-test('تمدید روی اشتراک فعال، به انتهای آن اضافه می‌شود', (() => {
-  // منطق داخل verifyCheckout است؛ اینجا تابع کمکی فعال‌سازی را مستقیم بررسی می‌کنیم
-  const current = subscription.activeSubscription(reg.user.id);
-  const base = current.expires_at > Date.now() ? current.expires_at : Date.now();
-  const nextExpiry = base + 30 * 86400000;
-  return nextExpiry > current.expires_at;
-})());
-
-test('اشتراک منقضی، غیرفعال است', (() => {
-  db.update('subscriptions', sub.id, { expires_at: Date.now() - 1000 });
-  return !subscription.subscriptionStatus(reg.user).active;
-})());
-
-test('درگاه پرداخت بدون مرچنت → غیرفعال', !subscription.paymentConfigured());
 
 /* ---------------- تاریخچه رزرو ---------------- */
 const b = db.insert('bookings', {

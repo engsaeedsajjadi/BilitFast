@@ -1,0 +1,48 @@
+{
+  "name": "bilitfast-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "پوسته دسکتاپ BilitFast — سرور داخل برنامه اجرا می‌شود",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64",
+    "dist:portable": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.bilitfast.app",
+    "productName": "BilitFast",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "install.js"
+    ],
+    "extraResources": [
+      { "from": "../", "to": "app", "filter": [
+        "**/*",
+        "!desktop/dist/**",
+        "!node_modules/electron/**",
+        "!**/*.map"
+      ] }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+    ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
