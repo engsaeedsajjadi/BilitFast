@@ -181,9 +181,9 @@
       <h3 style="margin-top:0">☁️ پایش روی سرور (بدون نیاز به بازماندن مرورگر)</h3>
       <p class="muted small">
         با فعال‌کردن این گزینه، همین مسیر روی سرور به‌صورت دوره‌ای جستجو می‌شود و به‌محض
-        پیدا شدن ظرفیت، در تلگرام/بله/ایتا به شما اطلاع داده می‌شود. (توجه: روی سرورهایی
-        که IP آن‌ها از سوی صفیر ریل مسدود شده — مثل دیتاسنترهای خارجی — کار نمی‌کند و
-        خودکار متوقف می‌شود.)
+        پیدا شدن ظرفیت، در تلگرام/بله/ایتا به شما اطلاع داده می‌شود. (توجه: اگر سروری که
+        برنامه روی آن اجرا می‌شود به سامانه صفیر ریل دسترسی نداشته باشد، پایش خودکار
+        متوقف می‌شود.)
       </p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button class="btn" id="btn-server-monitor-start" type="button">☁️ شروع پایش روی سرور</button>
@@ -927,7 +927,21 @@
   function markHot() { hotWindowUntil = Date.now() + 15000; }
   function isHot() { return Date.now() < hotWindowUntil; }
 
-  function scheduleNextPoll() {
+  /* ---------------- تاب‌آوری در برابر خطاهای شبکه ----------------
+   * سامانه صفیر ریل مرتباً قطعی کوتاه، ری‌ست اتصال و تایم‌اوت می‌دهد.
+   * قبلاً اولین خطای شبکه «دائمی» تلقی می‌شد و کل جستجو می‌ایستاد؛ یعنی
+   * دقیقاً وقتی کاربر بیشترین نیاز را به ادامه جستجو دارد، برنامه تسلیم
+   * می‌شد. حالا خطاها شمرده می‌شوند و با فاصله فزاینده دوباره تلاش
+   * می‌کنیم. فقط پس از MAX_CONSEC_FAILS خطای پیاپی متوقف می‌شویم. */
+  const MAX_CONSEC_FAILS = 15;
+  let consecFails = 0;
+  function noteSuccess() { consecFails = 0; }
+  /** فاصله انتظار پس از خطا: ۵، ۱۰، ۲۰، ۴۰ ثانیه … حداکثر ۶۰ ثانیه. */
+  function backoffMs() {
+    return Math.min(60000, 5000 * Math.pow(2, Math.max(0, consecFails - 1)));
+  }
+
+  function scheduleNextPoll(forcedWaitMs) {
     if (!polling) return;
     const route = BilitFast.getRoute(ROUTE_ID);
     if (!route || !route.running) { stopPolling(); return; }
@@ -936,6 +950,7 @@
     const base = BilitFast.getPollIntervalMs() || POLL_INTERVAL_MS;
     let wait = BilitFast.monitorIntervalMs(base, count);
     if (isHot()) wait = Math.max(1000, Math.floor(wait / 3));
+    if (forcedWaitMs) wait = forcedWaitMs;
     pollTimer = setTimeout(doOneAttempt, wait);
     startNextBar(wait);
     if (count > 1 && lastStatusColor !== 'red') {
@@ -971,9 +986,13 @@
     try {
       data = await BilitFast.apiSearch(payload);
     } catch (e) {
+      consecFails++;
       recordFailure('ارتباط با سرور برنامه قطع شد (' + (e && e.message ? e.message : 'نامشخص') + ')');
-      setStatus('خطا در ارتباط با سرور', 'red');
-      scheduleNextPoll();
+      if (consecFails >= MAX_CONSEC_FAILS) { giveUp('ارتباط با سرور برنامه برقرار نشد'); return; }
+      const w = backoffMs();
+      setStatus('خطا در ارتباط با سرور — تلاش دوباره تا ' +
+        BilitFast.faNum(Math.round(w / 1000)) + ' ثانیه دیگر', 'orange');
+      scheduleNextPoll(w);
       return;
     }
     if (!polling) return;
@@ -981,26 +1000,30 @@
     if (data.trains && data.trains.length) markHot();
 
     if (!data.ok) {
-      // خطای دائمی (مثل بلاک‌بودن IP دیتاسنتر/خارجی): تکرار بی‌وقفه فایده ندارد.
+      // خطای واقعاً دائمی (سرور صریحاً fatal اعلام کرده): ادامه بی‌فایده است.
       if (data.fatal) {
-        stopPolling();
-        saveRouteState({ running: false, status: data.error || 'خطای دائمی اتصال', statusColor: 'red' });
-        $('btn-start').disabled = false;
-        $('btn-stop').disabled = true;
-        setStatus(data.error || 'خطای دائمی اتصال', 'red');
-        setSearchingUI(false);
-        recordFailure(data.error || 'خطای دائمی اتصال');
-        setLive('err', 'جستجو به‌دلیل خطای دائمی متوقف شد', data.error || '');
-        stopNextBar();
-        BilitFast.toast('جستجو به‌خاطر خطای دائمی اتصال متوقف شد.', 'error', 6000);
+        giveUp(data.error || 'خطای دائمی اتصال', data.hint);
         return;
       }
+      // بقیه خطاها گذرا فرض می‌شوند: سامانه صفیر ریل زیاد قطع و وصل می‌شود.
+      consecFails++;
       recordFailure(data.error || 'خطای نامشخص از صفیر ریل');
-      setStatus(data.error || 'خطا', 'red');
-      saveRouteState({ status: data.error || 'خطا', statusColor: 'red' });
-      scheduleNextPoll();
+      if (consecFails >= MAX_CONSEC_FAILS) {
+        giveUp('پس از ' + BilitFast.faNum(MAX_CONSEC_FAILS) +
+          ' تلاش پیاپی، اتصال به سامانه صفیر ریل برقرار نشد', data.hint);
+        return;
+      }
+      const w = backoffMs();
+      const retryMsg = (data.error || 'خطا') + ' — تلاش ' +
+        BilitFast.faNum(consecFails) + ' از ' + BilitFast.faNum(MAX_CONSEC_FAILS) +
+        '؛ تلاش بعدی تا ' + BilitFast.faNum(Math.round(w / 1000)) + ' ثانیه دیگر';
+      setStatus(retryMsg, 'orange');
+      setSimpleLine('⚠️ سامانه پاسخ نداد؛ برنامه تا چند لحظه دیگر دوباره تلاش می‌کند.');
+      saveRouteState({ status: retryMsg, statusColor: 'orange' });
+      scheduleNextPoll(w);
       return;
     }
+    noteSuccess();
     if (data.trains && data.trains.length) {
       // قطار پیدا شد → جستجو بلافاصله و خودکار متوقف می‌شود (منتظر دکمه توقف نمی‌مانیم).
       recordReceipt(data.receipt || { totalMs: Date.now() - tSend }, data.trains.length);
@@ -1048,6 +1071,21 @@
       renderDiagnostics(data);
       scheduleNextPoll();
     }
+  }
+
+  /** توقف جستجو پس از خطای دائمی یا خطاهای پیاپی، با پیام روشن. */
+  function giveUp(reason, hint) {
+    stopPolling();
+    const full = reason + (hint ? ' — ' + hint : '');
+    saveRouteState({ running: false, status: reason, statusColor: 'red' });
+    $('btn-start').disabled = false;
+    $('btn-stop').disabled = true;
+    setStatus(full, 'red');
+    setSearchingUI(false);
+    setLive('err', 'جستجو متوقف شد', full);
+    setSimpleLine('⛔ جستجو متوقف شد: ' + reason);
+    stopNextBar();
+    BilitFast.toast('جستجو متوقف شد. ' + reason, 'error', 8000);
   }
 
   function renderDiagnostics(data) {
@@ -1181,6 +1219,7 @@
     requestNotifyPermission();
     searchAttempts = 0;
     setStep(3, 'active');
+    consecFails = 0;
     saveRouteState({ fields: f, passengers, running: true, status: 'جستجو آغاز شد...', statusColor: 'blue', foundTrains: [] });
     $('btn-start').disabled = true;
     $('btn-stop').disabled = false;

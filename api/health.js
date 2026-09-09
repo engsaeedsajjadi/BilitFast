@@ -50,9 +50,9 @@ module.exports = async (req, res) => {
     network,
     session_cookie: hasSession,
     base_url: config.base_url,
-    server_datacenter_ip_blocked: !network.reachable,
+    server_datacenter_ip_blocked: !network.reachable && core.isCloudEnv(),
     message: !network.reachable
-      ? 'این سرور به سامانه صفیر ریل دسترسی ندارد (احتمالاً IP خارجی/دیتاسنتر است و مسدود شده). برنامه را روی سیستم داخل ایران (npm start) اجرا کنید.'
+      ? 'دسترسی به سامانه صفیر ریل برقرار نشد. ' + core.networkHint()
       : (hasSession
         ? 'اتصال برقرار است و کوکی نشست ارسال می‌شود.'
         : 'اتصال برقرار است اما کوکی نشست (PHPSESSID) فرستاده نشده؛ در صفحه «ورود صفیر ریل» کوکی بگیرید.'),
