@@ -227,6 +227,8 @@
   });
 
   render();
+  // پس از رمزگشایی داده‌های محلی دوباره رندر کن (شمارش مسیرها درست شود).
+  BilitFast.whenStorageReady().then(render);
   </script>
 </body>
 </html>

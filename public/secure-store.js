@@ -129,7 +129,20 @@
   }
 
   /** بارگذاری اولیه: رمزگشایی همه کلیدهای حساس + کوچ داده متن ساده قبلی. */
+  var initPromise = null;
   function init(keys) {
+    if (initPromise) return initPromise;
+    initPromise = doInit(keys);
+    return initPromise;
+  }
+
+  /** آماده بودن ذخیره‌ساز به‌صورت Promise (برای صفحاتی که باید منتظر بمانند). */
+  function whenReady() {
+    if (ready) return Promise.resolve();
+    return new Promise(function (resolve) { onReady(resolve); });
+  }
+
+  function doInit(keys) {
     var jobs = keys.map(function (k) {
       var raw = null;
       try { raw = global.localStorage.getItem(k); } catch (e) { raw = null; }
@@ -156,15 +169,30 @@
     return Object.prototype.hasOwnProperty.call(cache, k) ? cache[k] : null;
   }
 
+  /* نوشتن رمزشده غیرهمگام است؛ برای اینکه ناوبری به صفحه بعد قبل از
+   * کامل شدن نوشتن انجام نشود، نوشتن‌های در جریان دنبال می‌شوند. */
+  var pending = [];
+
   /** نوشتن: کش فوراً، دیسک به‌صورت رمزشده. */
   function setItem(k, v) {
     cache[k] = v;
-    encrypt(v).then(function (blob) {
+    var job = encrypt(v).then(function (blob) {
       try {
         if (blob) global.localStorage.setItem(k, blob);
         else global.localStorage.setItem(k, v); // بدون WebCrypto (HTTP قدیمی): همان رفتار قبلی
       } catch (e) {}
+    }).catch(function () { /* ignore */ });
+    pending.push(job);
+    job.then(function () {
+      var i = pending.indexOf(job);
+      if (i >= 0) pending.splice(i, 1);
     });
+    return job;
+  }
+
+  /** منتظر ماندن تا همه نوشتن‌های رمزشدهٔ در جریان روی دیسک بنشینند. */
+  function flush() {
+    return Promise.all(pending.slice()).catch(function () { /* ignore */ });
   }
 
   function removeItem(k) {
@@ -182,6 +210,8 @@
     available: hasCrypto,
     init: init,
     onReady: onReady,
+    whenReady: whenReady,
+    flush: flush,
     getItem: getItem,
     setItem: setItem,
     removeItem: removeItem,

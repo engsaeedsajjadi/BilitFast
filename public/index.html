@@ -194,7 +194,11 @@
   function openRoute(id) {
     const url = 'route.html?id=' + id;
     document.body.classList.add('page-leave');
-    setTimeout(() => { window.location.href = url; }, 180);
+    // نوشتن رمزشده روی دیسک غیرهمگام است؛ اگر قبل از اتمام آن ناوبری کنیم،
+    // صفحه بعد مسیر تازه‌ساخته را پیدا نمی‌کند («مسیر یافت نشد»).
+    const settled = BilitFast.flushStorage();
+    const minDelay = new Promise((r) => setTimeout(r, 180));
+    Promise.all([settled, minDelay]).then(() => { window.location.href = url; });
   }
   // باز کردن در تب جدید فقط وقتی کاربر خودش Ctrl/⌘ را نگه دارد
   function openRouteNewTab(id) {
@@ -257,6 +261,13 @@
   }
   document.getElementById('qs-hide').addEventListener('click', () => {
     try { localStorage.setItem(QS_KEY, '1'); } catch (e) { /* ignore */ }
+    updateQuickstart();
+  });
+
+  // مسیرها رمزشده‌اند و رمزگشایی غیرهمگام است؛ پیش از اولین رندر باید
+  // ذخیره‌ساز آماده باشد وگرنه فهرست لحظه‌ای خالی دیده می‌شود.
+  BilitFast.whenStorageReady().then(() => {
+    renderRoutes();
     updateQuickstart();
   });
 

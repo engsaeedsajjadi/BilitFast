@@ -19,6 +19,14 @@ const BilitFast = (function (global) {
    * باشد، رفتار قبلی حفظ می‌شود تا برنامه نشکند. */
   const SECURE_KEYS = ['bilitfast_routes', 'bilitfast_passenger_profiles'];
 
+  // رمزگشایی را همین حالا شروع کن (نه بعد از DOMContentLoaded) تا صفحاتی که
+  // در لحظه بارگذاری مسیر را می‌خوانند، کمترین انتظار را داشته باشند.
+  try {
+    if (global.BilitSecureStore && global.BilitSecureStore.available) {
+      global.BilitSecureStore.init(SECURE_KEYS);
+    }
+  } catch (e) { /* ignore */ }
+
   function secureGet(k) {
     if (global.BilitSecureStore && global.BilitSecureStore.available) {
       const v = global.BilitSecureStore.getItem(k);
@@ -36,6 +44,30 @@ const BilitFast = (function (global) {
     }
     try { localStorage.setItem(k, v); } catch (e) { /* ignore */ }
   }
+  /**
+   * تا وقتی ذخیره‌ساز امن داده‌های رمزشده را رمزگشایی نکرده، خواندن مسیرها
+   * null برمی‌گرداند. هر صفحه‌ای که در لحظه بارگذاری به مسیرها نیاز دارد باید
+   * اول این را await کند، وگرنه دچار وضعیت مسابقه («مسیر یافت نشد») می‌شود.
+   */
+  function whenStorageReady() {
+    try {
+      if (global.BilitSecureStore && global.BilitSecureStore.available) {
+        return global.BilitSecureStore.whenReady();
+      }
+    } catch (e) { /* ignore */ }
+    return Promise.resolve();
+  }
+
+  /** اطمینان از نشستن نوشتن‌های رمزشده روی دیسک، پیش از ناوبری به صفحه دیگر. */
+  function flushStorage() {
+    try {
+      if (global.BilitSecureStore && global.BilitSecureStore.flush) {
+        return global.BilitSecureStore.flush();
+      }
+    } catch (e) { /* ignore */ }
+    return Promise.resolve();
+  }
+
   /** پاک‌کردن کامل داده‌های شخصی این دستگاه (حق فراموش‌شدن). */
   function purgeLocalData() {
     try {
@@ -732,6 +764,7 @@ const BilitFast = (function (global) {
     // داده‌های متن‌سادهٔ نسخه‌های قبلی به حالت رمزشده (بی‌صدا).
     try {
       if (global.BilitSecureStore && global.BilitSecureStore.available) {
+        // init یک‌بارمصرف است؛ اگر جای دیگری زودتر صدا شده باشد همان promise برمی‌گردد.
         global.BilitSecureStore.init(SECURE_KEYS).then(function () {
           document.dispatchEvent(new CustomEvent('bilitfast:secure-store-ready'));
         });
@@ -762,7 +795,7 @@ const BilitFast = (function (global) {
     // داده محلی
     loadRoutes, saveRoutes, getRoute, upsertRoute, removeRoute, nextRouteId,
     getCookies, setCookies, clearCookies, purgeLocalData,
-    secureGet, secureSet, SECURE_KEYS,
+    secureGet, secureSet, SECURE_KEYS, whenStorageReady, flushStorage,
     loadPassengerProfiles, savePassengerProfile, deletePassengerProfile,
     // تاریخ و اعتبارسنجی
     todayJalali, isValidJalaliDate, shiftJalaliDate, daysUntilJalali, isValidNationalCode,

@@ -302,8 +302,20 @@
   <script>
   const params = new URLSearchParams(window.location.search);
   const ROUTE_ID = parseInt(params.get('id'), 10);
-  if (!ROUTE_ID || !BilitFast.getRoute(ROUTE_ID)) {
-    document.body.innerHTML = '<div class="container"><div class="card"><h2>مسیر یافت نشد.</h2><a class="btn btn-primary" href="index.html">بازگشت</a></div></div>';
+
+  /* مسیرها رمزشده ذخیره می‌شوند و رمزگشایی غیرهمگام است. اگر همین‌جا و
+   * به‌صورت همگام getRoute صدا زده شود، هنگام آمدن از صفحه اصلی هنوز کش
+   * رمزگشایی‌نشده است و به اشتباه «مسیر یافت نشد» نمایش داده می‌شد.
+   * بنابراین فقط شناسه نامعتبر را همین‌جا رد می‌کنیم و وجود واقعی مسیر پس از
+   * آماده شدن ذخیره‌ساز، در ابتدای راه‌اندازی صفحه بررسی می‌شود. */
+  function showRouteMissing() {
+    document.body.innerHTML = '<div class="container"><div class="card">'
+      + '<h2>مسیر یافت نشد.</h2>'
+      + '<p class="muted">ممکن است این مسیر حذف شده باشد یا نشانی صفحه ناقص باشد.</p>'
+      + '<a class="btn btn-primary" href="index.html">بازگشت به فهرست مسیرها</a></div></div>';
+  }
+  if (!ROUTE_ID) {
+    showRouteMissing();
     throw new Error('route not found');
   }
 
@@ -2075,8 +2087,11 @@
 
   window.reserve = reserve;
 
-  (function init() {
+  (async function init() {
+    // منتظر رمزگشایی داده‌های محلی بمان، سپس وجود مسیر را بررسی کن.
+    await BilitFast.whenStorageReady();
     const route = BilitFast.getRoute(ROUTE_ID);
+    if (!route) { showRouteMissing(); return; }
     BilitFast.loadSharedConfig();
     setStep(1, 'active');
     applyCaptchaModeUI();
