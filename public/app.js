@@ -567,7 +567,7 @@ const BilitFast = (function (global) {
   }
   function getPollIntervalMs() {
     const n = parseInt(sharedConfig && sharedConfig.refresh_interval, 10);
-    return (n > 0 ? n * 1000 : 3000);
+    return (n > 0 ? n * 1000 : 2000);
   }
   function getCaptchaMaxAttempts() {
     const c = (sharedConfig && sharedConfig.captcha) || {};
@@ -583,6 +583,9 @@ const BilitFast = (function (global) {
   const MONITOR_KEY = 'bilitfast_active_monitors';
   const MAX_CONCURRENT_MONITORS = 5;
   const MONITOR_TTL_MS = 25000; // باید از حداکثر فاصله ممکن بین دو درخواست بیشتر باشد
+  /* کف فاصله بین دو شروع درخواست برای یک مسیر. مرجع: DynamicRateLimiter در
+   * BilitFast.py با base_interval = ۰٫۵ ثانیه؛ اینجا محافظه‌کارانه ۱ ثانیه. */
+  const MIN_GAP_MS = 1000;
 
   function readMonitors() {
     try {
@@ -626,11 +629,15 @@ const BilitFast = (function (global) {
    * فاصله بین درخواست‌ها = فاصله پایه × تعداد مسیرهای فعال (+ جیتر ۱۵±٪).
    * با این فرمول «نرخ مجموع» درخواست‌ها به سایت تقریباً ثابت می‌ماند.
    */
-  function monitorIntervalMs(baseMs, activeCount) {
+  function monitorIntervalMs(baseMs, activeCount, elapsedMs) {
     const n = Math.min(Math.max(1, activeCount || 1), MAX_CONCURRENT_MONITORS);
-    const interval = (baseMs || 3000) * n;
-    const jitter = Math.round(interval * 0.3 * (Math.random() - 0.5));
-    return Math.max(1500, interval + jitter);
+    const target = (baseMs || 3000) * n;
+    const jitter = Math.round(target * 0.3 * (Math.random() - 0.5));
+    // زمان صرف‌شده برای خود درخواست بخشی از فاصله است (هم‌رفتار با
+    // DynamicRateLimiter در برنامه دسکتاپ که فاصله را از شروع درخواست
+    // قبلی می‌سنجد). بدون این کسر، پاسخ کند سایت جستجو را کند می‌کرد.
+    const spent = Math.max(0, elapsedMs || 0);
+    return Math.max(MIN_GAP_MS * n, target + jitter - spent);
   }
 
   /* ---------------- حالت توسعه ---------------- */
