@@ -41,7 +41,35 @@ module.exports = async (req, res) => {
       });
       return;
     }
-    res.status(200).json({ ok: true, cookies, count: cookies.length, notes: notes.length ? notes : undefined });
+
+    /* مهم: «چند کوکی پیدا شد» با «نشست منتقل شد» یکی نیست.
+     *
+     * باگی که رفع شد: اگر کاربر در مرورگر وارد صفیر ریل نشده بود، باز هم
+     * کوکی‌های عمومی سایت (مثل _ga یا cookieconsent) پیدا می‌شد و این
+     * endpoint با ok:true برمی‌گشت. رابط کاربری پیام «✅ N کوکی همگام‌سازی
+     * و ذخیره شد» نشان می‌داد، ولی هیچ نشست فعالی منتقل نشده بود و جستجو
+     * همچنان «موجودی صفر» می‌داد. یعنی پیام موفقیت، دروغ بود.
+     *
+     * حالا بدون PHPSESSID شکست صریح گزارش می‌شود. */
+    const hasSession = cookies.some((c) => /^PHPSESSID=/i.test(String(c)));
+    if (!hasSession) {
+      res.status(200).json({
+        ok: false,
+        noSession: true,
+        found: cookies.length,
+        error: cookies.length + ' کوکی از مرورگر خوانده شد، اما کوکی نشست (ورود) بین آن‌ها نبود. ' +
+          'یعنی در همان مرورگر وارد حساب safirrail.ir نشده‌اید یا نشست‌تان منقضی شده است. ' +
+          'ابتدا در مرورگر وارد سایت شوید، سپس دوباره این دکمه را بزنید.' +
+          (notes.length ? ' نکته: ' + notes.join(' ') : ''),
+      });
+      return;
+    }
+
+    res.status(200).json({
+      ok: true, cookies, count: cookies.length,
+      hasSession: true,
+      notes: notes.length ? notes : undefined,
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: (e && e.message) ? e.message : String(e) });
   }

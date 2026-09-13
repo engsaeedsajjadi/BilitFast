@@ -207,11 +207,32 @@ const BilitFast = (function (global) {
     } catch (e) { return { ok: false, error: String(e) }; }
   }
 
+  /**
+   * آیا بین این کوکی‌ها نشست ورود هست؟
+   *
+   * چرا لازم است: سایت به مهمانِ واردنشده هم کوکی می‌دهد (مثل _ga). اگر
+   * فقط «تعداد کوکی» را ملاک بگیریم، به کاربر پیام موفقیت می‌دهیم در حالی
+   * که هیچ نشست فعالی منتقل نشده و جستجو «موجودی صفر» می‌دهد.
+   */
+  function hasSessionCookie(list) {
+    return Array.isArray(list) && list.some(function (c) {
+      return /^PHPSESSID=/i.test(String(c));
+    });
+  }
+
   async function pullAccountCookies() {
     if (!isLoggedIn()) return { ok: false, error: 'not_logged_in' };
     try {
       const data = await authFetch('/api/auth', { action: 'export-local' });
       if (data && data.ok && Array.isArray(data.cookies) && data.cookies.length) {
+        if (!hasSessionCookie(data.cookies)) {
+          return {
+            ok: false,
+            noSession: true,
+            error: data.cookies.length + ' کوکی در حساب بود، اما کوکی نشست (ورود) بینشان نبود. ' +
+              'روی دستگاهی که وارد صفیر ریل هستید، یک بار همگام‌سازی کنید تا نشست در حساب ذخیره شود.',
+          };
+        }
         setCookies(data.cookies);
         return { ok: true, cookies: data.cookies, count: data.cookies.length };
       }
@@ -241,6 +262,14 @@ const BilitFast = (function (global) {
     if (!isLoggedIn()) return { ok: false, error: 'not_logged_in' };
     const d = await safirSession('pull');
     if (d && d.ok && Array.isArray(d.cookies) && d.cookies.length) {
+      if (!hasSessionCookie(d.cookies)) {
+        return {
+          ok: false,
+          noSession: true,
+          error: 'کوکی تازه رسید ولی نشست ورود بین آن‌ها نبود؛ ' +
+            'احتمالاً ورود خودکار به صفیر ریل ناموفق بوده است.',
+        };
+      }
       setCookies(d.cookies);
       return { ok: true, count: d.cookies.length, cookiesAt: d.cookiesAt };
     }
@@ -796,7 +825,7 @@ const BilitFast = (function (global) {
     safirSession, pullFreshSafirCookies,
     startSafirSessionAutoSync, stopSafirSessionAutoSync,
     // انتقال کوکی بین‌دستگاهی، اعلان و ارقام
-    pushCookiesToAccount, pullAccountCookies, toast, faNum,
+    pushCookiesToAccount, pullAccountCookies, hasSessionCookie, toast, faNum,
     // تاریخچه و اطلاع‌رسانی
     saveBooking, bookingResult, notifyPayment, listBookings, sendNotification,
     // داده محلی

@@ -464,6 +464,20 @@
     }
 
     if (d && d.ok && Array.isArray(d.cookies) && d.cookies.length) {
+      /* پیام موفقیت فقط وقتی مجاز است که واقعاً نشست ورود منتقل شده باشد.
+       * قبلاً هر پاسخ ok با هر تعداد کوکی «متصل هستید ✓» می‌گرفت — حتی اگر
+       * فقط کوکی‌های عمومی سایت بود. کاربر پیام موفقیت می‌دید ولی هیچ نشست
+       * فعالی به برنامه نرسیده بود. */
+      if (!BilitFast.hasSessionCookie(d.cookies)) {
+        setConnState('bad', 'هنوز متصل نیستید');
+        out.innerHTML = '<div class="alert alert-error">'
+          + '⚠️ ' + esc(String(d.cookies.length)) + ' کوکی دریافت شد، اما کوکی نشست (ورود) بین آن‌ها نبود.<br>'
+          + 'یعنی هنوز در سایت صفیر ریل وارد نشده‌اید. ابتدا در مرورگر وارد '
+          + '<code style="direction:ltr">safirrail.ir</code> شوید، سپس دوباره این دکمه را بزنید.'
+          + '</div>';
+        btn.disabled = false;
+        return false;
+      }
       BilitFast.setCookies(d.cookies);
       setConnState('ok', 'متصل هستید ✓');
       out.innerHTML = '<div class="alert alert-success">✅ ' + esc(d.message || 'اتصال برقرار شد.')
@@ -630,7 +644,7 @@
       const data = await res.json();
       if (data.ok && data.cookies && data.cookies.length) {
         BilitFast.setCookies(data.cookies);
-        let msg = '✅ ' + data.count + ' کوکی همگام‌سازی و ذخیره شد.';
+        let msg = '✅ ' + data.count + ' کوکی همگام‌سازی و ذخیره شد (شامل نشست ورود).';
         if (data.notes && data.notes.length) msg += ' (هشدار: ' + data.notes.join(' ') + ')';
         resultEl.textContent = msg;
         document.getElementById('cookie-input').value = data.cookies.join('; ');

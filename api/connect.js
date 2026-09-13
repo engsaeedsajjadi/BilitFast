@@ -242,7 +242,10 @@ module.exports = async (req, res) => {
   if (isLocalRun()) {
     const info = await readBrowserProfiles();
     const { cookies } = info;
-    if (cookies.length) {
+    if (cookies.length && !info.hasSession) {
+      // کوکی هست ولی نشست ورود نیست: بررسی اعتبار بی‌معنی است.
+      record('profile', false, profileFailureDetail(info));
+    } else if (cookies.length) {
       const v = await checkSession(cookies);
       if (v.valid) {
         record('profile', true, 'از مرورگر نصب‌شده روی همین سیستم خوانده شد');
