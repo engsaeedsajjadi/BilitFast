@@ -1003,6 +1003,14 @@
       return;
     }
     if (!polling) return;
+
+    /* اگر سرور مجبور شد خودش نشست را بسازد (یعنی کوکی از این تب به سرور
+     * نرسیده بود)، همان نشست تازه را نگه می‌داریم تا درخواست‌های بعدی —
+     * و مهم‌تر، رزرو — دوباره دست‌خالی نروند. */
+    if (data.sessionRecovered && Array.isArray(data.cookies) && data.cookies.length) {
+      BilitFast.setCookies(data.cookies);
+    }
+
     // قطار پیدا شد → بازه داغ (فاصله کوتاه) فعال شود تا در لحظه فروش سریع‌تر بگیریم
     if (data.trains && data.trains.length) markHot();
 

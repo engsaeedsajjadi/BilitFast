@@ -5,6 +5,7 @@ const { guardApi } = require('../lib/guard');
 const { getSessionUser } = require('../lib/auth');
 const { checkAccess } = require('../lib/license');
 const config = require('../config.json');
+const { ensureCookies } = require('../lib/session-fallback');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -33,7 +34,17 @@ module.exports = async (req, res) => {
     return;
   }
   try {
+    /* اگر کوکی نشست به سرور نرسیده، یک بار خودمان جبران می‌کنیم — وگرنه
+     * سایت به مهمانِ واردنشده «موجودی صفر» نشان می‌دهد و کاربر فکر می‌کند
+     * قطار پر است. (زنجیرهٔ انتقال کوکی ممکن است سمت مرورگر قطع شده باشد.) */
+    const fb = await ensureCookies(body.cookies);
+    if (fb.recovered) body.cookies = fb.cookies;
+
     const result = await searchOnce(body);
+    if (fb.recovered && result && typeof result === 'object') {
+      result.sessionRecovered = true;
+      result.cookies = fb.cookies; // تا کلاینت بتواند نشست تازه را نگه دارد
+    }
     if (!result.ok) {
       res.status(400).json(result);
       return;

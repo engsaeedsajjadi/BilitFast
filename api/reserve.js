@@ -10,6 +10,7 @@ const { guardApi } = require('../lib/guard');
 const { getSessionUser } = require('../lib/auth');
 const { checkAccess } = require('../lib/license');
 const config = require('../config.json');
+const { ensureCookies } = require('../lib/session-fallback');
 
 function readBody(req) {
   if (typeof req.body === 'string') {
@@ -48,7 +49,15 @@ module.exports = async (req, res) => {
 
   try {
     if (action === 'start') {
+      /* همان تور ایمنی جستجو: رزرو بدون نشست معتبر قطعاً به «نیاز به ورود»
+       * می‌خورد. اگر کوکی به سرور نرسیده، پیش از شروع یک بار جبران می‌کنیم
+       * تا کاربر در لحظهٔ پیدا شدن ظرفیت معطل نشود. */
+      const fb = await ensureCookies(body.cookies);
+      if (fb.recovered) body.cookies = fb.cookies;
       const result = await startReservation(body);
+      if (fb.recovered && result && typeof result === 'object') {
+        result.sessionRecovered = true;
+      }
       return respond(res, result);
     }
 
