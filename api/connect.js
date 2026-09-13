@@ -30,6 +30,7 @@ const { getSessionUser } = require('../lib/auth');
 const core = require('../lib/core');
 const db = require('../lib/db');
 const keeper = require('../lib/session-keeper');
+const trace = require('../lib/cookie-trace');
 
 /** آیا روی محیط ابری اجرا می‌شویم؟ (خواندن پروفایل مرورگر فقط محلی ممکن است) */
 function isLocalRun() {
@@ -130,7 +131,16 @@ module.exports = async (req, res) => {
 
   // گزارش مرحله‌به‌مرحله تا رابط کاربری بتواند صادقانه نشان دهد چه شد.
   const tried = [];
-  const record = (method, ok, detail) => tried.push({ method, ok, detail });
+  const record = (method, ok, detail) => {
+    tried.push({ method, ok, detail });
+    trace.log('connect', method, { ok, detail });
+  };
+  trace.clear(); // هر بار فشردن دکمه اتصال، تشخیص تازه
+  trace.log('connect', 'شروع', {
+    browserCookies: browserCookies.length,
+    names: trace.cookieNames(browserCookies),
+    loggedIn: !!user,
+  });
 
   /* ---- ۱) کوکی‌هایی که همین حالا در مرورگر کاربر است ---- */
   if (browserCookies.length) {
@@ -138,7 +148,7 @@ module.exports = async (req, res) => {
     if (v.valid) {
       record('existing', true, 'نشست فعلی معتبر است');
       res.status(200).json({
-        ok: true, method: 'existing', cookies: browserCookies, tried,
+        ok: true, method: 'existing', cookies: browserCookies, tried, trace: trace.getEntries(),
         degraded: v.degraded || undefined,
         message: v.degraded
           ? 'کوکی نشست موجود است. (سرور نسخه قدیمی را در حافظه دارد؛ برای بررسی دقیق، برنامه را ری‌استارت کنید.)'
@@ -171,7 +181,7 @@ module.exports = async (req, res) => {
       if (v.valid) {
         record('account', true, 'کوکی ذخیره‌شده روی حساب معتبر بود');
         res.status(200).json({
-          ok: true, method: 'account', cookies: saved, tried,
+          ok: true, method: 'account', cookies: saved, tried, trace: trace.getEntries(),
           message: 'اتصال با استفاده از نشست ذخیره‌شده در حساب شما برقرار شد.',
         });
         return;
@@ -191,7 +201,7 @@ module.exports = async (req, res) => {
       if (r && r.ok && Array.isArray(r.cookies) && r.cookies.length) {
         record('login', true, 'ورود خودکار انجام شد');
         res.status(200).json({
-          ok: true, method: 'login', cookies: r.cookies, tried,
+          ok: true, method: 'login', cookies: r.cookies, tried, trace: trace.getEntries(),
           message: 'با شناسه و گذرواژه ذخیره‌شده، خودکار وارد صفیر ریل شدیم.',
         });
         return;
@@ -221,7 +231,7 @@ module.exports = async (req, res) => {
       if (r && r.ok && Array.isArray(r.cookies) && r.cookies.length) {
         record('login', true, 'ورود خودکار با اطلاعات ذخیره‌شده روی این دستگاه');
         res.status(200).json({
-          ok: true, method: 'login', cookies: r.cookies, tried,
+          ok: true, method: 'login', cookies: r.cookies, tried, trace: trace.getEntries(),
           message: 'به‌صورت خودکار دوباره وارد صفیر ریل شدیم.',
         });
         return;
@@ -250,7 +260,7 @@ module.exports = async (req, res) => {
       if (v.valid) {
         record('profile', true, 'از مرورگر نصب‌شده روی همین سیستم خوانده شد');
         res.status(200).json({
-          ok: true, method: 'profile', cookies, tried,
+          ok: true, method: 'profile', cookies, tried, trace: trace.getEntries(),
           message: 'نشست شما از مرورگر همین سیستم خوانده و متصل شد.',
         });
         return;
@@ -270,6 +280,7 @@ module.exports = async (req, res) => {
     ok: false,
     reason: 'no_session',
     tried,
+    trace: trace.getEntries(),
     nextStep: isLocalRun() ? 'browser_login' : 'extension',
     error: 'هنوز به صفیر ریل متصل نیستید.',
   });

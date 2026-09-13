@@ -4,10 +4,13 @@
 const { readFirefoxCookies } = require('../lib/cookies');
 const { readChromeCookies } = require('../lib/chrome-cookies');
 const { guardApi } = require('../lib/guard');
+const trace = require('../lib/cookie-trace');
 
 module.exports = async (req, res) => {
   if (!guardApi(req, res, { name: 'sync-cookies', limit: 10, windowMs: 60000 })) return;
   const source = (req.query && req.query.source) || 'all';
+  trace.clear(); // هر بار فشردن دکمه، یک تشخیص تازه
+  trace.log('sync', 'شروع همگام‌سازی', { source });
   try {
     const all = [];
     const notes = [];
@@ -36,6 +39,7 @@ module.exports = async (req, res) => {
     if (!cookies.length) {
       res.status(200).json({
         ok: false,
+        trace: trace.getEntries(),
         error: 'کوکی safirrail.ir یافت نشد. ابتدا در مرورگر (Firefox یا Chrome) وارد سایت صفیر ریل شوید و سپس دوباره همگام‌سازی کنید.' +
           (notes.length ? ' نکته: ' + notes.join(' ') : ''),
       });
@@ -52,11 +56,17 @@ module.exports = async (req, res) => {
      *
      * حالا بدون PHPSESSID شکست صریح گزارش می‌شود. */
     const hasSession = cookies.some((c) => /^PHPSESSID=/i.test(String(c)));
+    trace.log('sync', 'جمع‌بندی', {
+      total: cookies.length,
+      names: trace.cookieNames(cookies),
+      hasSession,
+    });
     if (!hasSession) {
       res.status(200).json({
         ok: false,
         noSession: true,
         found: cookies.length,
+        trace: trace.getEntries(),
         error: cookies.length + ' کوکی از مرورگر خوانده شد، اما کوکی نشست (ورود) بین آن‌ها نبود. ' +
           'یعنی در همان مرورگر وارد حساب safirrail.ir نشده‌اید یا نشست‌تان منقضی شده است. ' +
           'ابتدا در مرورگر وارد سایت شوید، سپس دوباره این دکمه را بزنید.' +
@@ -69,6 +79,7 @@ module.exports = async (req, res) => {
       ok: true, cookies, count: cookies.length,
       hasSession: true,
       notes: notes.length ? notes : undefined,
+      trace: trace.getEntries(),
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: (e && e.message) ? e.message : String(e) });

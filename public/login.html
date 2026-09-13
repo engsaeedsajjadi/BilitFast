@@ -175,6 +175,7 @@
               <button class="btn btn-primary" id="btn-sync-chrome">🔄 از Chrome</button>
             </div>
             <div id="sync-result" class="muted small" style="margin-top:8px"></div>
+            <div id="sync-trace"></div>
           </div>
 
           <div class="adv-item">
@@ -437,6 +438,34 @@
     box.style.display = 'block';
   }
 
+  /* نمایش دفترچه گام‌به‌گام انتقال کوکی.
+   * هدف: وقتی دکمه‌ای کار نمی‌کند، کاربر (و ما) دقیقاً ببینیم زنجیره کجا
+   * پاره شده — پیدا نشدن پروفایل، خطای رمزگشایی، نبود کوکی دامنه، یا
+   * نبود PHPSESSID. هیچ مقدار کوکی نمایش داده نمی‌شود. */
+  function renderTrace(list, targetId) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
+    if (!Array.isArray(list) || !list.length) { el.innerHTML = ''; return; }
+    var lines = list.map(function (t) {
+      var bits = [];
+      Object.keys(t).forEach(function (k) {
+        if (k === 'n' || k === 'at' || k === 'scope' || k === 'step') return;
+        var v = t[k];
+        if (v === undefined) return;
+        if (Array.isArray(v)) v = v.length ? v.join(', ') : '(خالی)';
+        bits.push(k + '=' + v);
+      });
+      return '[' + esc(t.scope) + '] ' + esc(t.step)
+        + (bits.length ? ' — ' + esc(bits.join(' | ')) : '');
+    });
+    el.innerHTML = '<details style="margin-top:10px"><summary class="small muted">'
+      + '🧾 گزارش فنی انتقال کوکی (' + lines.length + ' گام) — برای پشتیبانی کپی کنید</summary>'
+      + '<pre style="direction:ltr;text-align:left;white-space:pre-wrap;'
+      + 'font-size:11px;max-height:320px;overflow:auto;background:#f6f8fa;'
+      + 'padding:8px;border-radius:6px;margin-top:6px">'
+      + lines.join('\n') + '</pre></details>';
+  }
+
   async function smartConnect(silent) {
     const btn = document.getElementById('btn-smart-connect');
     const out = document.getElementById('smart-connect-result');
@@ -477,6 +506,7 @@
           + 'یعنی هنوز در سایت صفیر ریل وارد نشده‌اید. ابتدا در مرورگر وارد '
           + '<code style="direction:ltr">safirrail.ir</code> شوید، سپس دوباره این دکمه را بزنید.'
           + '</div>';
+        renderTrace(d.trace, 'doctor-result');
         btn.disabled = false;
         return false;
       }
@@ -484,6 +514,7 @@
       setConnState('ok', 'متصل هستید ✓');
       out.innerHTML = '<div class="alert alert-success">✅ ' + esc(d.message || 'اتصال برقرار شد.')
         + ' <span class="muted small">(' + esc(METHOD_LABEL[d.method] || d.method) + ')</span></div>';
+      renderTrace(d.trace, 'doctor-result');
       if (BilitFast.isLoggedIn()) BilitFast.pushCookiesToAccount(d.cookies);
       btn.disabled = false;
       return true;
@@ -504,6 +535,7 @@
       }
       out.innerHTML = '<div class="alert alert-error">'
         + esc((d && d.error) || 'اتصال برقرار نشد.') + steps + '</div>';
+      renderTrace(d && d.trace, 'doctor-result');
     }
     showNextStep((d && d.nextStep) || 'browser_login', d && d.reason);
     btn.disabled = false;
@@ -692,6 +724,8 @@
       } else {
         resultEl.textContent = data.error || 'کوکی‌ای یافت نشد.';
       }
+      // چه موفق چه ناموفق، گزارش فنی را نشان بده تا علت روشن باشد
+      renderTrace(data.trace, 'sync-trace');
     } catch (e) {
       resultEl.textContent = 'خطا در همگام‌سازی: ' + (e && e.message ? e.message : e);
     }
