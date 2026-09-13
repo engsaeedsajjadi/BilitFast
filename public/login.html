@@ -122,7 +122,9 @@
       </div>
 
       <button class="btn btn-primary btn-lg" id="btn-smart-connect">🔌 اتصال به صفیر ریل</button>
+      <button class="btn btn-sm" id="btn-cookie-doctor" style="margin-inline-start:8px">🩺 چرا وصل نمی‌شود؟</button>
       <div id="smart-connect-result" style="margin-top:10px"></div>
+      <div id="doctor-result" style="margin-top:10px"></div>
 
       <!-- راهنمای قدم بعدی: فقط وقتی اتصال خودکار ممکن نشد نمایش داده می‌شود -->
       <div id="next-step-box" class="next-step" style="display:none">
@@ -507,6 +509,45 @@
     btn.disabled = false;
     return false;
   }
+
+  /* دکمه تشخیص: به‌جای حدس زدن، وضعیت واقعی همین دستگاه را نشان می‌دهد.
+   * هیچ مقدار کوکی یا داده حساسی نمایش داده نمی‌شود — فقط اینکه چه چیزی
+   * هست، چه چیزی نیست، و کاربر دقیقاً چه کار باید بکند. */
+  document.getElementById('btn-cookie-doctor').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-cookie-doctor');
+    const el = document.getElementById('doctor-result');
+    btn.disabled = true;
+    el.innerHTML = '<div class="muted small">در حال بررسی این دستگاه…</div>';
+    let d;
+    try {
+      const r = await fetch('/api/cookie-doctor');
+      d = await r.json();
+    } catch (e) {
+      d = { ok: false, error: 'ارتباط با سرور برقرار نشد' };
+    }
+    btn.disabled = false;
+    if (!d || !d.ok) {
+      el.innerHTML = '<div class="alert alert-error">' + esc((d && d.error) || 'بررسی ممکن نشد.') + '</div>';
+      return;
+    }
+    var rows = (d.browsers || []).map(function (b) {
+      var state;
+      if (b.error) state = '⚠️ ' + esc(b.error);
+      else if (!b.profiles) state = 'نصب نیست یا پروفایلی پیدا نشد';
+      else if (b.session) state = '✅ کوکی نشست موجود است';
+      else if (b.cookies) state = b.cookies + ' کوکی دارد، ولی نشست ورود ندارد';
+      else state = 'پروفایل هست، ولی کوکی صفیر ریل ندارد';
+      return '<li><b>' + esc(b.name) + ':</b> ' + state + '</li>';
+    }).join('');
+    el.innerHTML = '<div class="alert">'
+      + '<b>نتیجه بررسی این دستگاه:</b>'
+      + '<ul style="margin:6px 0 0;padding-inline-start:18px">' + rows + '</ul>'
+      + ((d.findings || []).length
+        ? '<div style="margin-top:8px">' + esc(d.findings.join(' ')) + '</div>' : '')
+      + ((d.advice || []).length
+        ? '<div style="margin-top:6px"><b>چه کار کنم؟</b> ' + esc(d.advice.join(' ')) + '</div>' : '')
+      + '</div>';
+  });
 
   document.getElementById('btn-smart-connect').addEventListener('click', () => smartConnect(false));
   // بررسی بی‌صدا در بدو ورود تا کاربر وضعیت واقعی‌اش را ببیند
