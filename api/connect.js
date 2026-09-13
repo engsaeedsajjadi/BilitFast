@@ -59,29 +59,62 @@ async function checkSession(cookies) {
   };
 }
 
-/** تلاش برای خواندن کوکی از پروفایل مرورگرهای نصب‌شده روی همین سیستم. */
+/**
+ * تلاش برای خواندن کوکی از پروفایل مرورگرهای نصب‌شده روی همین سیستم.
+ *
+ * گزارش را دقیق نگه می‌داریم: قبلاً هر شکستی به «کوکی صفیر ریل یافت نشد»
+ * تقلیل پیدا می‌کرد و کاربر نمی‌فهمید مشکل از کجاست — مرورگر پیدا نشد؟
+ * کوکی نشست نبود؟ رمزگشایی کروم شکست خورد؟ هر کدام راه‌حل متفاوتی دارد.
+ */
 async function readBrowserProfiles() {
   const out = [];
   const notes = [];
+  const perBrowser = {};
+
   try {
     const { readFirefoxCookies } = require('../lib/cookies');
-    out.push(...(await readFirefoxCookies()));
+    const ff = await readFirefoxCookies();
+    perBrowser.firefox = ff.length;
+    out.push(...ff);
   } catch (e) {
-    notes.push('Firefox: ' + ((e && e.message) || e));
+    perBrowser.firefox = -1;
+    notes.push('فایرفاکس: ' + ((e && e.message) || e));
   }
+
   try {
     const { readChromeCookies } = require('../lib/chrome-cookies');
-    out.push(...(await readChromeCookies()));
+    const ch = await readChromeCookies();
+    perBrowser.chrome = ch.length;
+    out.push(...ch);
   } catch (e) {
-    notes.push('Chrome: ' + ((e && e.message) || e));
+    perBrowser.chrome = -1;
+    notes.push('کروم: ' + ((e && e.message) || e));
   }
+
   // حذف تکراری بر اساس نام کوکی
   const seen = new Map();
   for (const c of out) {
     const name = String(c).split('=')[0];
     if (!seen.has(name)) seen.set(name, c);
   }
-  return { cookies: Array.from(seen.values()), notes };
+  const cookies = Array.from(seen.values());
+  const hasSession = cookies.some((c) => /^PHPSESSID=/i.test(String(c)));
+  return { cookies, notes, perBrowser, hasSession };
+}
+
+/** توضیح قابل‌فهم از اینکه چرا خواندن مرورگر به نتیجه نرسید. */
+function profileFailureDetail(info) {
+  if (info.cookies.length && !info.hasSession) {
+    return 'کوکی صفیر ریل پیدا شد ولی کوکی نشست (ورود) بین آن‌ها نبود — ' +
+      'یعنی در مرورگر وارد حساب صفیر ریل نشده‌اید یا نشست منقضی شده است.';
+  }
+  const noBrowser = (info.perBrowser.firefox === 0 || info.perBrowser.firefox === undefined)
+    && (info.perBrowser.chrome === 0 || info.perBrowser.chrome === undefined);
+  if (noBrowser && !info.notes.length) {
+    return 'در فایرفاکس و کروم این سیستم، هیچ کوکی‌ای برای صفیر ریل نبود. ' +
+      'اگر با مرورگر دیگری وارد شده‌اید، در همان فایرفاکس یا کروم وارد شوید.';
+  }
+  return info.notes.length ? info.notes.join(' | ') : 'کوکی صفیر ریل در مرورگرها یافت نشد';
 }
 
 module.exports = async (req, res) => {
@@ -207,7 +240,8 @@ module.exports = async (req, res) => {
 
   /* ---- ۴) خواندن از پروفایل مرورگر (فقط اجرای محلی) ---- */
   if (isLocalRun()) {
-    const { cookies, notes } = await readBrowserProfiles();
+    const info = await readBrowserProfiles();
+    const { cookies } = info;
     if (cookies.length) {
       const v = await checkSession(cookies);
       if (v.valid) {
@@ -218,9 +252,11 @@ module.exports = async (req, res) => {
         });
         return;
       }
-      record('profile', false, 'کوکی مرورگر مربوط به نشست واردشده نبود');
+      record('profile', false, info.hasSession
+        ? 'کوکی نشست از مرورگر خوانده شد ولی سامانه آن را نپذیرفت (احتمالاً منقضی شده).'
+        : profileFailureDetail(info));
     } else {
-      record('profile', false, notes.length ? notes.join(' | ') : 'کوکی صفیر ریل در مرورگرها یافت نشد');
+      record('profile', false, profileFailureDetail(info));
     }
   } else {
     record('profile', false, 'روی سرور ابری امکان خواندن مرورگر نیست');

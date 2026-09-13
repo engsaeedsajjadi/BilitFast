@@ -475,7 +475,19 @@
 
     setConnState('bad', 'هنوز متصل نیستید');
     if (!silent) {
-      out.innerHTML = '<div class="alert alert-error">' + esc((d && d.error) || 'اتصال برقرار نشد.') + '</div>';
+      // گزارش مرحله‌به‌مرحله را هم نشان می‌دهیم: بدون آن، کاربر فقط
+      // «متصل نیستید» می‌بیند و نمی‌داند کدام روش و چرا شکست خورده.
+      var steps = '';
+      if (d && Array.isArray(d.tried) && d.tried.length) {
+        steps = '<div class="small muted" style="margin-top:8px">'
+          + '<b>مراحل بررسی‌شده:</b><ul style="margin:6px 0 0;padding-inline-start:18px">'
+          + d.tried.map(function (t) {
+            return '<li>' + (t.ok ? '✅' : '✖') + ' '
+              + esc(METHOD_LABEL[t.method] || t.method) + ' — ' + esc(t.detail || '') + '</li>';
+          }).join('') + '</ul></div>';
+      }
+      out.innerHTML = '<div class="alert alert-error">'
+        + esc((d && d.error) || 'اتصال برقرار نشد.') + steps + '</div>';
     }
     showNextStep((d && d.nextStep) || 'browser_login', d && d.reason);
     btn.disabled = false;
