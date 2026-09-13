@@ -24,8 +24,11 @@ const css = read('public/style.css');
 const picker = read('public/city-picker.js');
 
 /* ---- ۱) صفحه ورود: مسیر ساده اول، فنی در بخش بازشونده ---- */
-test('روش پیشنهادی (افزونه) به‌صورت کارت برجسته نمایش داده می‌شود',
-  /method-card recommended/.test(login) && /روش پیشنهادی/.test(login));
+// به‌روزرسانی: کارت برجسته دیگر «افزونه» نیست. بازبینی بعدی نشان داد چهار
+// روش موازی، بارِ تصمیم فنی را روی کاربر می‌گذاشت؛ حالا یک دکمه «اتصال
+// هوشمند» همه روش‌ها را خودش امتحان می‌کند و افزونه به بخش جایگزین رفت.
+test('کارت برجسته، اتصال یک‌دکمه‌ای را ارائه می‌دهد',
+  /method-card recommended/.test(login) && /id="btn-smart-connect"/.test(login));
 test('روش‌های پیشرفته داخل بخش بازشونده جمع شده‌اند',
   /<details class="advanced-block">/.test(login));
 const advStart = login.indexOf('advanced-block');

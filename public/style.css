@@ -762,3 +762,35 @@ body.page-leave { animation: page-leave .18s ease both; }
   background: #2563eb; color: #fff; font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
 }
+
+/* ============================================================
+ * اتصال هوشمند به صفیر ریل (صفحه ورود)
+ * ============================================================ */
+.conn-state {
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px 14px; border-radius: 10px;
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  margin: 12px 0; font-size: 14px; font-weight: 600; color: #334155;
+}
+.conn-dot {
+  flex: none; width: 11px; height: 11px; border-radius: 50%;
+  background: #cbd5e1;
+}
+.conn-dot.ok   { background: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.15); }
+.conn-dot.bad  { background: #dc2626; box-shadow: 0 0 0 4px rgba(220,38,38,.13); }
+.conn-dot.busy { background: #2563eb; animation: conn-pulse 1s ease-in-out infinite; }
+@keyframes conn-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .45; transform: scale(.82); }
+}
+.conn-state:has(.conn-dot.ok)  { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.conn-state:has(.conn-dot.bad) { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+.next-step {
+  margin-top: 14px; padding: 14px;
+  border: 1px solid #fcd34d; border-radius: 10px; background: #fffbeb;
+  animation: page-enter .2s ease both;
+}
+.next-step h4 { margin: 0 0 8px; font-size: 14px; color: #92400e; }
+.next-step p { margin: 0 0 10px; }
+.next-step .btn { margin-top: 2px; }

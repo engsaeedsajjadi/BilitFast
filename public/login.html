@@ -103,26 +103,30 @@
       </div>
     </section>
 
-    <!-- ============ روش پیشنهادی: افزونه مرورگر ============ -->
-    <section class="card narrow method-card recommended">
+    <!-- ============ اتصال هوشمند: یک دکمه، همه روش‌ها ============ -->
+    <section class="card narrow method-card recommended" id="smart-connect-card">
       <div class="method-head">
-        <span class="method-badge">روش پیشنهادی</span>
-        <h3>🧩 انتقال کوکی با افزونه مرورگر</h3>
+        <span class="method-badge">ساده‌ترین راه</span>
+        <h3>🔌 اتصال به صفیر ریل</h3>
       </div>
       <p class="muted small">
-        اگر ورود مستقیم بالا با خطای کد امنیتی (کپچا) روبه‌رو شد، این مطمئن‌ترین راه است.
-        فقط روی کامپیوتر (کروم/فایرفاکس) کار می‌کند.
+        لازم نیست روش انتخاب کنید. این دکمه همه راه‌ها را خودش امتحان می‌کند و
+        وضعیت واقعی اتصال شما را بررسی می‌کند.
       </p>
-      <ol class="steps-list">
-        <li>در همان مرورگر، وارد سایت <code>safirrail.ir</code> شوید.</li>
-        <li>دکمه زیر را بزنید تا یک <b>کد ۶ رقمی</b> نمایش داده شود.</li>
-        <li>روی آیکون افزونه «بیلیت فست» کلیک کنید و کد را وارد کنید.</li>
-      </ol>
-      <button class="btn btn-primary btn-lg" id="btn-ext-sync">🔑 گرفتن کد و دریافت کوکی</button>
-      <div id="ext-sync-result" class="muted small" style="margin-top:10px"></div>
-      <p class="muted small" style="margin-top:8px">
-        افزونه را نصب نکرده‌اید؟ راهنما: <code>docs/EXTENSION.md</code>
-      </p>
+
+      <div class="conn-state" id="conn-state">
+        <span class="conn-dot" id="conn-dot"></span>
+        <span id="conn-text">در حال بررسی وضعیت اتصال…</span>
+      </div>
+
+      <button class="btn btn-primary btn-lg" id="btn-smart-connect">🔌 اتصال به صفیر ریل</button>
+      <div id="smart-connect-result" style="margin-top:10px"></div>
+
+      <!-- راهنمای قدم بعدی: فقط وقتی اتصال خودکار ممکن نشد نمایش داده می‌شود -->
+      <div id="next-step-box" class="next-step" style="display:none">
+        <h4 id="next-step-title"></h4>
+        <div id="next-step-body"></div>
+      </div>
     </section>
 
     <!-- ============ روش‌های جایگزین (پیشرفته) ============ -->
@@ -134,6 +138,18 @@
         </summary>
 
         <div class="advanced-body">
+          <div class="adv-item">
+            <h4>🧩 افزونه مرورگر (وقتی سایت کد امنیتی می‌خواهد)</h4>
+            <p class="muted small">
+              اگر ورود مستقیم به‌خاطر کپچا ممکن نشد، این مطمئن‌ترین راه است.
+              ابتدا در همان مرورگر وارد <code>safirrail.ir</code> شوید، سپس کد ۶ رقمی
+              را بگیرید و در پنجره افزونه وارد کنید.
+            </p>
+            <button class="btn btn-primary" id="btn-ext-sync">🔑 گرفتن کد و دریافت کوکی</button>
+            <div id="ext-sync-result" class="muted small" style="margin-top:8px"></div>
+            <p class="muted small" style="margin-top:8px">راهنمای نصب: <code>docs/EXTENSION.md</code></p>
+          </div>
+
           <div class="adv-item" id="account-cookie-card" style="display:none">
             <h4>📱 دریافت کوکی از حساب (موبایل یا دستگاه دیگر)</h4>
             <p class="muted small">
@@ -192,6 +208,13 @@
   <script src="secure-store.js"></script>
   <script src="app.js"></script>
   <script>
+  /** فرار دادن متن پیش از درج در HTML (جلوگیری از تزریق). */
+  function esc(v) {
+    return String(v === undefined || v === null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function showAlert(msg, ok) {
     const el = document.getElementById('alert');
     el.style.display = 'block';
@@ -353,6 +376,94 @@
     box.classList.toggle('all-done', loggedIn && lastSessionEnabled);
   }
   let lastSessionEnabled = false;
+
+  /* ============================================================
+   * اتصال هوشمند: کاربر روش انتخاب نمی‌کند.
+   * سرور همه راه‌ها را به ترتیب امتحان می‌کند و اگر هیچ‌کدام جواب نداد،
+   * «قدم بعدیِ مشخص» را برمی‌گرداند تا اینجا دقیق نشان دهیم.
+   * ============================================================ */
+  const METHOD_LABEL = {
+    existing: 'نشست فعلی مرورگر',
+    account: 'نشست ذخیره‌شده در حساب شما',
+    login: 'ورود خودکار با شناسه و گذرواژه',
+    profile: 'خواندن از مرورگر همین سیستم',
+  };
+
+  function setConnState(kind, text) {
+    const dot = document.getElementById('conn-dot');
+    const txt = document.getElementById('conn-text');
+    if (!dot || !txt) return;
+    dot.className = 'conn-dot ' + kind; // ok | bad | busy
+    txt.textContent = text;
+  }
+
+  /** راهنمای قدم بعدی، متناسب با دلیل شکست. */
+  function showNextStep(step, reason) {
+    const box = document.getElementById('next-step-box');
+    const title = document.getElementById('next-step-title');
+    const body = document.getElementById('next-step-body');
+    if (!box) return;
+    if (!step) { box.style.display = 'none'; return; }
+
+    if (reason === 'captcha_required') {
+      title.textContent = '⚠️ سامانه هنگام ورود کد امنیتی می‌خواهد';
+      body.innerHTML = '<p class="muted small">برای همین ورود خودکار ممکن نیست. '
+        + 'در همین مرورگر وارد <code>safirrail.ir</code> شوید، بعد دوباره دکمه اتصال را بزنید — '
+        + 'برنامه نشست شما را خودش پیدا می‌کند.</p>'
+        + '<p><a class="btn btn-primary" href="https://safirrail.ir/fa/UserAut.php" target="_blank" rel="noopener">'
+        + 'باز کردن صفحه ورود صفیر ریل ↗</a></p>';
+    } else if (step === 'browser_login') {
+      title.textContent = '👈 یک کار کوچک لازم است';
+      body.innerHTML = '<p class="muted small">در همین مرورگر وارد سایت صفیر ریل شوید، '
+        + 'سپس به این صفحه برگردید و دوباره دکمه بالا را بزنید. '
+        + 'برنامه نشست شما را از مرورگر برمی‌دارد — نیازی به کپی کردن چیزی نیست.</p>'
+        + '<p><a class="btn btn-primary" href="https://safirrail.ir/fa/UserAut.php" target="_blank" rel="noopener">'
+        + 'باز کردن صفحه ورود صفیر ریل ↗</a></p>';
+    } else {
+      title.textContent = '👈 قدم بعدی';
+      body.innerHTML = '<p class="muted small">برنامه روی سرور اجرا می‌شود و نمی‌تواند '
+        + 'نشست مرورگر شما را بخواند. یا شناسه و گذرواژه صفیر ریل را در فرم بالا ثبت کنید، '
+        + 'یا از افزونه مرورگر (در بخش «روش‌های جایگزین») استفاده کنید.</p>';
+    }
+    box.style.display = 'block';
+  }
+
+  async function smartConnect(silent) {
+    const btn = document.getElementById('btn-smart-connect');
+    const out = document.getElementById('smart-connect-result');
+    if (!silent) { btn.disabled = true; out.innerHTML = ''; }
+    setConnState('busy', 'در حال بررسی راه‌های اتصال…');
+    showNextStep(null);
+
+    let d;
+    try {
+      d = await BilitFast.authFetch('/api/connect', { cookies: BilitFast.getCookies() });
+    } catch (e) {
+      d = { ok: false, error: 'ارتباط با سرور برقرار نشد' };
+    }
+
+    if (d && d.ok && Array.isArray(d.cookies) && d.cookies.length) {
+      BilitFast.setCookies(d.cookies);
+      setConnState('ok', 'متصل هستید ✓');
+      out.innerHTML = '<div class="alert alert-success">✅ ' + esc(d.message || 'اتصال برقرار شد.')
+        + ' <span class="muted small">(' + esc(METHOD_LABEL[d.method] || d.method) + ')</span></div>';
+      if (BilitFast.isLoggedIn()) BilitFast.pushCookiesToAccount(d.cookies);
+      btn.disabled = false;
+      return true;
+    }
+
+    setConnState('bad', 'هنوز متصل نیستید');
+    if (!silent) {
+      out.innerHTML = '<div class="alert alert-error">' + esc((d && d.error) || 'اتصال برقرار نشد.') + '</div>';
+    }
+    showNextStep((d && d.nextStep) || 'browser_login', d && d.reason);
+    btn.disabled = false;
+    return false;
+  }
+
+  document.getElementById('btn-smart-connect').addEventListener('click', () => smartConnect(false));
+  // بررسی بی‌صدا در بدو ورود تا کاربر وضعیت واقعی‌اش را ببیند
+  smartConnect(true);
 
   refreshPrereq();
   refreshSessionStatus();
