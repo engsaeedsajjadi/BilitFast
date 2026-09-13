@@ -1430,6 +1430,16 @@
       isReserving: true
     });
 
+    loginRetryDone = false;   // هر رزرو جدید، یک فرصت بازیابی خودکار دارد
+
+    // پیشگیری: اگر اصلاً کوکی نشستی نداریم، پیش از شروع رزرو بگیریم.
+    // بدون این، اولین درخواست رزرو حتماً با «نیاز به ورود» برمی‌گردد و
+    // چند ثانیه از لحظه طلایی ظرفیت هدر می‌رود.
+    if (!BilitFast.getCookies().length) {
+      if (isAuto) updateAutoPilotStatus('دریافت نشست صفیر ریل...');
+      await recoverSession();
+    }
+
     await reserveStart();
   }
 
@@ -1455,11 +1465,90 @@
     handleReserveStep(data);
   }
 
+  /* ============================================================
+   * بازیابی خودکار نشست صفیر ریل
+   *
+   * چرا لازم است: کوکی PHPSESSID عمر محدود دارد و درست در لحظه‌ای که
+   * ظرفیت پیدا شده و رزرو شروع می‌شود ممکن است منقضی باشد. قبلاً برنامه
+   * فقط پیام «کوکی‌ها را همگام‌سازی کنید» می‌داد و کاربر باید دستی به
+   * صفحه ورود می‌رفت — یعنی از دست دادن ظرفیت. حالا خودمان تلاش می‌کنیم
+   * نشست را تازه کنیم و رزرو را ادامه دهیم.
+   * ============================================================ */
+  let sessionRecoveryInFlight = false;
+
+  async function recoverSession() {
+    if (sessionRecoveryInFlight) return false;
+    sessionRecoveryInFlight = true;
+    try {
+      const d = await BilitFast.authFetch('/api/connect', { cookies: BilitFast.getCookies() });
+      if (d && d.ok && Array.isArray(d.cookies) && d.cookies.length) {
+        BilitFast.setCookies(d.cookies);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    } finally {
+      sessionRecoveryInFlight = false;
+    }
+  }
+
   async function callReserve(payload) {
     try {
       return await BilitFast.apiReserve(payload);
     } catch (err) {
       return { ok: false, error: 'خطا در ارتباط با سرور هنگام رزرو: ' + (err && err.message ? err.message : err) };
+    }
+  }
+
+  /**
+   * نشست منقضی شده است. به‌جای رها کردن کاربر، یک بار خودکار نشست را تازه
+   * می‌کنیم و همان مرحله رزرو را دوباره می‌زنیم. فقط اگر آن هم نشد، از
+   * کاربر کمک می‌خواهیم — با دکمه‌ای که همان‌جا کار را انجام می‌دهد.
+   */
+  let loginRetryDone = false;
+
+  async function handleLoginRequired(data) {
+    if (!loginRetryDone) {
+      loginRetryDone = true;
+      setStatus('نشست صفیر ریل منقضی شده — در حال تازه‌سازی خودکار...', 'orange');
+      $('reserve-message').textContent = '🔄 نشست منقضی شده بود؛ در حال اتصال دوباره…';
+      const ok = await recoverSession();
+      if (ok) {
+        setStatus('نشست تازه شد — ادامه رزرو', 'blue');
+        await reserveStart();   // همان قطار، با کوکی تازه
+        return;
+      }
+    }
+    // بازیابی خودکار جواب نداد → راهنمای عملی، نه فقط پیام خطا
+    showReserveError(
+      (data && data.message) ||
+      'نشست شما در سامانه صفیر ریل منقضی شده است.');
+    const box = $('reserve-error');
+    if (box) {
+      const a = document.createElement('div');
+      a.style.marginTop = '10px';
+      a.innerHTML = '<button class="btn btn-primary" id="btn-fix-session">🔌 اتصال دوباره و ادامه رزرو</button>' +
+        ' <a class="btn" href="login.html" target="_blank" rel="noopener">صفحه ورود ↗</a>';
+      box.appendChild(a);
+      const b = document.getElementById('btn-fix-session');
+      if (b) {
+        b.addEventListener('click', async () => {
+          b.disabled = true;
+          b.textContent = 'در حال اتصال…';
+          const ok = await recoverSession();
+          if (ok) {
+            loginRetryDone = false;
+            hideReserveAll();
+            setStatus('نشست تازه شد — ادامه رزرو', 'blue');
+            await reserveStart();
+          } else {
+            b.disabled = false;
+            b.textContent = '🔌 تلاش دوباره';
+            BilitFast.toast('اتصال برقرار نشد. در صفحه «ورود» وارد صفیر ریل شوید.', 'error', 7000);
+          }
+        });
+      }
     }
   }
 
@@ -1525,7 +1614,7 @@
         maybePrepareReturnTrip();
         break;
       case 'login_required':
-        showReserveError(data.message || 'نیاز به ورود. در صفحه «ورود» کوکی‌ها را همگام‌سازی کنید.');
+        handleLoginRequired(data);
         break;
       case 'no_capacity':
         // در حالت پایش قطار خاص، به‌جای توقف، خودکار به حلقه جستجو برمی‌گردیم.
