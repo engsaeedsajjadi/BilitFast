@@ -178,6 +178,33 @@ module.exports = async (req, res) => {
     }
   }
 
+  /* ---- ۳.۵) ورود خودکار با اعتبارنامه محلی (بدون نیاز به حساب برنامه) ----
+   * چون ورود صفیر ریل کپچا نمی‌خواهد، اگر کاربر یک‌بار در همین برنامه وارد
+   * شده باشد، اعتبارنامه‌اش رمزشده ذخیره شده و می‌توانیم بی‌صدا دوباره
+   * وارد شویم — حتی اگر حساب BilitFast نداشته باشد. */
+  if (!user && keeper.hasLocalCredentials && keeper.hasLocalCredentials()) {
+    try {
+      const r = await keeper.refreshLocalSession();
+      if (r && r.ok && Array.isArray(r.cookies) && r.cookies.length) {
+        record('login', true, 'ورود خودکار با اطلاعات ذخیره‌شده روی این دستگاه');
+        res.status(200).json({
+          ok: true, method: 'login', cookies: r.cookies, tried,
+          message: 'به‌صورت خودکار دوباره وارد صفیر ریل شدیم.',
+        });
+        return;
+      }
+      if (r && r.reason === 'captcha_required') {
+        record('login', false, 'سایت کد امنیتی خواست');
+      } else {
+        record('login', false, (r && (r.error || r.reason)) || 'ورود خودکار ناموفق بود');
+      }
+    } catch (e) {
+      record('login', false, (e && e.message) || String(e));
+    }
+  } else if (!user) {
+    record('login', false, 'هنوز یک‌بار با شناسه و گذرواژه وارد نشده‌اید');
+  }
+
   /* ---- ۴) خواندن از پروفایل مرورگر (فقط اجرای محلی) ---- */
   if (isLocalRun()) {
     const { cookies, notes } = await readBrowserProfiles();

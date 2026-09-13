@@ -18,6 +18,22 @@ module.exports = async (req, res) => {
   }
   try {
     const result = await login(username, password);
+
+    /* اگر ورود موفق بود و اجرای محلی است، اعتبارنامه را رمزشده ذخیره کن.
+     * چرا: ورود صفیر ریل کپچا نمی‌خواهد، پس هر وقت نشست منقضی شود برنامه
+     * می‌تواند خودش دوباره وارد شود — به شرطی که اعتبارنامه را داشته باشد.
+     * قبلاً این فقط با «حساب BilitFast» ممکن بود و کاربرِ محلی هنگام
+     * انقضای نشست وسط رزرو گیر می‌کرد. ذخیره‌سازی با AES-256-GCM است. */
+    if (result && result.ok) {
+      try {
+        const keeper = require('../lib/session-keeper');
+        if (keeper.isLocalMode()) {
+          keeper.saveLocalCredentials(username, password);
+          result.autoRelogin = true;
+        }
+      } catch (e) { /* ذخیره اختیاری است؛ ورود نباید به‌خاطر آن شکست بخورد */ }
+    }
+
     res.status(200).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e && e.message ? e.message : String(e) });

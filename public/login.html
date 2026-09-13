@@ -62,7 +62,9 @@
 
         <!-- شرط دو حسابی، صریح و با وضعیت زنده -->
         <div class="prereq-box" id="prereq-box">
-          <b>برای تازه‌سازی خودکار، دو ورود لازم است:</b>
+          <b>حساب BilitFast اختیاری است</b> — روی همین سیستم، اطلاعات ورود شما
+          رمزشده ذخیره می‌شود و نشست خودکار تازه می‌شود. حساب فقط برای
+          همگام‌سازی بین چند دستگاه لازم است:
           <ol class="prereq-steps">
             <li id="prereq-1">
               <span class="prereq-mark">۱</span>
@@ -265,9 +267,14 @@
     btn.textContent = 'ورود و انتقال کوکی‌ها';
     if (data.ok) {
       BilitFast.setCookies(data.cookies || []);
+      // روی اجرای محلی، اعتبارنامه رمزشده ذخیره می‌شود و برنامه هر وقت نشست
+      // منقضی شد خودش دوباره وارد می‌شود — نیازی به حساب BilitFast نیست.
       showAlert((data.message || 'ورود موفقیت‌آمیز بود.') +
-        (keep ? ' (برای تازه‌سازی خودکار باید وارد حساب برنامه شوید.)' : ''), true);
+        (data.autoRelogin
+          ? ' از این پس اگر نشست منقضی شود، برنامه خودکار دوباره وارد می‌شود.'
+          : (keep ? ' (برای تازه‌سازی خودکار باید وارد حساب برنامه شوید.)' : '')), true);
       BilitFast.pushCookiesToAccount(data.cookies || []).catch(() => {});
+      smartConnect(true);
     } else if (data.captchaRequired) {
       showAlert('🛡 ' + (data.error || data.message || 'ورود خودکار ممکن نیست'), false);
     } else {
