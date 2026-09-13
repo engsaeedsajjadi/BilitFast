@@ -33,7 +33,30 @@ const keeper = require('../lib/session-keeper');
 
 /** آیا روی محیط ابری اجرا می‌شویم؟ (خواندن پروفایل مرورگر فقط محلی ممکن است) */
 function isLocalRun() {
-  return !core.isCloudEnv();
+  return typeof core.isCloudEnv === 'function' ? !core.isCloudEnv() : true;
+}
+
+/**
+ * بررسی اعتبار نشست، با سازگاری عقب‌رو.
+ *
+ * چرا این محافظ لازم است: اگر سرور با نسخه قدیمی‌تر lib/core.js در حافظه
+ * اجرا شده باشد (مثلاً کاربر بعد از به‌روزرسانی، پروسه node را ری‌استارت
+ * نکرده باشد)، core.verifySession وجود ندارد و کل endpoint با خطای
+ * «core.verifySession is not a function» می‌افتاد. به‌جای کرش، به بررسی
+ * سادهٔ وجود کوکی برمی‌گردیم و به کاربر می‌گوییم سرور را ری‌استارت کند.
+ */
+async function checkSession(cookies) {
+  if (typeof core.verifySession === 'function') {
+    return core.verifySession(cookies);
+  }
+  const hasCookie = typeof core.hasSessionCookie === 'function'
+    ? core.hasSessionCookie(cookies)
+    : (Array.isArray(cookies) && cookies.some((c) => /^PHPSESSID=/i.test(String(c))));
+  return {
+    valid: hasCookie,
+    degraded: true,
+    reason: hasCookie ? undefined : 'no_session_cookie',
+  };
 }
 
 /** تلاش برای خواندن کوکی از پروفایل مرورگرهای نصب‌شده روی همین سیستم. */
@@ -78,12 +101,15 @@ module.exports = async (req, res) => {
 
   /* ---- ۱) کوکی‌هایی که همین حالا در مرورگر کاربر است ---- */
   if (browserCookies.length) {
-    const v = await core.verifySession(browserCookies);
+    const v = await checkSession(browserCookies);
     if (v.valid) {
       record('existing', true, 'نشست فعلی معتبر است');
       res.status(200).json({
         ok: true, method: 'existing', cookies: browserCookies, tried,
-        message: 'اتصال شما به صفیر ریل برقرار است.',
+        degraded: v.degraded || undefined,
+        message: v.degraded
+          ? 'کوکی نشست موجود است. (سرور نسخه قدیمی را در حافظه دارد؛ برای بررسی دقیق، برنامه را ری‌استارت کنید.)'
+          : 'اتصال شما به صفیر ریل برقرار است.',
       });
       return;
     }
@@ -108,7 +134,7 @@ module.exports = async (req, res) => {
     } catch (e) { /* ignore */ }
 
     if (saved.length) {
-      const v = await core.verifySession(saved);
+      const v = await checkSession(saved);
       if (v.valid) {
         record('account', true, 'کوکی ذخیره‌شده روی حساب معتبر بود');
         res.status(200).json({
@@ -156,7 +182,7 @@ module.exports = async (req, res) => {
   if (isLocalRun()) {
     const { cookies, notes } = await readBrowserProfiles();
     if (cookies.length) {
-      const v = await core.verifySession(cookies);
+      const v = await checkSession(cookies);
       if (v.valid) {
         record('profile', true, 'از مرورگر نصب‌شده روی همین سیستم خوانده شد');
         res.status(200).json({

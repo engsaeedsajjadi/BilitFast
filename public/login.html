@@ -442,6 +442,20 @@
       d = { ok: false, error: 'ارتباط با سرور برقرار نشد' };
     }
 
+    // اگر سرور با نسخه قدیمی کد در حافظه اجرا شده باشد، پیام فنی خام
+    // («... is not a function») به کاربر نشان داده می‌شد. به‌جای آن، کار
+    // مشخصی که باید انجام دهد را می‌گوییم.
+    if (d && !d.ok && /is not a function|Cannot read propert/i.test(String(d.error || ''))) {
+      setConnState('bad', 'سرور نیاز به راه‌اندازی مجدد دارد');
+      out.innerHTML = '<div class="alert alert-error">'
+        + '⚠️ برنامه به‌روزرسانی شده اما سرور هنوز نسخه قدیمی را در حافظه دارد.<br>'
+        + '<b>راه‌حل:</b> پنجره ترمینال را ببندید و دوباره '
+        + '<code style="direction:ltr;display:inline-block">node dev-server.js</code> را اجرا کنید.'
+        + '</div>';
+      btn.disabled = false;
+      return false;
+    }
+
     if (d && d.ok && Array.isArray(d.cookies) && d.cookies.length) {
       BilitFast.setCookies(d.cookies);
       setConnState('ok', 'متصل هستید ✓');

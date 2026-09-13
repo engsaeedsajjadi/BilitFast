@@ -159,6 +159,52 @@ function callConnect(body, headers) {
   test('هیچ شناسه‌ای که JS به آن وابسته است گم نشده' +
     (missing.length ? ' (گم‌شده: ' + missing.join(', ') + ')' : ''), missing.length === 0);
 
+  /* ---- سازگاری عقب‌رو: سرورِ ری‌استارت‌نشده با core قدیمی ----
+   * علامت این حالت، خطای «core.verifySession is not a function» بود که
+   * کل endpoint را می‌انداخت. حالا باید بدون کرش کار کند. */
+  {
+    const corePath = require.resolve(path.join(ROOT, 'lib', 'core.js'));
+    const realCore = require.cache[corePath].exports;
+    const stripped = Object.assign({}, realCore);
+    delete stripped.verifySession;
+    delete stripped.isCloudEnv;
+    require.cache[corePath].exports = stripped;
+
+    // ماژول connect باید دوباره با core تنزل‌یافته بارگذاری شود
+    const connectPath = require.resolve(path.join(ROOT, 'api', 'connect.js'));
+    delete require.cache[connectPath];
+    const degradedConnect = require(connectPath);
+
+    const callDeg = (body) => new Promise((resolve) => {
+      const res = { status(c) { this._code = c; return this; }, json(j) { resolve(j); } };
+      degradedConnect({ method: 'POST', body, headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res);
+    });
+
+    let crashed = false;
+    let out = null;
+    try {
+      out = await callDeg({ cookies: ['PHPSESSID=abc'] });
+    } catch (e) {
+      crashed = true;
+    }
+    test('با core قدیمی، endpoint کرش نمی‌کند', crashed === false && out !== null);
+    test('در حالت تنزل‌یافته، کوکی موجود پذیرفته می‌شود', out && out.ok === true);
+    test('حالت تنزل‌یافته صادقانه علامت می‌خورد', out && out.degraded === true);
+    test('به کاربر گفته می‌شود برنامه را ری‌استارت کند',
+      out && /ری‌استارت/.test(out.message || ''));
+
+    // بازگرداندن وضعیت
+    require.cache[corePath].exports = realCore;
+    delete require.cache[connectPath];
+  }
+
+  /* ---- رابط کاربری: پیام فنی خام به کاربر نشان داده نمی‌شود ---- */
+  test('پیام «is not a function» به پیام قابل‌فهم تبدیل می‌شود',
+    /is not a function\|Cannot read propert/.test(login)
+    && /سرور هنوز نسخه قدیمی را در حافظه دارد/.test(login));
+  test('دستور ری‌استارت به کاربر نشان داده می‌شود',
+    /node dev-server\.js/.test(login));
+
   const css = fs.readFileSync(path.join(ROOT, 'public', 'style.css'), 'utf8');
   test('استایل نشانگر وضعیت تعریف شده',
     /\.conn-dot\.ok/.test(css) && /\.conn-dot\.bad/.test(css) && /\.next-step/.test(css));
