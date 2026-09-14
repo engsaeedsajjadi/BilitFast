@@ -8,6 +8,8 @@ const {
 } = require('../lib/reserve');
 const { guardApi } = require('../lib/guard');
 const { getSessionUser } = require('../lib/auth');
+const { requireUser } = require('../lib/apiauth');
+const accounts = require('../lib/accounts');
 const { checkAccess } = require('../lib/license');
 const config = require('../config.json');
 const { ensureCookies } = require('../lib/session-fallback');
@@ -28,9 +30,15 @@ module.exports = async (req, res) => {
   if (!guardApi(req, res, { name: 'reserve', limit: 120, windowMs: 60000 })) return;
 
   const body = readBody(req);
+
+  /* رزرو همیشه باید به یک کاربر مشخص نسبت داده شود. در نصب تک‌کاربره محلی،
+   * مثل قبل بدون حساب هم کار می‌کند. */
+  const auth = requireUser(req, res, body);
+  if (!auth.ok) return;
+  const sessionUser = auth.user;
   // گیت مجوز سمت سرور (در حالت توسعه با کلید پیش‌فرض، آزاد است)
   try {
-    const user = getSessionUser(req, body);
+    const user = sessionUser || getSessionUser(req, body);
     const access = checkAccess({
       user,
       licenseToken: String(body.licenseToken || ''),
@@ -52,7 +60,17 @@ module.exports = async (req, res) => {
       /* همان تور ایمنی جستجو: رزرو بدون نشست معتبر قطعاً به «نیاز به ورود»
        * می‌خورد. اگر کوکی به سرور نرسیده، پیش از شروع یک بار جبران می‌کنیم
        * تا کاربر در لحظهٔ پیدا شدن ظرفیت معطل نشود. */
-      const fb = await ensureCookies(body.cookies);
+      /* سهمیه رزرو فقط در گام start مصرف می‌شود، نه در submit — وگرنه یک رزرو
+       * که چند بار تلاش کپچا دارد، چند واحد از سهمیه کاربر را می‌خورد. */
+      if (sessionUser) {
+        const q = accounts.consumeQuota(sessionUser.id, 'reservations');
+        if (!q.ok && q.reason === 'quota') {
+          res.status(429).json({ ok: false, quotaExceeded: true, error: q.error, used: q.used, limit: q.limit });
+          return;
+        }
+      }
+
+      const fb = await ensureCookies(body.cookies, sessionUser);
       if (fb.recovered) body.cookies = fb.cookies;
       const result = await startReservation(body);
       if (fb.recovered && result && typeof result === 'object') {

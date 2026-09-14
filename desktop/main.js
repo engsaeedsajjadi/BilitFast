@@ -16,6 +16,38 @@ const ROOT = app.isPackaged
 process.env.BILITFAST_ROOT = ROOT;
 const PORT = process.env.BILITFAST_DESKTOP_PORT || '3210';
 
+/* حالت ابری: اگر API_BASE_URL تنظیم شده باشد، به‌جای بالا آوردن سرور داخلی،
+ * پنجره مستقیماً به بک‌اند راه دور وصل می‌شود. کاربردش وقتی است که سرور روی
+ * یک ماشین با دسترسی شبکه به صفیر ریل اجرا می‌شود و کاربر فقط کلاینت دارد.
+ *
+ * فقط https پذیرفته می‌شود (به‌جز localhost برای تست): توکن نشست روی این
+ * اتصال رد و بدل می‌شود و http یعنی هر کسی در مسیر می‌تواند آن را بردارد. */
+function remoteApiBase() {
+  const raw = String(process.env.API_BASE_URL || readSetting('api_base_url') || '').trim();
+  if (!raw) return null;
+  let u;
+  try { u = new URL(raw); } catch (e) { return null; }
+  const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname);
+  if (u.protocol !== 'https:' && !isLocal) {
+    console.error('API_BASE_URL باید https باشد؛ مقدار نامعتبر نادیده گرفته شد:', raw);
+    return null;
+  }
+  return u.origin;
+}
+
+/** خواندن تنظیمات دسکتاپ از فایل settings.json در پوشه داده کاربر. */
+function readSetting(key) {
+  try {
+    const fs = require('fs');
+    const p = path.join(app.getPath('userData'), 'settings.json');
+    if (!fs.existsSync(p)) return null;
+    const o = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return o && o[key] !== undefined ? o[key] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 let win = null;
 let serverInfo = null;
 
@@ -74,12 +106,14 @@ function createWindow() {
     },
   });
   Menu.setApplicationMenu(null);
-  win.loadURL('http://127.0.0.1:' + PORT + '/');
+  const remote = remoteApiBase();
+  win.loadURL(remote ? remote + '/' : 'http://127.0.0.1:' + PORT + '/');
   win.on('closed', () => { win = null; });
 }
 
 app.whenReady().then(() => {
-  startServer();
+  // در حالت ابری سرور محلی لازم نیست؛ بالا آوردنش فقط منابع مصرف می‌کند.
+  if (!remoteApiBase()) startServer();
   ipcMain.handle('bilit:get-install-info', () => getInstallInfo());
   createWindow();
   app.on('activate', () => {

@@ -68,7 +68,7 @@ test('ماژول رزرو بدون خطا بارگذاری می‌شود', loade
 /* ---- تور ایمنی همچنان به رزرو وصل است ---- */
 const reserveApi = fs.readFileSync(path.join(ROOT, 'api', 'reserve.js'), 'utf8');
 test('رزرو قبل از شروع، نشست را جبران می‌کند',
-  /ensureCookies\(body\.cookies\)/.test(reserveApi));
+  /ensureCookies\(body\.cookies(,\s*\w+)?\)/.test(reserveApi));
 
 console.log('\n' + (fail === 0
   ? 'همه ' + pass + ' تست تشخیص نشست رزرو پاس شدند'

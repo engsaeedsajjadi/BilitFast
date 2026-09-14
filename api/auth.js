@@ -1,7 +1,9 @@
 // api/auth.js — حساب کاربری: ثبت‌نام / ورود / وضعیت / خروج / به‌روزرسانی پروفایل
 const { registerUser, loginUser, publicUser, getSessionUser, verifyPassword, hashPassword } = require('../lib/auth');
-const { guardApi } = require('../lib/guard');
+const { guardApi, isLockedOut, recordLoginFailure, clearLoginFailures } = require('../lib/guard');
 const db = require('../lib/db');
+const accounts = require('../lib/accounts');
+const activity = require('../lib/activity');
 
 function readBody(req) {
   if (typeof req.body === 'string') {
@@ -33,20 +35,78 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'login') {
+      /* قفل موقت پس از چند تلاش ناموفق روی همین نام کاربری — مکمل محدودیت
+       * مبتنی بر آی‌پی، برای حالتی که مهاجم از چندین آی‌پی حمله می‌کند. */
+      const lock = isLockedOut(body.username);
+      if (lock.locked) {
+        const mins = Math.ceil(lock.retryInMs / 60000);
+        return res.status(429).json({
+          ok: false,
+          lockedOut: true,
+          error: `به دلیل تلاش‌های ناموفق زیاد، ورود به این حساب موقتاً قفل شده است. حدود ${mins} دقیقه دیگر دوباره تلاش کنید.`,
+        });
+      }
+
       const r = loginUser(body.username, body.password);
-      if (!r.ok) return res.status(200).json(r);
+      if (!r.ok) {
+        recordLoginFailure(body.username);
+        activity.log({ type: 'LOGIN_FAILED', meta: { username: String(body.username || '').slice(0, 64) }, req });
+        return res.status(200).json(r);
+      }
+      clearLoginFailures(body.username);
+      /* حساب غیرفعال یا منقضی نباید اصلاً توکن بگیرد. بررسی اینجا (نه فقط در
+       * APIهای بعدی) باعث می‌شود کاربر پیام روشن ببیند، نه خطای مبهم بعدی. */
+      const st = accounts.accountStatus(r.user);
+      if (!st.ok) {
+        activity.log({ userId: r.user.id, type: 'LOGIN_BLOCKED', meta: { reason: st.reason }, req });
+        return res.status(200).json({ ok: false, accountBlocked: true, reason: st.reason, error: st.error });
+      }
+      activity.log({ userId: r.user.id, type: 'LOGIN', req });
       return res.status(200).json({ ok: true, token: r.token, user: publicUser(r.user), storageOk: db.isPersistent() });
     }
 
     if (action === 'me') {
-      const user = getSessionUser(req, body);
-      if (!user) return res.status(200).json({ ok: false, error: 'نشست معتبر نیست.', loggedIn: false });
-      return res.status(200).json({ ok: true, loggedIn: true, user: publicUser(user) });
+      const { resolveUser } = require('../lib/apiauth');
+      const r = resolveUser(req, body);
+      if (!r.user) {
+        return res.status(200).json({
+          ok: false,
+          loggedIn: false,
+          reason: r.reason || 'no_session',
+          error: r.error || 'نشست معتبر نیست.',
+        });
+      }
+      const u = accounts.normalizeUser(r.user);
+      return res.status(200).json({
+        ok: true,
+        loggedIn: true,
+        user: publicUser(r.user),
+        // اطلاعات مجوز تا رابط کاربری بتواند سهمیه و دسترسی را درست نشان دهد
+        account: {
+          role: u.role,
+          display_name: u.display_name || '',
+          expires_at: u.expires_at,
+          is_admin: u.role === 'admin',
+          quota: {
+            searches: accounts.quotaStatus(u, 'searches'),
+            reservations: accounts.quotaStatus(u, 'reservations'),
+          },
+        },
+      });
     }
 
     if (action === 'logout') {
-      // نشست‌ها بدون حالت (توکن امضاشده) هستند؛ خروج فقط با حذف توکن سمت کلاینت است.
-      return res.status(200).json({ ok: true });
+      /* نشست‌ها بدون حالت‌اند، ولی «خروج» باید واقعاً توکن را بی‌اعتبار کند —
+       * وگرنه توکن دزدیده‌شده تا ۷ روز معتبر می‌ماند. با ثبت لحظه خروج، هر
+       * توکنی که پیش از آن صادر شده رد می‌شود.
+       * توجه: کوکی‌های صفیر ریل عمداً پاک نمی‌شوند؛ خروج از حساب برنامه
+       * ربطی به نشست صفیر ندارد و پاک کردنش کار کاربر را خراب می‌کند. */
+      const user = getSessionUser(req, body);
+      if (user) {
+        accounts.revokeSessions(user.id);
+        activity.log({ userId: user.id, type: 'LOGOUT', req });
+      }
+      return res.status(200).json({ ok: true, revoked: !!user });
     }
 
     if (action === 'change-password') {

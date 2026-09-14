@@ -95,8 +95,16 @@ const OTHER = '6.6.6.6';    // یک طرف سوم
   const searchSrc = fs.readFileSync(path.join(ROOT, 'api', 'search.js'), 'utf8');
   const reserveSrc = fs.readFileSync(path.join(ROOT, 'api', 'reserve.js'), 'utf8');
   const routeSrc = fs.readFileSync(path.join(ROOT, 'public', 'route.html'), 'utf8');
-  test('جستجو از تور ایمنی استفاده می‌کند', /ensureCookies\(body\.cookies\)/.test(searchSrc));
-  test('رزرو از تور ایمنی استفاده می‌کند', /ensureCookies\(body\.cookies\)/.test(reserveSrc));
+  /* تور ایمنی حالا کاربر را هم می‌گیرد تا بازیابی نشست فقط از اعتبارنامه
+   * خودِ همان کاربر انجام شود (جلوگیری از نشت نشست بین کاربران). */
+  test('جستجو از تور ایمنی استفاده می‌کند',
+    /ensureCookies\(body\.cookies(,\s*\w+)?\)/.test(searchSrc));
+  test('رزرو از تور ایمنی استفاده می‌کند',
+    /ensureCookies\(body\.cookies(,\s*\w+)?\)/.test(reserveSrc));
+  test('جستجو کاربر نشست را به تور ایمنی می‌دهد',
+    /ensureCookies\(body\.cookies,\s*sessionUser\)/.test(searchSrc));
+  test('رزرو کاربر نشست را به تور ایمنی می‌دهد',
+    /ensureCookies\(body\.cookies,\s*sessionUser\)/.test(reserveSrc));
   test('کلاینت نشست بازیابی‌شده را ذخیره می‌کند',
     /data\.sessionRecovered[\s\S]{0,160}setCookies\(data\.cookies\)/.test(routeSrc));
   test('جستجو همچنان کوکی را در payload می‌فرستد',

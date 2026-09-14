@@ -67,6 +67,26 @@ function send(res, status, body, headers = {}) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
 
+  /* CORS — فقط برای مبدأهای صریحاً مجاز (نسخه دسکتاپ روی دامنه دیگر).
+   * پیش‌فرض خالی است، یعنی فقط same-origin کار می‌کند. عمداً از * پشتیبانی
+   * نمی‌شود: این API با توکن Bearer کار می‌کند و مبدأ باز یعنی هر سایتی
+   * می‌تواند از طرف کاربر درخواست بزند. */
+  const allowedOrigins = String(process.env.BILITFAST_ALLOWED_ORIGINS || '')
+    .split(',').map((o) => o.trim()).filter(Boolean);
+  const origin = req.headers.origin;
+  const corsHeaders = {};
+  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+    corsHeaders['Access-Control-Allow-Origin'] = origin;
+    corsHeaders['Vary'] = 'Origin';
+    corsHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+    corsHeaders['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
+    corsHeaders['Access-Control-Max-Age'] = '600';
+  }
+  if (req.method === 'OPTIONS') {
+    send(res, corsHeaders['Access-Control-Allow-Origin'] ? 204 : 403, '', corsHeaders);
+    return;
+  }
+
   // مسیرهای API
   if (url.pathname.startsWith('/api/')) {
     const name = url.pathname.slice('/api/'.length) || 'index';
@@ -101,13 +121,18 @@ const server = http.createServer(async (req, res) => {
       const status = expressRes._status || 200;
       const extraHeaders = expressRes._headers || {};
       if (expressRes._send !== undefined) {
-        send(res, status, expressRes._send, { 'Content-Type': 'text/html; charset=utf-8', ...extraHeaders });
+        send(res, status, expressRes._send, { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders, ...extraHeaders });
       } else {
         const payload = expressRes._json !== undefined ? JSON.stringify(expressRes._json) : '';
-        send(res, status, payload, { 'Content-Type': 'application/json; charset=utf-8', ...extraHeaders });
+        send(res, status, payload, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders, ...extraHeaders });
       }
     } catch (e) {
-      send(res, 500, JSON.stringify({ ok: false, error: String(e && e.message ? e.message : e) }), { 'Content-Type': 'application/json' });
+      /* در تولید پیام خام استثنا به کاربر داده نمی‌شود: ممکن است مسیر فایل،
+       * نام متغیر یا جزئیات داخلی را لو بدهد. در توسعه همان پیام کمک می‌کند. */
+      const isProd = process.env.NODE_ENV === 'production';
+      console.error('API error [' + url.pathname + ']:', e && e.stack ? e.stack : e);
+      const msg = isProd ? 'خطای داخلی سرور.' : String(e && e.message ? e.message : e);
+      send(res, 500, JSON.stringify({ ok: false, error: msg }), { 'Content-Type': 'application/json', ...corsHeaders });
     }
     return;
   }
@@ -180,3 +205,7 @@ server.listen(PORT, '0.0.0.0', () => {
     if (n) console.log('Server monitors resumed: ' + n);
   } catch (e) { /* پایشگر اختیاری است */ }
 });
+
+// نمونه سرور برای استفاده نقطه ورود تولید (server.js) — تا خاموشی تمیز
+// بتواند اتصال‌ها را ببندد. اجرای مستقیم این فایل مثل قبل کار می‌کند.
+module.exports = server;

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مدیریت کاربران — Bilit Fast</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    .admin-table th, .admin-table td { padding: .55rem .5rem; border-bottom: 1px solid #e5e7eb; text-align: right; }
+    .admin-table th { background: #f8fafc; font-weight: 600; white-space: nowrap; }
+    .admin-table tr:hover td { background: #f9fafb; }
+    .pill { display: inline-block; padding: .12rem .5rem; border-radius: 999px; font-size: .78rem; }
+    .pill-admin { background: #fee2e2; color: #991b1b; }
+    .pill-tester { background: #dbeafe; color: #1e40af; }
+    .pill-user { background: #f3f4f6; color: #374151; }
+    .pill-on { background: #dcfce7; color: #166534; }
+    .pill-off { background: #fee2e2; color: #991b1b; }
+    .row-actions button { font-size: .78rem; padding: .25rem .5rem; margin-inline-start: .25rem; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .7rem; }
+    .secret-box { background: #fffbeb; border: 1px solid #fcd34d; padding: .7rem; border-radius: 8px; font-family: monospace; direction: ltr; text-align: left; }
+    .muted { color: #6b7280; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">🚆</span>
+        <span class="brand-name">Bilit Fast</span>
+      </div>
+      <nav class="topnav">
+        <a href="index.html">مسیرها</a>
+        <a href="history.html">تاریخچه</a>
+        <a href="login.html">ورود صفیر ریل</a>
+        <a href="settings.html">تنظیمات</a>
+        <a href="account.html">حساب</a>
+        <a href="admin.html">مدیریت</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>مدیریت کاربران</h1>
+
+    <!-- حالت ۱: دسترسی ندارد -->
+    <section id="denied" class="card" style="display:none">
+      <h2>دسترسی ندارید</h2>
+      <p>این بخش فقط برای مدیر سیستم است. اگر مدیر هستید، ابتدا وارد حساب خود شوید.</p>
+      <a class="btn" href="account.html">رفتن به صفحه حساب</a>
+    </section>
+
+    <!-- حالت ۲: هنوز مدیری وجود ندارد -->
+    <section id="bootstrap" class="card" style="display:none">
+      <h2>ساخت نخستین مدیر</h2>
+      <p class="muted">
+        هنوز هیچ حساب مدیری روی این نصب وجود ندارد. اولین مدیر را بسازید.
+        پس از آن، این فرم برای همیشه بسته می‌شود.
+      </p>
+      <div class="grid2">
+        <label>نام کاربری<input id="bs-username" type="text" autocomplete="username"></label>
+        <label>گذرواژه<input id="bs-password" type="password" autocomplete="new-password"></label>
+        <label>نام نمایشی<input id="bs-display" type="text" placeholder="مدیر سیستم"></label>
+      </div>
+      <button id="bs-submit" class="btn btn-primary">ساخت مدیر</button>
+      <p id="bs-msg" class="muted"></p>
+    </section>
+
+    <!-- حالت ۳: پنل مدیریت -->
+    <section id="panel" style="display:none">
+      <div class="card">
+        <h2>کاربر جدید</h2>
+        <div class="grid2">
+          <label>نام کاربری<input id="nu-username" type="text"></label>
+          <label>گذرواژه<input id="nu-password" type="text" placeholder="خالی = تولید خودکار"></label>
+          <label>نام نمایشی<input id="nu-display" type="text"></label>
+          <label>نقش
+            <select id="nu-role">
+              <option value="tester">tester (کاربر تستی)</option>
+              <option value="user">user (کاربر عادی)</option>
+              <option value="admin">admin (مدیر)</option>
+            </select>
+          </label>
+          <label>تاریخ انقضا<input id="nu-expires" type="date"></label>
+          <label>سقف جستجو<input id="nu-searches" type="number" min="0" placeholder="خالی = نامحدود"></label>
+          <label>سقف رزرو<input id="nu-reservations" type="number" min="0" placeholder="خالی = نامحدود"></label>
+        </div>
+        <button id="nu-submit" class="btn btn-primary">ساخت کاربر</button>
+        <div id="nu-result" style="display:none; margin-top:.7rem"></div>
+      </div>
+
+      <div class="card">
+        <h2>کاربران <span id="user-count" class="muted"></span></h2>
+        <div style="overflow-x:auto">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>نام کاربری</th><th>نام</th><th>نقش</th><th>وضعیت</th>
+                <th>انقضا</th><th>جستجو</th><th>رزرو</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="user-rows"></tbody>
+          </table>
+        </div>
+        <p id="list-msg" class="muted"></p>
+      </div>
+
+      <div class="card">
+        <h2>فعالیت اخیر</h2>
+        <p class="muted">مقدار کوکی، گذرواژه و توکن هرگز ثبت نمی‌شود.</p>
+        <div style="overflow-x:auto">
+          <table class="admin-table">
+            <thead><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>جزئیات</th></tr></thead>
+            <tbody id="log-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var api = window.BilitFast && window.BilitFast.authFetch;
+    if (!api) { document.getElementById('denied').style.display = ''; return; }
+
+    function $(id) { return document.getElementById(id); }
+    function show(id) { $(id).style.display = ''; }
+    function hide(id) { $(id).style.display = 'none'; }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function fmtDate(v) {
+      if (!v) return '—';
+      try { return new Date(v).toLocaleDateString('fa-IR'); } catch (e) { return '—'; }
+    }
+    function fmtTime(ms) {
+      try { return new Date(ms).toLocaleString('fa-IR'); } catch (e) { return '—'; }
+    }
+    function quota(used, limit) {
+      if (limit === null || limit === undefined) return esc(used) + ' / ∞';
+      return esc(used) + ' / ' + esc(limit);
+    }
+
+    /* ---------- بارگذاری اولیه ---------- */
+    async function init() {
+      var me = await api('/api/auth', { action: 'me' });
+      if (me && me.ok && me.account && me.account.is_admin) {
+        show('panel');
+        await refresh();
+        return;
+      }
+      // آیا اصلاً مدیری وجود دارد؟ اگر نه، فرم راه‌اندازی را نشان بده.
+      var probe = await api('/api/admin-users', { action: 'bootstrap', username: '', password: '' });
+      if (probe && probe.error && /ادمین از قبل وجود دارد/.test(probe.error)) {
+        show('denied');
+      } else {
+        show('bootstrap');
+      }
+    }
+
+    /* ---------- ساخت نخستین مدیر ---------- */
+    $('bs-submit').addEventListener('click', async function () {
+      $('bs-msg').textContent = 'در حال ساخت...';
+      var r = await api('/api/admin-users', {
+        action: 'bootstrap',
+        username: $('bs-username').value.trim(),
+        password: $('bs-password').value,
+        display_name: $('bs-display').value.trim(),
+      });
+      if (r && r.ok) {
+        if (r.token && window.BilitFast.setSessionToken) window.BilitFast.setSessionToken(r.token);
+        $('bs-msg').textContent = 'مدیر ساخته شد. در حال بارگذاری پنل...';
+        location.reload();
+      } else {
+        $('bs-msg').textContent = (r && r.error) || 'ساخت مدیر ناموفق بود.';
+      }
+    });
+
+    /* ---------- ساخت کاربر ---------- */
+    $('nu-submit').addEventListener('click', async function () {
+      var payload = {
+        action: 'create',
+        username: $('nu-username').value.trim(),
+        password: $('nu-password').value,
+        display_name: $('nu-display').value.trim(),
+        role: $('nu-role').value,
+      };
+      if ($('nu-expires').value) payload.expires_at = $('nu-expires').value;
+      if ($('nu-searches').value !== '') payload.max_searches = Number($('nu-searches').value);
+      if ($('nu-reservations').value !== '') payload.max_reservations = Number($('nu-reservations').value);
+
+      var r = await api('/api/admin-users', payload);
+      var box = $('nu-result');
+      box.style.display = '';
+      if (r && r.ok) {
+        box.innerHTML = '<div class="secret-box">کاربر: ' + esc(r.user.username) +
+          '<br>گذرواژه: ' + esc(r.password) + '</div>' +
+          '<p class="muted">این گذرواژه دیگر نمایش داده نمی‌شود. همین حالا ذخیره‌اش کنید.</p>';
+        $('nu-username').value = ''; $('nu-password').value = ''; $('nu-display').value = '';
+        refresh();
+      } else {
+        box.innerHTML = '<p style="color:#b91c1c">' + esc((r && r.error) || 'خطا') + '</p>';
+      }
+    });
+
+    /* ---------- فهرست کاربران ---------- */
+    async function refresh() {
+      var r = await api('/api/admin-users', { action: 'list' });
+      var tb = $('user-rows');
+      tb.innerHTML = '';
+      if (!r || !r.ok) {
+        $('list-msg').textContent = (r && r.error) || 'خواندن فهرست ناموفق بود.';
+        return;
+      }
+      $('user-count').textContent = '(' + r.users.length + ')';
+      r.users.forEach(function (u) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + esc(u.username) + '</td>' +
+          '<td>' + esc(u.display_name || '—') + '</td>' +
+          '<td><span class="pill pill-' + esc(u.role) + '">' + esc(u.role) + '</span></td>' +
+          '<td><span class="pill ' + (u.is_active ? 'pill-on">فعال' : 'pill-off">غیرفعال') + '</span></td>' +
+          '<td>' + fmtDate(u.expires_at) + '</td>' +
+          '<td>' + quota(u.usage.searches, u.max_searches) + '</td>' +
+          '<td>' + quota(u.usage.reservations, u.max_reservations) + '</td>' +
+          '<td class="row-actions"></td>';
+        var cell = tr.lastElementChild;
+
+        cell.appendChild(btn(u.is_active ? 'غیرفعال' : 'فعال', async function () {
+          await api('/api/admin-users', { action: 'update', id: u.id, is_active: !u.is_active });
+          refresh();
+        }));
+        cell.appendChild(btn('گذرواژه تازه', async function () {
+          if (!confirm('گذرواژه ' + u.username + ' عوض شود؟ نشست‌های بازش بسته می‌شود.')) return;
+          var x = await api('/api/admin-users', { action: 'reset-password', id: u.id });
+          if (x && x.ok) alert('گذرواژه تازه ' + u.username + ':\n\n' + x.password + '\n\nذخیره‌اش کنید.');
+          else alert((x && x.error) || 'خطا');
+        }));
+        cell.appendChild(btn('صفر کردن سهمیه', async function () {
+          await api('/api/admin-users', { action: 'update', id: u.id, reset_usage: true });
+          refresh();
+        }));
+        cell.appendChild(btn('حذف', async function () {
+          if (!confirm('کاربر ' + u.username + ' حذف شود؟ این کار برگشت‌پذیر نیست.')) return;
+          var x = await api('/api/admin-users', { action: 'delete', id: u.id });
+          if (x && !x.ok) alert(x.error || 'خطا');
+          refresh();
+        }));
+        tb.appendChild(tr);
+      });
+      loadLog();
+    }
+
+    function btn(label, fn) {
+      var b = document.createElement('button');
+      b.className = 'btn';
+      b.textContent = label;
+      b.addEventListener('click', fn);
+      return b;
+    }
+
+    async function loadLog() {
+      var r = await api('/api/admin-users', { action: 'activity', limit: 60 });
+      var tb = $('log-rows');
+      tb.innerHTML = '';
+      if (!r || !r.ok) return;
+      r.events.forEach(function (e) {
+        var tr = document.createElement('tr');
+        var meta = Object.keys(e.meta || {}).map(function (k) {
+          return k + '=' + e.meta[k];
+        }).join(' ، ');
+        tr.innerHTML = '<td>' + fmtTime(e.at) + '</td><td>' + esc(e.user_id || '—') +
+          '</td><td>' + esc(e.type) + '</td><td class="muted">' + esc(meta || '—') + '</td>';
+        tb.appendChild(tr);
+      });
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>
