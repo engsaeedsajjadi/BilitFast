@@ -1,7 +1,9 @@
 // api/health.js — بررسی سلامت اتصال برنامه به سامانه صفیر ریل.
 // اکشن‌ها:
-//   check → (بدنه: cookies) بررسی می‌کند سرور به صفیر ریل می‌رسد یا نه
-//           (مثلاً روی Vercel به‌خاطر بلاک IP دیتاسنتر، نه) و کوکی نشست فرستاده می‌شود؟
+//   check   → (بدنه: cookies) بررسی می‌کند سرور به صفیر ریل می‌رسد یا نه
+//             (روی آی‌پی دیتاسنتر معمولاً نه) و کوکی نشست فرستاده می‌شود؟
+//   storage → وضعیت ذخیره‌سازی و پایش
+//   mode    → آیا این نصب چندکاربره است؟ (برای تنظیم متن رابط کاربری)
 const { guardApi } = require('../lib/guard');
 const core = require('../lib/core');
 const { config } = core;
@@ -15,6 +17,14 @@ module.exports = async (req, res) => {
 
   const body = (typeof req.body === 'string') ? safeParse(req.body) : (req.body || {});
   const cookies = Array.isArray(body.cookies) ? body.cookies : [];
+
+  /* حالت نصب: رابط کاربری باید بداند ورود اجباری است یا نه تا متن درست را
+   * نشان دهد. عمداً هیچ اطلاعات حساسی برنمی‌گرداند — فقط یک پرچم. */
+  if (body.action === 'mode') {
+    const { isMultiUser } = require('../lib/apiauth');
+    res.status(200).json({ ok: true, multiuser: isMultiUser() });
+    return;
+  }
 
   // گزارش وضعیت ذخیره‌سازی/پایش (برای صفحه حریم خصوصی و بررسی استقرار)
   if (body.action === 'storage') {

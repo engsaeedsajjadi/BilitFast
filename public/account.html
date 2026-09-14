@@ -123,7 +123,18 @@
     btn.disabled = true;
     const data = await BilitFast.authFetch('/api/auth', { action: mode, username, password });
     btn.disabled = false;
-    if (!data.ok) { showAlert('alert', data.error || 'خطا', false); return; }
+    if (!data.ok) {
+      /* سه حالت جدید که پیام مخصوص خود را دارند تا کاربر بداند چه کند:
+       * قفل موقت پس از تلاش‌های ناموفق، حساب غیرفعال‌شده، و حساب منقضی. */
+      let msg = data.error || 'خطا';
+      if (data.lockedOut) msg = '🔒 ' + msg;
+      else if (data.accountBlocked) {
+        msg = (data.reason === 'expired' ? '⏳ ' : '🚫 ') + msg +
+          ' برای تمدید با مدیر سیستم تماس بگیرید.';
+      }
+      showAlert('alert', msg, false);
+      return;
+    }
 
     BilitFast.setSessionToken(data.token);
     localStorage.removeItem('bilitfast_license_cache');
@@ -141,7 +152,15 @@
     setTimeout(render, 500);
   });
 
-  document.getElementById('btn-logout').addEventListener('click', () => {
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    /* خروج باید سمت سرور هم انجام شود. پاک کردن توکن از مرورگر کافی نیست:
+     * اگر کسی توکن را برداشته باشد، تا ۷ روز معتبر می‌ماند. صدا زدن API
+     * آن را واقعاً باطل می‌کند.
+     * توجه: کوکی صفیر ریل عمداً پاک نمی‌شود — حاصل زحمت کاربر است و به
+     * حساب BilitFast ربطی ندارد. */
+    try {
+      await BilitFast.authFetch('/api/auth', { action: 'logout' });
+    } catch (err) { /* حتی اگر شبکه قطع بود، توکن محلی را پاک می‌کنیم */ }
     BilitFast.setSessionToken('');
     localStorage.removeItem('bilitfast_license_cache');
     location.reload();
@@ -184,10 +203,42 @@
     guest.style.display = 'none';
     userEl.style.display = 'block';
     const u = data.user;
+    const acc = data.account || {};
+
+    // سهمیه: اگر حدی تعریف نشده باشد چیزی نشان نمی‌دهیم تا شلوغ نشود.
+    function quotaLine(label, q) {
+      if (!q || q.unlimited) return '';
+      const used = q.used || 0;
+      const limit = q.limit;
+      const left = Math.max(0, limit - used);
+      const warn = left === 0 ? ' style="color:#b91c1c;font-weight:600"' : '';
+      return '<p' + warn + '><b>' + label + ':</b> ' +
+        used + ' از ' + limit + ' استفاده شده (' + left + ' باقی‌مانده)</p>';
+    }
+
+    let extra = '';
+    if (acc.role && acc.role !== 'user') {
+      const roleLabel = acc.role === 'admin' ? 'مدیر سیستم' : 'کاربر تستی';
+      extra += '<p><b>نقش:</b> ' + esc(roleLabel) + '</p>';
+    }
+    if (acc.expires_at) {
+      let d = '';
+      try { d = new Date(acc.expires_at).toLocaleDateString('fa-IR'); } catch (e) { d = ''; }
+      const daysLeft = Math.ceil((new Date(acc.expires_at) - Date.now()) / 86400000);
+      const soon = daysLeft <= 3 ? ' style="color:#b45309;font-weight:600"' : '';
+      extra += '<p' + soon + '><b>اعتبار تا:</b> ' + esc(d) +
+        (daysLeft >= 0 ? ' (' + daysLeft + ' روز دیگر)' : ' (منقضی شده)') + '</p>';
+    }
+    extra += quotaLine('جستجو', acc.quota && acc.quota.searches);
+    extra += quotaLine('رزرو', acc.quota && acc.quota.reservations);
+
     document.getElementById('user-info').innerHTML =
       '<p><b>نام کاربری:</b> ' + esc(u.username) + '</p>' +
+      (acc.display_name ? '<p><b>نام:</b> ' + esc(acc.display_name) + '</p>' : '') +
       '<p><b>شماره همراه:</b> ' + (esc(u.phone) || '<span class="muted">تنظیم نشده</span>') + '</p>' +
-      '<p><b>تلگرام:</b> ' + (u.telegram_connected ? '✅ متصل' : '<span class="muted">متصل نیست</span>') + '</p>';
+      '<p><b>تلگرام:</b> ' + (u.telegram_connected ? '✅ متصل' : '<span class="muted">متصل نیست</span>') + '</p>' +
+      extra +
+      (acc.is_admin ? '<p style="margin-top:10px"><a class="btn" href="admin.html">🛠 پنل مدیریت کاربران</a></p>' : '');
   }
 
   function showInlineAlert(id, msg, ok) {

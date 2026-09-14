@@ -62,9 +62,10 @@
 
         <!-- شرط دو حسابی، صریح و با وضعیت زنده -->
         <div class="prereq-box" id="prereq-box">
-          <b>حساب BilitFast اختیاری است</b> — روی همین سیستم، اطلاعات ورود شما
+          <b id="prereq-title">حساب BilitFast اختیاری است</b>
+          <span id="prereq-note">— روی همین سیستم، اطلاعات ورود شما
           رمزشده ذخیره می‌شود و نشست خودکار تازه می‌شود. حساب فقط برای
-          همگام‌سازی بین چند دستگاه لازم است:
+          همگام‌سازی بین چند دستگاه لازم است:</span>
           <ol class="prereq-steps">
             <li id="prereq-1">
               <span class="prereq-mark">۱</span>
@@ -80,7 +81,10 @@
         </div>
         <button class="btn btn-primary btn-lg" type="submit">ورود و انتقال کوکی‌ها</button>
       </form>
-      <p class="muted small">در صورت بروز خطا در ورود (مثلاً کپچا)، از روش‌های انتقال کوکی پایین استفاده کنید.</p>
+      <p class="muted small">
+        اگر ورود مستقیم کار نکرد (مثلاً صفیر ریل کد امنیتی خواست)، از
+        روش‌های انتقال کوکی پایین استفاده کنید — نتیجه یکسان است.
+      </p>
     </section>
 
     <section class="card narrow" id="session-keeper-card">
@@ -371,9 +375,42 @@
   });
 
   /** به‌روزرسانی وضعیت دو مرحله پیش‌نیاز (تیک سبز وقتی انجام شده). */
+  /* آیا این نصب چندکاربره است؟ یک بار از سرور پرسیده و کش می‌شود.
+   * روی نصب شخصی تک‌کاربره حساب واقعاً اختیاری است، ولی روی سروری که چند
+   * کاربر دارد اجباری است — و نمایش متن غلط یعنی کاربر نمی‌فهمد چرا
+   * جستجویش رد می‌شود. */
+  let multiUserMode = null;
+  async function detectMode() {
+    if (multiUserMode !== null) return multiUserMode;
+    try {
+      const r = await BilitFast.authFetch('/api/health', { action: 'mode' });
+      multiUserMode = !!(r && r.multiuser);
+    } catch (e) {
+      multiUserMode = false; // در تردید، متن ملایم‌تر را نشان بده
+    }
+    return multiUserMode;
+  }
+
+  async function applyModeText() {
+    const multi = await detectMode();
+    const title = document.getElementById('prereq-title');
+    const note = document.getElementById('prereq-note');
+    if (!title || !note) return;
+    if (multi) {
+      title.textContent = 'ورود به حساب BilitFast لازم است';
+      note.textContent = '— روی این نصب، جستجو و رزرو بدون ورود به حساب کار ' +
+        'نمی‌کند. اطلاعات صفیر ریل شما رمزشده و جدا از سایر کاربران ذخیره می‌شود:';
+    } else {
+      title.textContent = 'حساب BilitFast اختیاری است';
+      note.textContent = '— روی همین سیستم، اطلاعات ورود شما رمزشده ذخیره ' +
+        'می‌شود و نشست خودکار تازه می‌شود. حساب فقط برای همگام‌سازی بین چند دستگاه لازم است:';
+    }
+  }
+
   function refreshPrereq() {
     const box = document.getElementById('prereq-box');
     if (!box) return;
+    applyModeText();
     const loggedIn = BilitFast.isLoggedIn();
     const s1 = document.getElementById('prereq-1');
     const s2 = document.getElementById('prereq-2');

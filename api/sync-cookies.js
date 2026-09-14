@@ -3,11 +3,43 @@
 // توجه: این قابلیت فقط در اجرای محلی (دسترسی به فایل‌سیستم کاربر) کار می‌کند.
 const { readFirefoxCookies } = require('../lib/cookies');
 const { readChromeCookies } = require('../lib/chrome-cookies');
-const { guardApi } = require('../lib/guard');
+const { guardApi, getClientIp } = require('../lib/guard');
 const trace = require('../lib/cookie-trace');
+
+/**
+ * این endpoint کوکی واقعی مرورگرِ دستگاهی که سرور رویش اجراست را برمی‌گرداند.
+ * روی یک نصب شخصی بی‌خطر است (همان کاربر، همان دستگاه)، ولی روی سرور مشترک
+ * فاجعه است: هر کاربری می‌توانست کوکی نشستِ مرورگرِ سرور را تحویل بگیرد.
+ * پس دو شرط گذاشته می‌شود: درخواست باید محلی باشد، و در نصب چندکاربره باید
+ * کاربر واردشده باشد.
+ */
+function isLocalRequest(req) {
+  const ip = String(getClientIp(req) || '');
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+}
 
 module.exports = async (req, res) => {
   if (!guardApi(req, res, { name: 'sync-cookies', limit: 10, windowMs: 60000 })) return;
+
+  if (!isLocalRequest(req)) {
+    res.status(403).json({
+      ok: false,
+      error: 'خواندن کوکی مرورگر فقط روی اجرای محلی در دسترس است. ' +
+        'برای انتقال کوکی از دستگاه خودتان، از افزونه مرورگر استفاده کنید.',
+    });
+    return;
+  }
+
+  /* حتی روی درخواست محلی، اگر نصب چندکاربره باشد باید کاربر مشخص باشد —
+   * وگرنه روی سروری که کاربران از طریق پروکسی محلی به آن می‌رسند، این مسیر
+   * باز می‌ماند. */
+  const body = (typeof req.body === 'string') ? (() => {
+    try { return JSON.parse(req.body || '{}'); } catch (e) { return {}; }
+  })() : (req.body || {});
+  const { requireUser } = require('../lib/apiauth');
+  const auth = requireUser(req, res, body);
+  if (!auth.ok) return;
+
   const source = (req.query && req.query.source) || 'all';
   trace.clear(); // هر بار فشردن دکمه، یک تشخیص تازه
   trace.log('sync', 'شروع همگام‌سازی', { source });

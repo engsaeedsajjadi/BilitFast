@@ -290,6 +290,42 @@ test('کلید جداسازی برای کاربر، شناسه او را دار�
   apiauth.scopeKey({ id: 'u1' }) === 'u:u1');
 test('کلید جداسازی بدون کاربر، local است', apiauth.scopeKey(null) === 'local');
 
+/* ============ ۱۶) محافظت endpointهای حساس ============ */
+
+const fsSrc = require('fs');
+const pathSrc = require('path');
+const ROOT = pathSrc.join(__dirname, '..');
+
+const syncSrc = fsSrc.readFileSync(pathSrc.join(ROOT, 'api', 'sync-cookies.js'), 'utf8');
+test('خواندن کوکی مرورگر فقط محلی است', /isLocalRequest\(req\)/.test(syncSrc));
+test('خواندن کوکی مرورگر نیازمند ورود است', /requireUser\(req, res, body\)/.test(syncSrc));
+
+const doctorSrc = fsSrc.readFileSync(pathSrc.join(ROOT, 'api', 'cookie-doctor.js'), 'utf8');
+test('تشخیص کوکی فقط محلی است', /isLocalRequest\(req\)/.test(doctorSrc));
+
+const searchSrc2 = fsSrc.readFileSync(pathSrc.join(ROOT, 'api', 'search.js'), 'utf8');
+const reserveSrc2 = fsSrc.readFileSync(pathSrc.join(ROOT, 'api', 'reserve.js'), 'utf8');
+test('جستجو نیازمند احراز هویت است', /requireUser\(req, res, body\)/.test(searchSrc2));
+test('رزرو نیازمند احراز هویت است', /requireUser\(req, res, body\)/.test(reserveSrc2));
+test('جستجو سهمیه را مصرف می‌کند', /consumeQuota\(sessionUser\.id, 'searches'\)/.test(searchSrc2));
+test('رزرو سهمیه را مصرف می‌کند', /consumeQuota\(sessionUser\.id, 'reservations'\)/.test(reserveSrc2));
+
+/* ============ ۱۷) خروج واقعی در رابط کاربری ============ */
+
+const accountHtml = fsSrc.readFileSync(pathSrc.join(ROOT, 'public', 'account.html'), 'utf8');
+test('دکمه خروج، ابطال سمت سرور را صدا می‌زند',
+  /action:\s*'logout'/.test(accountHtml));
+test('رابط کاربری حساب قفل‌شده را جدا پیام می‌دهد',
+  /lockedOut/.test(accountHtml) && /accountBlocked/.test(accountHtml));
+test('رابط کاربری سهمیه را نمایش می‌دهد', /quotaLine/.test(accountHtml));
+test('لینک پنل مدیریت فقط برای ادمین است',
+  /acc\.is_admin\s*\?[\s\S]{0,120}admin\.html/.test(accountHtml));
+
+const loginHtml = fsSrc.readFileSync(pathSrc.join(ROOT, 'public', 'login.html'), 'utf8');
+test('متن پیش‌نیاز بر اساس حالت نصب تنظیم می‌شود', /applyModeText/.test(loginHtml));
+test('صفحه ورود حالت چندکاربره را از سرور می‌پرسد',
+  /action:\s*'mode'/.test(loginHtml));
+
 /* ============ پایان ============ */
 
 function finish() {
