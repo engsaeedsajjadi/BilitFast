@@ -29,7 +29,7 @@ BILITFAST_MASTER_KEY=<رشته تصادفی بلند>
 ```bash
 BILITFAST_INSTALL_KEY=<...>      # امضای نشانه نصب نسخه دسکتاپ
 BILITFAST_CRON_SECRET=<...>      # فعال‌سازی پایش سرورلس با Cron
-KV_REST_API_URL=/KV_REST_API_TOKEN=   # ذخیره‌ساز مشترک (Vercel KV)
+KV_REST_API_URL=/KV_REST_API_TOKEN=   # ذخیره‌ساز مشترک (Redis/Upstash)
 UPSTASH_REDIS_REST_URL=/UPSTASH_REDIS_REST_TOKEN=  # یا Upstash
 BILITFAST_ENFORCE_SECURITY=1     # اجبار حالت سخت‌گیرانه بدون NODE_ENV
 ```
@@ -89,11 +89,13 @@ BILITFAST_ENFORCE_SECURITY=1     # اجبار حالت سخت‌گیرانه ب�
 
 > صادقانه: در برابر **XSS فعال** هیچ ذخیره‌سازی مرورگری کاملاً امن نیست
 > (مهاجم از همان API استفاده می‌کند). این لایه ریسک دیسک/پشتیبان/پروفایل
-> مشترک/افزونه خواننده را حذف می‌کند. CSP سخت‌گیرانه در `vercel.json` فعال است.
+> مشترک/افزونه خواننده را حذف می‌کند. CSP سخت‌گیرانه در `dev-server.js` روی همه
+> پاسخ‌ها اعمال می‌شود.
 
 ### ۴. ذخیره‌سازی JSON برای production — ✅ رفع شد
 
-**شد:** `lib/db-remote.js` — درایور **Redis/Upstash یا Vercel KV** با همان
+**شد:** `lib/db-remote.js` — درایور **Redis/Upstash** (سازگار با هر KV با API
+سازگار REST) با همان
 رابط. فعال‌سازی فقط با متغیر محیطی، بدون تغییر کد فراخوان (write-through +
 کش با تازه‌سازی دوره‌ای).
 
@@ -112,10 +114,16 @@ BILITFAST_ENFORCE_SECURITY=1     # اجبار حالت سخت‌گیرانه ب�
 - `monitor.capability()` وضعیت را **صادقانه** گزارش می‌کند؛ روی سرورلسِ
   بدون Cron، اکشن `start` با خطای روشن **رد** می‌شود (به‌جای وعده دروغ).
 - `resumeAll()` روی سرورلس اصلاً تایمر نمی‌سازد.
-- `monitor.runDueMonitors()` + نقطه ورود **`api/cron.js`** برای Cron Job
-  واقعی؛ `vercel.json` شامل `crons` هر دقیقه.
-- امنیت Cron: `BILITFAST_CRON_SECRET` با مقایسه زمان‌ثابت (یا هدر رسمی
-  `x-vercel-cron`).
+- `monitor.runDueMonitors()` + نقطه ورود **`api/cron.js`** برای زمان‌بند بیرونی
+  (Task Scheduler ویندوز، `systemd timer`، `cron`).
+- امنیت Cron: **تنها** راه مجوز، `BILITFAST_CRON_SECRET` با مقایسه زمان‌ثابت
+  است (`Authorization: Bearer`، هدر `x-cron-secret`، یا `?secret=`). بدون
+  تنظیم این متغیر، نقطه ورود `503` برمی‌گرداند.
+
+  > قبلاً هدر `x-vercel-cron` هم به‌تنهایی مجوز می‌داد. این فقط وقتی امن بود که
+  > یک لبه مطمئن آن هدر را بازنویسی کند. با حذف آن پلتفرم، هر کلاینتی می‌توانست
+  > هدر را جعل و احراز هویت را کامل دور بزند — پس حذف شد. همین منطق برای
+  > `x-vercel-forwarded-for` در `lib/guard.js` اعمال شد.
 
 ### ۶. آسیب‌پذیری وابستگی jimp/file-type — ✅ کاهش‌یافته (mitigated)
 

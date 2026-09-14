@@ -1,18 +1,18 @@
 // api/cron.js — نقطه ورود Cron Job واقعی برای پایش سمت سرور.
 //
-// چرا؟ تایمرهای درون‌پردازشی (lib/monitor.js) فقط روی سرور دائمی قابل اتکا
-// هستند. روی سرورلس (Vercel/Lambda) اجرای پس از پاسخ تضمین نمی‌شود و
-// instance هر لحظه می‌تواند خاموش شود. راه درست، فراخوانی دوره‌ای از یک
-// زمان‌بند بیرونی است:
+// چرا؟ تایمرهای درون‌پردازشی (lib/monitor.js) وقتی قابل اتکا هستند که
+// پروسه دائماً روشن بماند. اگر برنامه را گاهی می‌بندید یا می‌خواهید پایش
+// مستقل از باز بودن پنجره انجام شود، یک زمان‌بند بیرونی این مسیر را صدا
+// می‌زند:
 //
-//   • Vercel Cron  → در vercel.json مسیر /api/cron هر دقیقه صدا زده می‌شود
-//   • cron-job.org یا systemd timer → GET/POST به همین آدرس
+//   • Task Scheduler ویندوز → یک تسک دوره‌ای که این آدرس را صدا می‌زند
+//   • systemd timer یا cron در لینوکس/مک
+//   • سرویس‌هایی مثل cron-job.org (اگر برنامه از بیرون در دسترس باشد)
 //
 // امنیت: بدون راز درست، درخواست رد می‌شود تا کسی نتواند با فراخوانی مکرر
 // به سایت صفیر فشار بیاورد.
 //   Authorization: Bearer <BILITFAST_CRON_SECRET>
 //   یا هدر x-cron-secret، یا ?secret= در کوئری
-//   (Vercel Cron هدر x-vercel-cron را می‌فرستد و پذیرفته می‌شود.)
 
 const crypto = require('crypto');
 const monitor = require('../lib/monitor');
@@ -27,8 +27,11 @@ function timingEqual(a, b) {
 function authorized(req) {
   const secret = process.env.BILITFAST_CRON_SECRET;
   if (!secret) return false;
-  // فراخوانی رسمی زمان‌بند Vercel
-  if (req.headers && req.headers['x-vercel-cron']) return true;
+
+  /* نکته امنیتی: قبلاً وجود هدر x-vercel-cron به‌تنهایی مجوز کامل می‌داد،
+   * چون فرض بر این بود که فقط لبه Vercel می‌تواند آن را بگذارد. حالا که
+   * برنامه روی سرور خودمان اجرا می‌شود، چنین لبه‌ای وجود ندارد و هر کسی
+   * می‌تواند آن هدر را جعل کند. پس حذف شد و تنها راه، دانستن راز است. */
 
   const auth = String((req.headers && req.headers.authorization) || '');
   const bearer = auth.replace(/^Bearer\s+/i, '');

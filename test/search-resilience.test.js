@@ -80,12 +80,19 @@ const call = () => core.searchOnce({ fields, passengers, cookies: 'PHPSESSID=x' 
   test('راهنمای محلی نامی از دیتاسنتر نمی‌برد', !/دیتاسنتر/.test(localHint));
   test('راهنمای محلی کاربردی است (بررسی اتصال)', /اتصال اینترنت/.test(localHint));
 
-  process.env.VERCEL = '1';
-  test('با VERCEL=1 محیط ابری تشخیص داده می‌شود', core.isCloudEnv() === true);
+  /* پشتیبانی از Vercel حذف شد (برنامه روی سیستم خود کاربر اجرا می‌شود)،
+   * ولی تشخیص محیط ابری برای هاست‌های دیگر باقی است — چون راهنمای
+   * «IP دیتاسنتر مسدود است» فقط آنجا معنا دارد. */
+  process.env.RENDER = '1';
+  test('محیط ابری همچنان تشخیص داده می‌شود', core.isCloudEnv() === true);
   const cloudHint = core.networkHint();
   test('در محیط ابری راهنمای مسدودی IP نمایش داده می‌شود', /مسدود/.test(cloudHint));
-  delete process.env.VERCEL;
+  delete process.env.RENDER;
   test('پس از حذف متغیر، دوباره حالت محلی است', core.isCloudEnv() === false);
+
+  process.env.VERCEL = '1';
+  test('متغیر VERCEL دیگر اثری ندارد (پشتیبانی حذف شده)', core.isCloudEnv() === false);
+  delete process.env.VERCEL;
 
   /* ---------- ۳) هیچ متن ثابت Vercel در پیام‌های کاربر نماند ---------- */
   const coreSrc = read('lib/core.js');

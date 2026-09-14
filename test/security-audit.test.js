@@ -133,15 +133,15 @@ function runIsolated(env, code) {
   const localSt = db.storageStatus();
   test('اجرای محلی پایدار تشخیص داده می‌شود', localSt.mode === 'local-file' && localSt.reliable === true);
 
-  r = runIsolated({ VERCEL: '1', NODE_ENV: '', BILITFAST_ENFORCE_SECURITY: '' },
+  r = runIsolated({ AWS_LAMBDA_FUNCTION_NAME: 'bilitfast-test', NODE_ENV: '', BILITFAST_ENFORCE_SECURITY: '' },
     "const s=require('" + ROOT + "/lib/db.js').storageStatus();console.log(s.mode+'|'+s.reliable+'|'+s.warnings.length)");
   test('سرورلس بدون ذخیره‌ساز مشترک ناپایدار علامت می‌خورد', /ephemeral-tmp\|false\|[1-9]/.test(r.out || ''));
 
-  r = runIsolated({ VERCEL: '1', KV_REST_API_URL: 'https://x.upstash.io', KV_REST_API_TOKEN: 't' },
+  r = runIsolated({ AWS_LAMBDA_FUNCTION_NAME: 'bilitfast-test', KV_REST_API_URL: 'https://x.upstash.io', KV_REST_API_TOKEN: 't' },
     "const s=require('" + ROOT + "/lib/db.js').storageStatus();console.log(s.mode+'|'+s.reliable)");
   test('با ذخیره‌ساز مشترک، استقرار پایدار می‌شود', (r.out || '') === 'shared-kv|true');
 
-  r = runIsolated({ VERCEL: '1', NODE_ENV: 'production', BILITFAST_SESSION_KEY: 'a'.repeat(64),
+  r = runIsolated({ AWS_LAMBDA_FUNCTION_NAME: 'bilitfast-test', NODE_ENV: 'production', BILITFAST_SESSION_KEY: 'a'.repeat(64),
     BILITFAST_LICENSE_KEY: 'b'.repeat(64), BILITFAST_TOKEN_KEY: 'c'.repeat(64) },
     "require('" + ROOT + "/lib/db.js').assertReliableStorage();console.log('STARTED')");
   test('تولیدِ سرورلس بدون KV بالا نمی‌آید (fail-closed)', !!r.err && /پایدار نیست/.test(r.err));
@@ -152,11 +152,11 @@ function runIsolated(env, code) {
   test('روی سرور دائمی، پایش تایمری پشتیبانی می‌شود',
     monitor.capability().mode === 'timer' && monitor.capability().supported === true);
 
-  r = runIsolated({ VERCEL: '1', BILITFAST_CRON_SECRET: '' },
+  r = runIsolated({ AWS_LAMBDA_FUNCTION_NAME: 'bilitfast-test', BILITFAST_CRON_SECRET: '' },
     "const c=require('" + ROOT + "/lib/monitor.js').capability();console.log(c.mode+'|'+c.supported)");
   test('سرورلس بدون Cron: پایش پشتیبانی‌نشده اعلام می‌شود', (r.out || '') === 'unsupported|false');
 
-  r = runIsolated({ VERCEL: '1', BILITFAST_CRON_SECRET: 'secret123' },
+  r = runIsolated({ AWS_LAMBDA_FUNCTION_NAME: 'bilitfast-test', BILITFAST_CRON_SECRET: 'secret123' },
     "const c=require('" + ROOT + "/lib/monitor.js').capability();console.log(c.mode+'|'+c.supported)");
   test('سرورلس با Cron: پایش پشتیبانی می‌شود', (r.out || '') === 'cron|true');
 

@@ -221,11 +221,22 @@ const core = require('../lib/core');
     socket: { remoteAddress: '8.8.8.8' },
   });
   test('گارد: با اتصال مستقیم عمومی، XFF جعلی نادیده گرفته می‌شود', ip1 === '8.8.8.8');
+  /* پشتیبانی از Vercel حذف شد. قبلاً وجود هدر x-vercel-forwarded-for به‌تنهایی
+   * آی‌پی را تعیین می‌کرد، چون فرض بود فقط لبه Vercel آن را می‌گذارد. حالا که
+   * برنامه روی سرور خودمان اجرا می‌شود چنین لبه‌ای نیست و هر کسی می‌تواند آن
+   * هدر را جعل کند تا محدودیت نرخ را دور بزند. باید نادیده گرفته شود. */
   const ip2 = guard.getClientIp({
     headers: { 'x-vercel-forwarded-for': '5.5.5.5', 'x-forwarded-for': '6.6.6.6' },
     socket: { remoteAddress: '8.8.8.8' },
   });
-  test('گارد: روی Vercel هدر x-vercel-forwarded-for ملاک است', ip2 === '5.5.5.5');
+  test('گارد: هدر جعلی x-vercel-forwarded-for نادیده گرفته می‌شود', ip2 === '8.8.8.8');
+
+  // پشت پروکسی محلی مطمئن، XFF همچنان معتبر است
+  const ip3 = guard.getClientIp({
+    headers: { 'x-forwarded-for': '7.7.7.7' },
+    socket: { remoteAddress: '127.0.0.1' },
+  });
+  test('گارد: پشت پروکسی محلی، XFF معتبر است', ip3 === '7.7.7.7');
 
   /* ۱۳) کلید رمزنگاری در حالت اجبار امنیتی fail-closed است */
   const tokenLib = require('../lib/token.js');
