@@ -15,6 +15,7 @@
  * بسته می‌شود و 403 می‌دهد.
  */
 
+const crypto = require('crypto');
 const { guardApi } = require('../lib/guard');
 const { requireAdmin } = require('../lib/apiauth');
 const { registerUser, hashPassword, validateUsername } = require('../lib/auth');
@@ -42,6 +43,15 @@ module.exports = async (req, res) => {
   try {
     /* --- راه‌اندازی نخستین ادمین --- */
     if (action === 'bootstrap') {
+      // Initial administrator provisioning requires an out-of-band secret.
+      const expected = String(process.env.BILITFAST_ADMIN_BOOTSTRAP_SECRET || '');
+      const provided = String(body.bootstrap_secret || (req.headers && req.headers['x-bootstrap-secret']) || '');
+      const a = Buffer.from(provided);
+      const b = Buffer.from(expected);
+      if (expected.length < 32 || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        res.status(403).json({ ok: false, error: 'راز راه‌اندازی مدیر معتبر نیست.' });
+        return;
+      }
       if (accounts.hasAdmin()) {
         res.status(403).json({ ok: false, error: 'ادمین از قبل وجود دارد. این مسیر بسته است.' });
         return;
