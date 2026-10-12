@@ -112,6 +112,15 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Both Electron and its forked local Node server must use the same stable
+  // keys across runs, especially for persisted Safir credentials and install
+  // marker verification. Never bake these secrets into the distributed EXE.
+  const { readOrCreateKeys } = require('./keys');
+  const persistedKeys = readOrCreateKeys(app.getPath('userData'));
+  for (const [name, value] of Object.entries(persistedKeys)) {
+    if (!process.env[name]) process.env[name] = value;
+  }
+
   // در حالت ابری سرور محلی لازم نیست؛ بالا آوردنش فقط منابع مصرف می‌کند.
   if (!remoteApiBase()) startServer();
   ipcMain.handle('bilit:get-install-info', () => getInstallInfo());
