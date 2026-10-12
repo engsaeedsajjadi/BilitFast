@@ -165,8 +165,11 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log('BilitFast dev server: http://0.0.0.0:' + PORT);
+// Local development is bound to loopback: no anonymous LAN access.
+const BIND_HOST = process.env.BILITFAST_BIND_HOST ||
+  (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
+server.listen(PORT, BIND_HOST, () => {
+  console.log('BilitFast server: http://' + BIND_HOST + ':' + PORT);
   // بررسی پیکربندی امنیتی و پایداری ذخیره‌سازی هنگام بالا آمدن.
   // در تولید (NODE_ENV=production یا BILITFAST_ENFORCE_SECURITY=1) نبود کلید
   // یا ناپایداری ذخیره‌سازی باعث توقف سرویس می‌شود (fail-closed).
