@@ -18,15 +18,24 @@ function test(name, cond) {
  * توقف فقط پس از چند خطای پیاپی رخ می‌دهد (لایه کلاینت). */
 const core = require('../lib/core');
 (async () => {
-  // از شبکه واقعی استفاده نمی‌کنیم؛ تابع fetch را شبیه‌سازی می‌کنیم که خطای شبکه بدهد.
-  const origFetch = global.fetch;
-  global.fetch = async () => { const e = new Error('fetch failed'); throw e; };
-  const r = await core.searchOnce({
-    fields: { from_city: 'تهران', to_city: 'مشهد', date: '1405/06/10', gender: 'عادی' },
-    passengers: [{ quota_type: 'بزرگسال' }],
-    cookies: [],
-  });
-  global.fetch = origFetch;
+  // Deterministic network-failure simulation: the HTTP layer uses undici,
+  // so mocking global.fetch does not intercept safirFetch. Use a local server
+  // that immediately resets the socket; no external network is involved.
+  const failServer = require('http').createServer((req) => req.socket.destroy());
+  await new Promise(resolve => failServer.listen(0, '127.0.0.1', resolve));
+  const originalBaseUrl = core.config.base_url;
+  let r;
+  try {
+    core.config.base_url = 'http://127.0.0.1:' + failServer.address().port;
+    r = await core.searchOnce({
+      fields: { from_city: 'تهران', to_city: 'مشهد', date: '1405/06/10', gender: 'عادی' },
+      passengers: [{ quota_type: 'بزرگسال' }],
+      cookies: [],
+    });
+  } finally {
+    core.config.base_url = originalBaseUrl;
+    await new Promise(resolve => failServer.close(resolve));
+  }
   test('خطای شبکه → گذرا و بدون fatal (جستجو ادامه می‌یابد)',
     r.ok === false && !r.fatal && r.transient === true);
   test('راهنمای خطای شبکه به محیط اجرا وابسته است',
@@ -402,9 +411,13 @@ const core = require('../lib/core');
   test('انتقال به درگاه از تب جدید استفاده می‌کند', /window\.open\(url,\s*'_blank'/.test(payFn));
 
   /* ۲۰) کد فعال‌سازی ثابت برنامه */
-  test('کد فعال‌سازی ثابت Sa0946517835 پذیرفته می‌شود', license.isActivationCodeValid('Sa0946517835') === true);
-  test('کد فعال‌سازی غلط رد می‌شود', license.isActivationCodeValid('Sa0000000000') === false);
-  test('خروجی activationCode همان کد ثابت است', license.activationCode() === 'Sa0946517835');
+  const previousActivation = process.env.BILITFAST_ACTIVATION_CODE;
+  process.env.BILITFAST_ACTIVATION_CODE = 'unique-test-activation-secret-2026';
+  test('کد اختصاصی پیکربندی‌شده معتبر است', license.isActivationCodeValid('unique-test-activation-secret-2026') === true);
+  test('کد فعال‌سازی غلط رد می‌شود', license.isActivationCodeValid('wrong-activation-secret-2026') === false);
+  test('کد فعال‌سازی از محیط سرور گرفته می‌شود', license.activationCode() === 'unique-test-activation-secret-2026');
+  if (previousActivation === undefined) delete process.env.BILITFAST_ACTIVATION_CODE;
+  else process.env.BILITFAST_ACTIVATION_CODE = previousActivation;
 
   console.log(failures === 0 ? '\nهمه تست‌ها پاس شدند' : '\n' + failures + ' تست ناموفق بود');
   process.exit(failures === 0 ? 0 : 1);

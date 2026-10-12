@@ -7,6 +7,7 @@ const { getSessionUser } = require('../lib/auth');
 const { guardApi } = require('../lib/guard');
 const db = require('../lib/db');
 const notify = require('../lib/notify');
+const { safePaymentUrl } = require('../lib/payment-url');
 
 function readBody(req) {
   if (typeof req.body === 'string') {
@@ -16,8 +17,9 @@ function readBody(req) {
 }
 
 const VALID_RESULTS = {
-  paid: 'paid_confirmed',
-  failed: 'payment_failed',
+  // A client's claim is not authoritative payment confirmation.
+  paid: 'payment_reported',
+  failed: 'payment_failed_reported',
   unknown: 'unknown',
 };
 
@@ -38,7 +40,10 @@ module.exports = async (req, res) => {
   try {
     if (action === 'save') {
       const booking = (body.booking && typeof body.booking === 'object') ? body.booking : {};
-      const paymentUrl = String(body.paymentUrl || '').slice(0, 1000);
+      const paymentUrl = safePaymentUrl(body.paymentUrl);
+      if (paymentUrl === null) {
+        return res.status(400).json({ ok: false, error: 'دامنه لینک پرداخت معتبر یا مجاز نیست.' });
+      }
       const bookingData = {
         origin: String(booking.origin || ''),
         destination: String(booking.destination || ''),

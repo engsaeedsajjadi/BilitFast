@@ -64,6 +64,7 @@
       <div class="grid2">
         <label>نام کاربری<input id="bs-username" type="text" autocomplete="username"></label>
         <label>گذرواژه<input id="bs-password" type="password" autocomplete="new-password"></label>
+        <label>راز راه‌اندازی مدیر<input id="bs-secret" type="password" autocomplete="off" placeholder="از تنظیمات امن سرور"></label>
         <label>نام نمایشی<input id="bs-display" type="text" placeholder="مدیر سیستم"></label>
       </div>
       <button id="bs-submit" class="btn btn-primary">ساخت مدیر</button>
@@ -158,12 +159,8 @@
         return;
       }
       // آیا اصلاً مدیری وجود دارد؟ اگر نه، فرم راه‌اندازی را نشان بده.
-      var probe = await api('/api/admin-users', { action: 'bootstrap', username: '', password: '' });
-      if (probe && probe.error && /ادمین از قبل وجود دارد/.test(probe.error)) {
-        show('denied');
-      } else {
-        show('bootstrap');
-      }
+      var probe = await api('/api/admin-users', { action: 'bootstrap-status' });
+      show(probe && probe.ok && probe.needsBootstrap ? 'bootstrap' : 'denied');
     }
 
     /* ---------- ساخت نخستین مدیر ---------- */
@@ -171,6 +168,7 @@
       $('bs-msg').textContent = 'در حال ساخت...';
       var r = await api('/api/admin-users', {
         action: 'bootstrap',
+        bootstrap_secret: $('bs-secret').value,
         username: $('bs-username').value.trim(),
         password: $('bs-password').value,
         display_name: $('bs-display').value.trim(),

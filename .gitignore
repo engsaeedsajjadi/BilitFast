@@ -21,6 +21,12 @@ venv/
 # Logs
 *.log
 
+# Private persistent data; do not publish personal records, sessions or cookies.
+/data/db.json
+/data/db.json.*
+/data/*.sqlite*
+/data/*.db
+
 # OS
 .DS_Store
 Thumbs.db

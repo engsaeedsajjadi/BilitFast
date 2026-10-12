@@ -20,10 +20,11 @@
  * اجرا:  NODE_ENV=production node server.js
  */
 
-process.env.NODE_ENV = process.env.NODE_ENV || 'production';
-process.env.BILITFAST_ENFORCE_SECURITY = process.env.BILITFAST_ENFORCE_SECURITY || '1';
-// روی سرور، ورود همیشه اجباری است مگر اینکه مدیر صریحاً خلافش را بخواهد.
-if (process.env.BILITFAST_MULTIUSER === undefined) process.env.BILITFAST_MULTIUSER = '1';
+// Production must not accept opt-outs that disable critical guards.
+process.env.NODE_ENV = 'production';
+process.env.BILITFAST_ENFORCE_SECURITY = '1';
+process.env.BILITFAST_MULTIUSER = '1';
+process.env.BILITFAST_ENFORCE_LICENSE = '1';
 
 const path = require('path');
 const fs = require('fs');

@@ -2,6 +2,8 @@
 
 ## پیش از هر چیز: محدودیت شبکه
 
+> محیط تولید ورود چندکاربره، رمزنگاری و کنترل لایسنس را اجباری می‌کند. اعلام پرداخت توسط کاربر فقط `payment_reported` است، نه تأیید بانکی.
+
 صفیر ریل درخواست‌های آی‌پی دیتاسنتر و خارج از ایران را در سطح شبکه مسدود
 می‌کند. این محدودیت سمت آن‌هاست و با کد قابل دور زدن نیست.
 
@@ -121,11 +123,14 @@ server {
 
 ## ۳. نخستین مدیر (bootstrap)
 
+پیش از این مرحله، راز تصادفی حداقل ۳۲ کاراکتری `BILITFAST_ADMIN_BOOTSTRAP_SECRET` را روی سرور تنظیم کنید. پس از ساخت ادمین، راز را حذف کنید و سرویس را راه‌اندازی مجدد کنید.
+
 روی نصب تازه هیچ کاربری وجود ندارد. یک بار:
 
 ```bash
 curl -X POST https://your-domain/api/admin-users \
   -H 'Content-Type: application/json' \
+  -H 'x-bootstrap-secret: YOUR_LONG_BOOTSTRAP_SECRET' \
   -d '{"action":"bootstrap","username":"admin","password":"یک-گذرواژه-قوی","display_name":"مدیر"}'
 ```
 
@@ -180,6 +185,9 @@ curl -X POST https://your-domain/api/admin-users \
 | `BILITFAST_TOKEN_KEY` | بله (تولید) | رمزگذاری توکن رزرو و اعتبارنامه صفیر |
 | `BILITFAST_MULTIUSER` | خیر | `1` = ورود اجباری. روی سرور حتماً `1` |
 | `BILITFAST_DATA_DIR` | خیر | مسیر داده (در Docker: `/data`) |
+| `BILITFAST_ADMIN_BOOTSTRAP_SECRET` | در راه‌اندازی اولیه | راز ساخت نخستین مدیر؛ بعد از راه‌اندازی حذف شود |
+| `BILITFAST_ACTIVATION_CODE` | برای فعال‌سازی | کد اختصاصی حداقل ۲۰ کاراکتری |
+| `BILITFAST_PAYMENT_ALLOWED_HOSTS` | برای درگاه‌های خارجی | دامنه‌های HTTPS مجاز برای ارسال لینک پرداخت |
 | `BILITFAST_CRON_SECRET` | خیر | راز `/api/cron`؛ بدون آن زمان‌بند `503` |
 | `BILITFAST_ALLOWED_ORIGINS` | خیر | مبدأهای CORS با کاما. خالی = فقط same-origin |
 | `PORT` | خیر | پیش‌فرض `3000` |
