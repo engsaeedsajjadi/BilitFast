@@ -402,9 +402,13 @@ const core = require('../lib/core');
   test('انتقال به درگاه از تب جدید استفاده می‌کند', /window\.open\(url,\s*'_blank'/.test(payFn));
 
   /* ۲۰) کد فعال‌سازی ثابت برنامه */
-  test('کد فعال‌سازی ثابت Sa0946517835 پذیرفته می‌شود', license.isActivationCodeValid('Sa0946517835') === true);
-  test('کد فعال‌سازی غلط رد می‌شود', license.isActivationCodeValid('Sa0000000000') === false);
-  test('خروجی activationCode همان کد ثابت است', license.activationCode() === 'Sa0946517835');
+  const previousActivation = process.env.BILITFAST_ACTIVATION_CODE;
+  process.env.BILITFAST_ACTIVATION_CODE = 'unique-test-activation-secret-2026';
+  test('کد اختصاصی پیکربندی‌شده معتبر است', license.isActivationCodeValid('unique-test-activation-secret-2026') === true);
+  test('کد فعال‌سازی غلط رد می‌شود', license.isActivationCodeValid('wrong-activation-secret-2026') === false);
+  test('کد فعال‌سازی از محیط سرور گرفته می‌شود', license.activationCode() === 'unique-test-activation-secret-2026');
+  if (previousActivation === undefined) delete process.env.BILITFAST_ACTIVATION_CODE;
+  else process.env.BILITFAST_ACTIVATION_CODE = previousActivation;
 
   console.log(failures === 0 ? '\nهمه تست‌ها پاس شدند' : '\n' + failures + ' تست ناموفق بود');
   process.exit(failures === 0 ? 0 : 1);
