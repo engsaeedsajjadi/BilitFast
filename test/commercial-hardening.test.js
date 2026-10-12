@@ -41,6 +41,14 @@ async function call(fn, body, token) {
   return response;
 }
 (async function main() {
+  const keyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bf-device-'));
+  const firstKeys = readOrCreateKeys(keyDir);
+  const laterKeys = readOrCreateKeys(keyDir);
+  test('Desktop secrets survive process restart', () => assert.deepStrictEqual(firstKeys, laterKeys));
+  test('Desktop crypto keys are purpose-specific', () => assert.strictEqual(
+    new Set(Object.values(firstKeys)).size, 4));
+  test('Desktop install signing key exists', () => assert.match(
+    firstKeys.BILITFAST_INSTALL_KEY, /^[a-f0-9]{64}$/));
   test('Operator activation accepted', () => assert.strictEqual(
     license.isActivationCodeValid('unit-test-activation-secret-2026'), true));
   test('Shared legacy activation is rejected', () => assert.strictEqual(
