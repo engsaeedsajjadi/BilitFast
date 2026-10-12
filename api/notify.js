@@ -4,6 +4,7 @@
 //   connect-code  → ساخت کد اتصال تلگرام (کاربر آن را برای ربات می‌فرستد)
 //   setup-webhook → ثبت وب‌هوک ربات روی این استقرار (نیازمند دسترسی مدیریت)
 const { getSessionUser } = require('../lib/auth');
+const { requireAdmin } = require('../lib/apiauth');
 const { guardApi } = require('../lib/guard');
 const notify = require('../lib/notify');
 const db = require('../lib/db');
@@ -29,6 +30,11 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: false, loggedIn: false, error: 'ابتدا وارد حساب خود شوید.' });
   }
 
+  // Shared webhook configuration impacts every user: admin only.
+  if (['setup-webhook', 'setup-bale-webhook', 'setup-eitaa-webhook'].includes(action)) {
+    const gate = requireAdmin(req, res, body);
+    if (!gate.ok) return;
+  }
   try {
     if (action === 'send') {
       const type = body.type || 'info';
