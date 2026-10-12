@@ -41,6 +41,11 @@ module.exports = async (req, res) => {
   const action = String(body.action || 'list');
 
   try {
+    // Public, non-sensitive capability probe for the installer UI.
+    if (action === 'bootstrap-status') {
+      return res.status(200).json({ ok: true, needsBootstrap: !accounts.hasAdmin() });
+    }
+
     /* --- راه‌اندازی نخستین ادمین --- */
     if (action === 'bootstrap') {
       // Initial administrator provisioning requires an out-of-band secret.
