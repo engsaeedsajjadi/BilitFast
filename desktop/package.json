@@ -22,7 +22,8 @@
     "files": [
       "main.js",
       "preload.js",
-      "install.js"
+      "install.js",
+      "keys.js"
     ],
     "extraResources": [
       { "from": "../", "to": "app", "filter": [
