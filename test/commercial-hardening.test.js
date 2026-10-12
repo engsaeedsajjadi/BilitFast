@@ -11,6 +11,7 @@ process.env.BILITFAST_ACTIVATION_CODE = 'unit-test-activation-secret-2026';
 process.env.BILITFAST_ADMIN_BOOTSTRAP_SECRET = 'unit-test-bootstrap-secret-over-32-characters';
 const license = require('../lib/license');
 const { safePaymentUrl } = require('../lib/payment-url');
+const { readOrCreateKeys } = require('../desktop/keys');
 const auth = require('../lib/auth');
 const adminApi = require('../api/admin-users');
 const bookingApi = require('../api/bookings');
