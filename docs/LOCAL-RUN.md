@@ -21,7 +21,7 @@
 ```bash
 git clone https://github.com/engsaeedsajjadi/BilitFast.git
 cd BilitFast
-git checkout arena/01a05742-bilitfast
+git checkout arena/01a07696-bilitfast
 npm install
 ```
 
