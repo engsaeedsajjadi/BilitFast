@@ -129,8 +129,7 @@ document.getElementById('start-booking').addEventListener('click', async () => {
     await chrome.storage.session.set({ bilitPendingPassengerFill: {
       passengers: snapshot.passengers, phone: snapshot.phone,
       createdAt: Date.now(), origin: target.origin,
-      autoContinue: !!document.getElementById('auto-continue')?.checked,
-      captchaSubmitted: false, passengerSubmitted: false, siteTabId: tab.id
+      siteTabId: tab.id
     }});
     await chrome.storage.session.set({
       bilitWorkflowStatus:{stage:'awaiting-human',at:Date.now()},

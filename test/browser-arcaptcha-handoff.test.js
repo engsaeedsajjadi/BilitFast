@@ -28,7 +28,7 @@ check('extension stores short-lived passenger data',()=>assert(popup.includes('b
 check('passenger info only released to official origin',()=>assert(bg.includes('safirrail\\.ir\\/etrain')));
 check('passenger info expires',()=>assert(bg.includes('15*60*1000')));
 const helper=fs.readFileSync(path.join(root,'extension/safir-passenger-helper.js'),'utf8');
-check('passenger autofill only after human captcha stage',()=>assert(helper.includes('hasPassengerForm() && !hasChallenge()')));
+check('passenger fill requires click',()=>assert(helper.includes("button.addEventListener('click'") && !helper.includes('void fillFromExtension();return;')));
 check('helper does not simulate captcha click, forge token or submit payment',()=>assert(!/\.click\(\)|form\.submit\(|arcaptcha-token[^\n]*\.value\s*=/.test(helper)));
-check('user reviews before submitting on official page',()=>assert(helper.includes('مبلغ و قطار را بررسی')));
+check('user reviews before submitting on official page',()=>assert(helper.includes('قطار و مبلغ را بررسی')));
 console.log('ALL '+assertions+' official-browser-handoff assertions passed');

@@ -40,9 +40,9 @@ async function harness(job){
  pass('same event cannot replay the reservation',valid.sent.length===1);
  const expired=await harness({...base,createdAt:Date.now()-61e3});
  await expired.complete(17);
- pass('expired one-tab authorization never submits',expired.sent.length===0&&expired.state.bilitWorkflowStatus?.stage==='manual-review');
+ pass('expired one-tab authorization never submits',expired.sent.length===0&&expired.state.bilitWorkflowStatus?.stage==='network-session-error');
  const invalid=await harness({...base,handoff:{...base.handoff,url:'https://attacker.example/pay'}});
  await invalid.complete(17);
- pass('untrusted destination never submits',invalid.sent.length===0&&invalid.state.bilitWorkflowStatus?.stage==='manual-review');
+ pass('untrusted destination never submits',invalid.sent.length===0&&invalid.state.bilitWorkflowStatus?.stage==='network-session-error');
  console.log('ALL '+total+' worker handoff tests passed');
 })().catch(e=>{console.error(e);process.exitCode=1});

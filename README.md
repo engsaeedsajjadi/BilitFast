@@ -1,3 +1,13 @@
+# BilitFast Web — first-party ARCaptcha review (extension 3.5.0)
+
+**Supported path:** official `https://safirrail.ir/etrain/` page in the **same browser tab**, with a BilitFast Chrome/Edge side panel and small first-party-page helper. ARCaptcha stays at SafirRail's origin; the user completes the checkbox and presses the site's own confirmation button. The extension does **not** read widget response values, click its controls, synthesize/replay CAPTCHA tokens, auto-submit the CAPTCHA form, or auto-submit passenger confirmation. Passenger fields are filled only after a separate user click.
+
+On Chrome/Edge, open BilitFast, select a route and start the reservation with the extension. The side panel stays visible while the existing tab navigates to the official domain. The browser's first-party session is used. If you require the address bar to remain on BilitFast's domain with the genuine ARCaptcha displayed inside it, that is **not supported** without formal SafirRail/ARCaptcha domain authorization and compatible embedding policy.
+
+**Before commercial release:** test with a SafirRail-authorized account, validate the exact passenger form and checkout transitions, and review cookie-transfer risks, package vulnerabilities, self-hosted license tamper resistance and JSON database scaling. No automated test proves that the live SafirRail server accepted a challenge or completed payment.
+
+Tests: `npm run test:official-handoff`, `npm test` (with dependencies installed). Security review and UI states: `docs/ARCAPTCHA-FIRST-PARTY-SECURITY-REVIEW-2026-10-15.md`. For the legacy operating model and independent installation, see `docs/SELFHOST-WEB-SELLER-FA.md`.
+
 **افزونه تأیید انسانی یکپارچه 3.3.0:** راهنما در `docs/INTEGRATED-ARCAPTCHA-WORKSPACE-FA.md`
 
 # BilitFast Web Self-Hosted — نسخه تحت وب قابل نصب روی هاست خریدار
