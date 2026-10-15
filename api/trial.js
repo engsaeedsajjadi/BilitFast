@@ -10,8 +10,9 @@ const { verifyInstallMarker } = require('../lib/install-marker');
 const { getSessionUser } = require('../lib/auth');
 const { guardApi } = require('../lib/guard');
 const db = require('../lib/db');
+const desktop = require('../lib/desktop-entitlement');
 
-const TRIAL_DAYS = Number.isFinite(config.trial_period_days) ? config.trial_period_days : 2;
+const TRIAL_DAYS = Number.isFinite(config.trial_period_days) ? config.trial_period_days : 3;
 
 /** وضعیت مجوز با اولویت: فعال‌سازی دائمی > دوره آزمایشی حساب > دوره آزمایشی مهمان. */
 function resolveStatus({ req, body }) {
@@ -25,7 +26,7 @@ function resolveStatus({ req, body }) {
     // ولی حسابش هنوز علامت نخورده (مثلاً نسخه قبلی که توکن نشست را نمی‌فرستاد)،
     // همین‌جا فعال‌سازی را روی حساب ثبت می‌کنیم تا روی همه دستگاه‌ها فعال شود.
     const licenseToken = String(body.licenseToken || '');
-    if (isActivated(licenseToken)) {
+    if (process.env.NODE_ENV !== 'production' && isActivated(licenseToken)) {
       db.update('users', user.id, {
         license_activated: true,
         license_activated_at: new Date().toISOString(),
@@ -41,6 +42,12 @@ function resolveStatus({ req, body }) {
       return { state: 'expired', message: 'دوره آزمایشی به پایان رسیده', source: 'account' };
     }
     return { state: 'not_started', message: 'دوره آزمایشی شروع نشده', source: 'account' };
+  }
+
+  // In production an account is required; guest tokens must not advertise a
+  // commercial entitlement that the server cannot verify or revoke.
+  if (process.env.NODE_ENV === 'production') {
+    return { state: 'login_required', message: 'برای استفاده وارد حساب شوید.', source: 'server' };
   }
 
   // ۲) کاربر مهمان: همان مسیر توکن‌های امضاشده (سازگاری با نسخه قبل)
@@ -90,6 +97,14 @@ module.exports = async (req, res) => {
   const action = body.action || 'status';
 
   try {
+    if (process.env.BILITFAST_SELF_HOSTED === '1') {
+      if (action !== 'status' && action !== 'start') return res.status(400).json({ok:false,error:'اقدام ناشناخته.'});
+      return res.status(200).json({ok:true,...require('../lib/selfhost-license').status()});
+    }
+    if (desktop.isDesktopMode()) {
+      if (action !== 'status' && action !== 'start') return res.status(400).json({ ok: false, error: 'اکشن ناشناخته.' });
+      return res.status(200).json({ ok: true, ...desktop.status() });
+    }
     if (action === 'status') {
       const st = resolveStatus({ req, body });
       res.status(200).json({ ok: true, ...st });
@@ -98,6 +113,9 @@ module.exports = async (req, res) => {
 
     if (action === 'start') {
       const user = getSessionUser(req, body);
+      if (process.env.NODE_ENV === 'production' && !user) {
+        return res.status(401).json({ ok: false, error: 'ابتدا وارد حساب شوید.' });
+      }
       if (user) {
         if (user.trial && user.trial.startDate) {
           const st = resolveStatus({ req, body });
@@ -109,7 +127,7 @@ module.exports = async (req, res) => {
       }
       // مهمان: توکن امضاشده (مانند قبل)
       const licenseToken = String(body.licenseToken || '');
-      if (isActivated(licenseToken)) {
+      if (process.env.NODE_ENV !== 'production' && isActivated(licenseToken)) {
         const st = licenseStatus({ licenseToken, trialToken: '' }, TRIAL_DAYS);
         return res.status(200).json({ ok: true, ...st, source: 'guest' });
       }

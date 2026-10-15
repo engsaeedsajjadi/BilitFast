@@ -204,6 +204,7 @@
   function purge(keys) {
     keys.forEach(removeItem);
     try { global.sessionStorage.removeItem('bilitfast_cookies'); } catch (e) {}
+    try { global.sessionStorage.removeItem('bilitfast_verification_cookies'); } catch (e) {}
   }
 
   global.BilitSecureStore = {

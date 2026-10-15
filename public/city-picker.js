@@ -32,7 +32,6 @@
 
   function create(selectEl, opts) {
     if (!selectEl || selectEl.dataset.cityPicker === '1') return null;
-    selectEl.dataset.cityPicker = '1';
     opts = opts || {};
 
     var wrap = document.createElement('div');
@@ -59,9 +58,11 @@
     wrap.appendChild(list);
 
     // select اصلی مخفی می‌شود ولی در DOM می‌ماند (سازگاری کامل با کد موجود)
-    selectEl.classList.add('city-native');
+    // تنها بعد از ایجاد کامل ورودی تعاملی، select اصلی را پنهان می‌کنیم.
     selectEl.parentNode.insertBefore(wrap, selectEl);
     wrap.appendChild(selectEl);
+    selectEl.classList.add('city-native');
+    selectEl.dataset.cityPicker = '1';
 
     var activeIdx = -1;
     var visible = [];

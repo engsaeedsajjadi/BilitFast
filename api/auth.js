@@ -29,6 +29,12 @@ module.exports = async (req, res) => {
 
   try {
     if (action === 'register') {
+      // Commercial deployments provision users through the admin console.
+      // Opt-in to public self-registration only when explicitly required.
+      if (process.env.NODE_ENV === 'production' &&
+          process.env.BILITFAST_ALLOW_PUBLIC_REGISTRATION !== '1') {
+        return res.status(403).json({ ok: false, error: 'ثبت‌نام عمومی غیرفعال است؛ با مدیر مجموعه تماس بگیرید.' });
+      }
       const r = registerUser(body.username, body.password);
       if (!r.ok) return res.status(200).json(r);
       return res.status(200).json({ ok: true, token: r.token, user: publicUser(r.user), storageOk: db.isPersistent() });
@@ -49,6 +55,10 @@ module.exports = async (req, res) => {
 
       const r = loginUser(body.username, body.password);
       if (!r.ok) {
+        if (r.accountBlocked) {
+          activity.log({ type: 'LOGIN_BLOCKED', meta: { username: String(body.username || '').slice(0, 64) }, req });
+          return res.status(200).json(r);
+        }
         recordLoginFailure(body.username);
         activity.log({ type: 'LOGIN_FAILED', meta: { username: String(body.username || '').slice(0, 64) }, req });
         return res.status(200).json(r);
@@ -119,7 +129,11 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: false, error: 'گذرواژه جدید باید حداقل ۶ کاراکتر باشد.' });
       }
       db.update('users', user.id, { pass: hashPassword(body.new_password) });
-      return res.status(200).json({ ok: true, message: 'گذرواژه تغییر کرد.' });
+      // Password changes must invalidate every existing bearer token.
+      accounts.revokeSessions(user.id);
+      activity.log({ userId: user.id, type: 'PASSWORD_CHANGED', req });
+      return res.status(200).json({ ok: true, reauthRequired: true,
+        message: 'گذرواژه تغییر کرد. برای امنیت حساب، دوباره وارد شوید.' });
     }
 
     if (action === 'update-profile') {

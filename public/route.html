@@ -42,17 +42,291 @@
     <section class="card">
       <div class="route-header">
         <h2>تنظیمات مسیر <span id="route-title"></span></h2>
-        <a class="btn btn-sm" href="index.html">بازگشت به مسیرها</a>
+        <a class="btn btn-sm" id="bf-route-back" href="index.html">بستن مسیر / بازگشت</a>
       </div>
 
       <div class="form-grid">
         <div class="field">
           <label for="bf_src">مبدا:</label>
-          <select id="bf_src" autocomplete="off"></select>
+          <select id="bf_src" autocomplete="off" required>
+            <option value="">انتخاب شهر…</option>
+            <option value="تهران">تهران</option>
+            <option value="مشهد">مشهد</option>
+            <option value="اصفهان">اصفهان</option>
+            <option value="شیراز">شیراز</option>
+            <option value="تبریز">تبریز</option>
+            <option value="آب نيل">آب نيل</option>
+            <option value="آباده">آباده</option>
+            <option value="آبيك">آبيك</option>
+            <option value="آبگرم">آبگرم</option>
+            <option value="آتش بغ">آتش بغ</option>
+            <option value="آزادور">آزادور</option>
+            <option value="آنكارا">آنكارا</option>
+            <option value="اراك">اراك</option>
+            <option value="اردكان">اردكان</option>
+            <option value="ارسنجان">ارسنجان</option>
+            <option value="اروميه">اروميه</option>
+            <option value="ازنا">ازنا</option>
+            <option value="اسفراين">اسفراين</option>
+            <option value="اسلامشهر">اسلامشهر</option>
+            <option value="اشكذر">اشكذر</option>
+            <option value="اقليد">اقليد</option>
+            <option value="الوند">الوند</option>
+            <option value="امروان">امروان</option>
+            <option value="انديمشك">انديمشك</option>
+            <option value="اهواز">اهواز</option>
+            <option value="اينچه برون">اينچه برون</option>
+            <option value="بابا كمال">بابا كمال</option>
+            <option value="بادرود">بادرود</option>
+            <option value="بافق">بافق</option>
+            <option value="بجستان">بجستان</option>
+            <option value="بستان آباد">بستان آباد</option>
+            <option value="بكران">بكران</option>
+            <option value="بم">بم</option>
+            <option value="بندرتركمن">بندرتركمن</option>
+            <option value="بندرعباس">بندرعباس</option>
+            <option value="بهاباد">بهاباد</option>
+            <option value="بيابانك">بيابانك</option>
+            <option value="بيشه">بيشه</option>
+            <option value="تاكستان">تاكستان</option>
+            <option value="تجرك">تجرك</option>
+            <option value="تربت حيدريه">تربت حيدريه</option>
+            <option value="تربيت معلم">تربيت معلم</option>
+            <option value="تنگ هفت">تنگ هفت</option>
+            <option value="تپه سفيد">تپه سفيد</option>
+            <option value="جاجرم">جاجرم</option>
+            <option value="جلفا">جلفا</option>
+            <option value="جمكران">جمكران</option>
+            <option value="جوين">جوين</option>
+            <option value="خاتون آباد">خاتون آباد</option>
+            <option value="خاش">خاش</option>
+            <option value="خاوران(تبريز)">خاوران(تبريز)</option>
+            <option value="خراسانك">خراسانك</option>
+            <option value="خرم دره">خرم دره</option>
+            <option value="خرمشهر">خرمشهر</option>
+            <option value="خواف">خواف</option>
+            <option value="دامغان">دامغان</option>
+            <option value="دورود">دورود</option>
+            <option value="رازي">رازي</option>
+            <option value="رباط كريم">رباط كريم</option>
+            <option value="رشت">رشت</option>
+            <option value="زاهدان">زاهدان</option>
+            <option value="زرند">زرند</option>
+            <option value="زرين دشت">زرين دشت</option>
+            <option value="زنجان">زنجان</option>
+            <option value="زواره">زواره</option>
+            <option value="ساري">ساري</option>
+            <option value="ساوه">ساوه</option>
+            <option value="سبزوار">سبزوار</option>
+            <option value="سراوان">سراوان</option>
+            <option value="سربندر">سربندر</option>
+            <option value="سرخس">سرخس</option>
+            <option value="سعادت شهر">سعادت شهر</option>
+            <option value="سلماس">سلماس</option>
+            <option value="سمنان">سمنان</option>
+            <option value="سنخواست">سنخواست</option>
+            <option value="سنندج">سنندج</option>
+            <option value="سهند">سهند</option>
+            <option value="سوادكوه">سوادكوه</option>
+            <option value="سيرجان">سيرجان</option>
+            <option value="سيمين دشت">سيمين دشت</option>
+            <option value="سپيددشت">سپيددشت</option>
+            <option value="شازند">شازند</option>
+            <option value="شاهرود">شاهرود</option>
+            <option value="شرفخانه">شرفخانه</option>
+            <option value="شلمچه">شلمچه</option>
+            <option value="شهرضا">شهرضا</option>
+            <option value="شهركرد">شهركرد</option>
+            <option value="شوش">شوش</option>
+            <option value="شوشتر">شوشتر</option>
+            <option value="شيرگاه">شيرگاه</option>
+            <option value="صفا شهر">صفا شهر</option>
+            <option value="صفاشهر">صفاشهر</option>
+            <option value="طبس">طبس</option>
+            <option value="عجب شير">عجب شير</option>
+            <option value="فهرج">فهرج</option>
+            <option value="فيروزان">فيروزان</option>
+            <option value="فيروزكوه">فيروزكوه</option>
+            <option value="قائمشهر">قائمشهر</option>
+            <option value="قزوين">قزوين</option>
+            <option value="قم">قم</option>
+            <option value="كارون">كارون</option>
+            <option value="كاشان">كاشان</option>
+            <option value="كربلا">كربلا</option>
+            <option value="كرج">كرج</option>
+            <option value="كرمان">كرمان</option>
+            <option value="كرمانشاه">كرمانشاه</option>
+            <option value="ماهشهر">ماهشهر</option>
+            <option value="محمديه">محمديه</option>
+            <option value="مراغه">مراغه</option>
+            <option value="مرودشت">مرودشت</option>
+            <option value="ملاير">ملاير</option>
+            <option value="مهاباد">مهاباد</option>
+            <option value="مهران">مهران</option>
+            <option value="مياندوآب">مياندوآب</option>
+            <option value="ميانه">ميانه</option>
+            <option value="ميبد">ميبد</option>
+            <option value="نقاب">نقاب</option>
+            <option value="نقده">نقده</option>
+            <option value="نكا">نكا</option>
+            <option value="نيشابور">نيشابور</option>
+            <option value="هرند">هرند</option>
+            <option value="هشتگرد">هشتگرد</option>
+            <option value="هفت تپه">هفت تپه</option>
+            <option value="همدان">همدان</option>
+            <option value="وان">وان</option>
+            <option value="ورامين">ورامين</option>
+            <option value="ورزنه">ورزنه</option>
+            <option value="ورسك">ورسك</option>
+            <option value="يزد">يزد</option>
+            <option value="پرند">پرند</option>
+            <option value="پل سفيد">پل سفيد</option>
+            <option value="پيشوا">پيشوا</option>
+            <option value="چمسنگر">چمسنگر</option>
+            <option value="گرمسار">گرمسار</option>
+            <option value="گرگان">گرگان</option>
+          </select>
         </div>
         <div class="field">
           <label for="bf_dst">مقصد:</label>
-          <select id="bf_dst" autocomplete="off"></select>
+          <select id="bf_dst" autocomplete="off" required>
+            <option value="">انتخاب شهر…</option>
+            <option value="تهران">تهران</option>
+            <option value="مشهد">مشهد</option>
+            <option value="اصفهان">اصفهان</option>
+            <option value="شیراز">شیراز</option>
+            <option value="تبریز">تبریز</option>
+            <option value="آب نيل">آب نيل</option>
+            <option value="آباده">آباده</option>
+            <option value="آبيك">آبيك</option>
+            <option value="آبگرم">آبگرم</option>
+            <option value="آتش بغ">آتش بغ</option>
+            <option value="آزادور">آزادور</option>
+            <option value="آنكارا">آنكارا</option>
+            <option value="اراك">اراك</option>
+            <option value="اردكان">اردكان</option>
+            <option value="ارسنجان">ارسنجان</option>
+            <option value="اروميه">اروميه</option>
+            <option value="ازنا">ازنا</option>
+            <option value="اسفراين">اسفراين</option>
+            <option value="اسلامشهر">اسلامشهر</option>
+            <option value="اشكذر">اشكذر</option>
+            <option value="اقليد">اقليد</option>
+            <option value="الوند">الوند</option>
+            <option value="امروان">امروان</option>
+            <option value="انديمشك">انديمشك</option>
+            <option value="اهواز">اهواز</option>
+            <option value="اينچه برون">اينچه برون</option>
+            <option value="بابا كمال">بابا كمال</option>
+            <option value="بادرود">بادرود</option>
+            <option value="بافق">بافق</option>
+            <option value="بجستان">بجستان</option>
+            <option value="بستان آباد">بستان آباد</option>
+            <option value="بكران">بكران</option>
+            <option value="بم">بم</option>
+            <option value="بندرتركمن">بندرتركمن</option>
+            <option value="بندرعباس">بندرعباس</option>
+            <option value="بهاباد">بهاباد</option>
+            <option value="بيابانك">بيابانك</option>
+            <option value="بيشه">بيشه</option>
+            <option value="تاكستان">تاكستان</option>
+            <option value="تجرك">تجرك</option>
+            <option value="تربت حيدريه">تربت حيدريه</option>
+            <option value="تربيت معلم">تربيت معلم</option>
+            <option value="تنگ هفت">تنگ هفت</option>
+            <option value="تپه سفيد">تپه سفيد</option>
+            <option value="جاجرم">جاجرم</option>
+            <option value="جلفا">جلفا</option>
+            <option value="جمكران">جمكران</option>
+            <option value="جوين">جوين</option>
+            <option value="خاتون آباد">خاتون آباد</option>
+            <option value="خاش">خاش</option>
+            <option value="خاوران(تبريز)">خاوران(تبريز)</option>
+            <option value="خراسانك">خراسانك</option>
+            <option value="خرم دره">خرم دره</option>
+            <option value="خرمشهر">خرمشهر</option>
+            <option value="خواف">خواف</option>
+            <option value="دامغان">دامغان</option>
+            <option value="دورود">دورود</option>
+            <option value="رازي">رازي</option>
+            <option value="رباط كريم">رباط كريم</option>
+            <option value="رشت">رشت</option>
+            <option value="زاهدان">زاهدان</option>
+            <option value="زرند">زرند</option>
+            <option value="زرين دشت">زرين دشت</option>
+            <option value="زنجان">زنجان</option>
+            <option value="زواره">زواره</option>
+            <option value="ساري">ساري</option>
+            <option value="ساوه">ساوه</option>
+            <option value="سبزوار">سبزوار</option>
+            <option value="سراوان">سراوان</option>
+            <option value="سربندر">سربندر</option>
+            <option value="سرخس">سرخس</option>
+            <option value="سعادت شهر">سعادت شهر</option>
+            <option value="سلماس">سلماس</option>
+            <option value="سمنان">سمنان</option>
+            <option value="سنخواست">سنخواست</option>
+            <option value="سنندج">سنندج</option>
+            <option value="سهند">سهند</option>
+            <option value="سوادكوه">سوادكوه</option>
+            <option value="سيرجان">سيرجان</option>
+            <option value="سيمين دشت">سيمين دشت</option>
+            <option value="سپيددشت">سپيددشت</option>
+            <option value="شازند">شازند</option>
+            <option value="شاهرود">شاهرود</option>
+            <option value="شرفخانه">شرفخانه</option>
+            <option value="شلمچه">شلمچه</option>
+            <option value="شهرضا">شهرضا</option>
+            <option value="شهركرد">شهركرد</option>
+            <option value="شوش">شوش</option>
+            <option value="شوشتر">شوشتر</option>
+            <option value="شيرگاه">شيرگاه</option>
+            <option value="صفا شهر">صفا شهر</option>
+            <option value="صفاشهر">صفاشهر</option>
+            <option value="طبس">طبس</option>
+            <option value="عجب شير">عجب شير</option>
+            <option value="فهرج">فهرج</option>
+            <option value="فيروزان">فيروزان</option>
+            <option value="فيروزكوه">فيروزكوه</option>
+            <option value="قائمشهر">قائمشهر</option>
+            <option value="قزوين">قزوين</option>
+            <option value="قم">قم</option>
+            <option value="كارون">كارون</option>
+            <option value="كاشان">كاشان</option>
+            <option value="كربلا">كربلا</option>
+            <option value="كرج">كرج</option>
+            <option value="كرمان">كرمان</option>
+            <option value="كرمانشاه">كرمانشاه</option>
+            <option value="ماهشهر">ماهشهر</option>
+            <option value="محمديه">محمديه</option>
+            <option value="مراغه">مراغه</option>
+            <option value="مرودشت">مرودشت</option>
+            <option value="ملاير">ملاير</option>
+            <option value="مهاباد">مهاباد</option>
+            <option value="مهران">مهران</option>
+            <option value="مياندوآب">مياندوآب</option>
+            <option value="ميانه">ميانه</option>
+            <option value="ميبد">ميبد</option>
+            <option value="نقاب">نقاب</option>
+            <option value="نقده">نقده</option>
+            <option value="نكا">نكا</option>
+            <option value="نيشابور">نيشابور</option>
+            <option value="هرند">هرند</option>
+            <option value="هشتگرد">هشتگرد</option>
+            <option value="هفت تپه">هفت تپه</option>
+            <option value="همدان">همدان</option>
+            <option value="وان">وان</option>
+            <option value="ورامين">ورامين</option>
+            <option value="ورزنه">ورزنه</option>
+            <option value="ورسك">ورسك</option>
+            <option value="يزد">يزد</option>
+            <option value="پرند">پرند</option>
+            <option value="پل سفيد">پل سفيد</option>
+            <option value="پيشوا">پيشوا</option>
+            <option value="چمسنگر">چمسنگر</option>
+            <option value="گرمسار">گرمسار</option>
+            <option value="گرگان">گرگان</option>
+          </select>
         </div>
         <div class="field">
           <label for="bf_dt">تاریخ (شمسی):</label>
@@ -89,8 +363,7 @@
         ⚠️ مبدا و مقصد یکسان انتخاب شده‌اند! جستجو در این حالت نتیجه‌ای ندارد. لطفاً شهرها را بررسی کنید.
       </div>
       <p class="muted small" style="margin-top:8px">
-        💡 شناسه فیلدها عمداً خنثی انتخاب شده‌اند تا «تکمیل خودکار مرورگر» نتواند
-        مقادیر (مثل شهرها) را بدون اجازه شما تغییر دهد.
+        💡 نام شهر را تایپ کنید و از فهرست انتخاب نمایید. فهرست شهرها همراه برنامه است و بدون اتصال به اینترنت هم نمایش داده می‌شود.
       </p>
 
       <div class="date-buttons">
@@ -145,6 +418,7 @@
         <span class="attempt-badge" id="attempt-badge" style="display:none"></span>
       </div>
       <div id="status" class="status">آماده</div>
+      <p id="safir-cookie-status" class="muted small" role="status" aria-live="polite">در حال بررسی نشست همین تب…</p>
 
       <!-- نشانگر زنده: مدرک اینکه درخواست‌ها واقعاً به صفیر ریل می‌روند و پاسخ می‌آید -->
       <div class="live-panel" id="live-panel" style="display:none">
@@ -216,6 +490,17 @@
     <section class="card" id="reserve-section" style="display:none">
       <h3>رزرو</h3>
       <p id="reserve-message" class="status"></p>
+
+      <!-- Web-only: ARCaptcha is interactive and runs on the official origin.
+           The extension submits the selected-train POST from SafirRail's own
+           tab. It never auto-clicks the widget or replays its token. -->
+      <div id="reserve-arcaptcha" style="display:none; padding:16px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc">
+        <h4 style="margin:0 0 8px">تأیید انسانی در فضای کاری BilitFast</h4>
+        <p class="muted small">برای حفظ نشست و پذیرش کپچا، چک‌باکس واقعی سفیر ریل در مبدأ رسمی آن نمایش داده می‌شود، اما پنل BilitFast در کنار صفحه رزرو داخل همان پنجره مرورگر باز می‌ماند. از افزونه «شروع رزرو در فضای کاری BilitFast» را بزنید؛ سپس خودتان چک‌باکس را تأیید کنید. اطلاعات مسافران در فرم رسمی تکمیل می‌شود و در صورت انتخاب ادامه خودکار، پس از تأیید معتبر به مرحله بعد می‌رود.</p>
+        <button class="btn btn-primary" id="btn-open-arcaptcha" type="button">تأیید انسانی در همین تب (با افزونه)</button>
+        <p class="muted small" id="arcaptcha-handoff-status" aria-live="polite" style="margin-top:10px">ابتدا وارد حساب خود در تب سفیر ریل شوید. افزونه را از تب BilitFast باز کنید.</p>
+        <pre id="bf-browser-handoff" style="display:none" aria-hidden="true"></pre>
+      </div>
 
       <!-- مرحله کپچا -->
       <div id="reserve-captcha" style="display:none">
@@ -435,26 +720,37 @@
     } catch (e) { /* ignore */ }
   }
 
-  async function loadCities() {
-    const res = await fetch('/api/cities');
-    const data = await res.json();
-    const selectFrom = $('bf_src'), selectTo = $('bf_dst');
-    for (const name of data.cities) {
-      CITIES[name] = true;
-      const o1 = document.createElement('option'); o1.value = name; o1.textContent = name;
-      const o2 = document.createElement('option'); o2.value = name; o2.textContent = name;
-      selectFrom.appendChild(o1); selectTo.appendChild(o2);
-    }
+  function loadCities() {
+    // شهرها در HTML خود برنامه قرار دارند؛ برای نمایش/تایپ به شبکه یا
+    // /api/cities وابسته نیستیم. حتی در صورت خرابی API، select اصلی کار می‌کند.
+    const from = $('bf_src'), to = $('bf_dst');
+    Array.from(from.options).forEach((option) => {
+      if (option.value) CITIES[option.value] = true;
+    });
+    attachCityPickers();
     const route = BilitFast.getRoute(ROUTE_ID);
     if (route) applyFields(route.fields);
-    // انتخابگر شهر با جستجو (فهرست شهرها بلند است؛ اسکرول طولانی حذف می‌شود)
-    try {
-      cityPickers = BilitCityPicker.attach(['bf_src', 'bf_dst'], { placeholder: 'نام شهر را بنویسید…' });
-    } catch (e) { /* اگر بارگذاری نشد، select معمولی کار می‌کند */ }
     applyCaptchaModeUI();
     updateTitle();
   }
   let cityPickers = null;
+  function attachCityPickers() {
+    if (cityPickers) return;
+    try {
+      if (window.BilitCityPicker && typeof BilitCityPicker.attach === 'function') {
+        cityPickers = BilitCityPicker.attach(['bf_src', 'bf_dst'], { placeholder: 'نام شهر را بنویسید…' });
+      } else {
+        console.warn('[BilitFast] City search widget unavailable, native city lists remain usable.');
+      }
+    } catch (e) {
+      $('bf_src').classList.remove('city-native');
+      $('bf_dst').classList.remove('city-native');
+      console.error('[BilitFast] City picker failed:', e);
+    }
+  }
+  // رابط قابل تایپ بلافاصله با ورود به صفحه ساخته می‌شود، حتی اگر
+  // رمزگشایی مسیر ذخیره‌شده یا پاسخ سایر APIها طول بکشد.
+  attachCityPickers();
 
   function getFields() {
     const gender = document.querySelector('input[name="gender"]:checked');
@@ -562,6 +858,7 @@
     const src = $('bf_src').value;
     $('bf_src').value = $('bf_dst').value;
     $('bf_dst').value = src;
+    if (cityPickers) cityPickers.forEach((p) => p && p.refresh());
     $('bf_dt').value = retDate;
     // گزینه برگشت را خاموش می‌کنیم تا این بار فقط رفتِ جدید جستجو شود
     $('bf_return_enable').checked = false;
@@ -1294,7 +1591,7 @@
   const RESERVE_MAX_STEPS = 8;
   const CAPTCHA_MAX_AUTO_ATTEMPTS = 5;
   const FRESH_WINDOW_MS = 10 * 60 * 1000;
-  let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null };
+  let reserveCtx = { token: null, train: null, fields: null, passengers: null, steps: 0, captchaImageUrl: null, formHtml: null, browserHandoff: null };
   let autoSolving = false;
   let autoSolveStop = false;
   let userManuallyStopped = false;
@@ -1379,6 +1676,18 @@
     } catch (e) { /* ignore */ }
   }
 
+  // Session status is tab-scoped: this deliberately reveals only presence,
+  // never cookie content. Never confuse it with verified booking access.
+  function updateSafirCookieStatus() {
+    const el = document.getElementById('safir-cookie-status');
+    if (!el) return;
+    const present = BilitFast.hasSessionCookie(BilitFast.getCookies());
+    el.textContent = present
+      ? '✓ کوکی نشست رزرو در همین تب موجود است؛ پذیرش توسط سفیر ریل هنگام درخواست رزرو مشخص می‌شود.'
+      : '⚠ کوکی نشست در این تب موجود نیست. ابتدا از همین تب به «اتصال سفیر ریل» بروید و پس از انتقال، به مسیر برگردید.';
+    return present;
+  }
+
   async function reserve(trainNumber, isRetry = false) {
     let route = BilitFast.getRoute(ROUTE_ID);
     if (!route) { setStatus('مسیر یافت نشد.', 'red'); return; }
@@ -1406,6 +1715,7 @@
       steps: 0,
       captchaImageUrl: null,
       formHtml: null,
+      browserHandoff: null,
       mode: null,
     };
     reserveCtx.mode = BilitFast.captchaModeForTrain(reserveCtx.fields.train_number);
@@ -1438,14 +1748,12 @@
       isReserving: true
     });
 
-    loginRetryDone = false;   // هر رزرو جدید، یک فرصت بازیابی خودکار دارد
-
-    // پیشگیری: اگر اصلاً کوکی نشستی نداریم، پیش از شروع رزرو بگیریم.
-    // بدون این، اولین درخواست رزرو حتماً با «نیاز به ورود» برمی‌گردد و
-    // چند ثانیه از لحظه طلایی ظرفیت هدر می‌رود.
-    if (!BilitFast.getCookies().length) {
-      if (isAuto) updateAutoPilotStatus('دریافت نشست صفیر ریل...');
-      await recoverSession();
+    // Do not fall back to the older cookie/profile/password methods.
+    // A missing cookie needs the one official extension connection flow.
+    if (!updateSafirCookieStatus()) {
+      await handleLoginRequired({ message:
+        'کوکی نشست رزرو در همین تب موجود نیست. از دکمه «اتصال دوباره با افزونه» استفاده کنید و سپس در همین تب به مسیر برگردید؛ هیچ تب جدیدی برای مسیر باز نکنید.' });
+      return;
     }
 
     await reserveStart();
@@ -1482,23 +1790,13 @@
    * صفحه ورود می‌رفت — یعنی از دست دادن ظرفیت. حالا خودمان تلاش می‌کنیم
    * نشست را تازه کنیم و رزرو را ادامه دهیم.
    * ============================================================ */
-  let sessionRecoveryInFlight = false;
-
-  async function recoverSession() {
-    if (sessionRecoveryInFlight) return false;
-    sessionRecoveryInFlight = true;
-    try {
-      const d = await BilitFast.authFetch('/api/connect', { cookies: BilitFast.getCookies() });
-      if (d && d.ok && Array.isArray(d.cookies) && d.cookies.length) {
-        BilitFast.setCookies(d.cookies);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    } finally {
-      sessionRecoveryInFlight = false;
-    }
+  // Only one customer-visible recovery route: the official BilitFast
+  // extension pairing page. Do not invoke the legacy multi-method /api/connect.
+  // IMPORTANT: Cookies are in sessionStorage, so use SAME-WINDOW navigation.
+  // target=_blank would leave the reservation tab without the new session.
+  function openExtensionConnection() {
+    const back = 'route.html?id=' + encodeURIComponent(String(ROUTE_ID));
+    window.location.href = 'login.html?return=' + encodeURIComponent(back);
   }
 
   async function callReserve(payload) {
@@ -1509,54 +1807,20 @@
     }
   }
 
-  /**
-   * نشست منقضی شده است. به‌جای رها کردن کاربر، یک بار خودکار نشست را تازه
-   * می‌کنیم و همان مرحله رزرو را دوباره می‌زنیم. فقط اگر آن هم نشد، از
-   * کاربر کمک می‌خواهیم — با دکمه‌ای که همان‌جا کار را انجام می‌دهد.
-   */
-  let loginRetryDone = false;
-
   async function handleLoginRequired(data) {
-    if (!loginRetryDone) {
-      loginRetryDone = true;
-      setStatus('نشست صفیر ریل منقضی شده — در حال تازه‌سازی خودکار...', 'orange');
-      $('reserve-message').textContent = '🔄 نشست منقضی شده بود؛ در حال اتصال دوباره…';
-      const ok = await recoverSession();
-      if (ok) {
-        setStatus('نشست تازه شد — ادامه رزرو', 'blue');
-        await reserveStart();   // همان قطار، با کوکی تازه
-        return;
-      }
-    }
-    // بازیابی خودکار جواب نداد → راهنمای عملی، نه فقط پیام خطا
-    showReserveError(
-      (data && data.message) ||
-      'نشست شما در سامانه صفیر ریل منقضی شده است.');
+    showReserveError((data && data.message) ||
+      'سامانه رزرو، صفحه ورود نشان داد. ابتدا از اتصال با افزونه در حساب رزرو اطمینان حاصل کنید.');
     const box = $('reserve-error');
-    if (box) {
-      const a = document.createElement('div');
-      a.style.marginTop = '10px';
-      a.innerHTML = '<button class="btn btn-primary" id="btn-fix-session">🔌 اتصال دوباره و ادامه رزرو</button>' +
-        ' <a class="btn" href="login.html" target="_blank" rel="noopener">صفحه ورود ↗</a>';
-      box.appendChild(a);
-      const b = document.getElementById('btn-fix-session');
-      if (b) {
-        b.addEventListener('click', async () => {
-          b.disabled = true;
-          b.textContent = 'در حال اتصال…';
-          const ok = await recoverSession();
-          if (ok) {
-            loginRetryDone = false;
-            hideReserveAll();
-            setStatus('نشست تازه شد — ادامه رزرو', 'blue');
-            await reserveStart();
-          } else {
-            b.disabled = false;
-            b.textContent = '🔌 تلاش دوباره';
-            BilitFast.toast('اتصال برقرار نشد. در صفحه «ورود» وارد صفیر ریل شوید.', 'error', 7000);
-          }
-        });
-      }
+    if (box && !document.getElementById('btn-fix-session')) {
+      const area = document.createElement('div');
+      area.style.marginTop = '10px';
+      const button = document.createElement('button');
+      button.className = 'btn btn-primary';
+      button.id = 'btn-fix-session';
+      button.textContent = '🔌 اتصال دوباره با افزونه';
+      button.addEventListener('click', openExtensionConnection);
+      area.appendChild(button);
+      box.appendChild(area);
     }
   }
 
@@ -1577,6 +1841,7 @@
     if (data.stateToken) reserveCtx.token = data.stateToken;
     if (data.captchaImageUrl) reserveCtx.captchaImageUrl = data.captchaImageUrl;
     if (data.formHtml) reserveCtx.formHtml = data.formHtml;
+    if (data.browserHandoff) reserveCtx.browserHandoff = data.browserHandoff;
     renderReserveDiagnostics(data);
 
     reserveCtx.steps++;
@@ -1586,6 +1851,9 @@
     }
 
     switch (data.step) {
+      case 'arcaptcha_required':
+        showHumanChallenge();
+        break;
       case 'captcha':
         applyCaptchaModeUI();
         if (data.captchaError) {
@@ -1640,12 +1908,45 @@
         }
         showReserveError(data.message || 'سامانه این رزرو را رد کرد.');
         break;
+      case 'intermediate_step':
+        showReserveError(data.message || 'یک فرم میانی غیرمنتظره دریافت شد. جزئیات غیرحساس را در بخش «تشخیص» بررسی کنید.');
+        break;
       default:
-        showReserveError('مرحله ناشناخته از سامانه: ' + (data.step || '—'));
+        // Never hide backend diagnostics behind the generic English `unknown`.
+        // Do not auto-submit/guess a changed reservation form.
+        showReserveError((data.message || 'ساختار پاسخ رزرو هنوز شناسایی نشده است.') +
+          ' (مرحله: ' + String(data.step || 'نامشخص') + ')');
     }
   }
 
+  function showHumanChallenge() {
+    autoSolveStop = true;
+    if (typeof clearAutoSelectTimer === 'function') clearAutoSelectTimer();
+    hideReserveAll();
+    $('reserve-arcaptcha').style.display = 'block';
+    $('reserve-message').textContent = 'برای حفظ اعتبار تأیید، صفحه رسمی سفیر ریل در همین تب نمایش داده می‌شود و پنل BilitFast کنار آن باز می‌ماند. چک‌باکس واقعی را خودتان تأیید کنید.';
+    const payload = reserveCtx.browserHandoff;
+    const valid = payload && payload.method === 'POST' &&
+      payload.url === 'https://safirrail.ir/etrain/TresV-auth.php' &&
+      payload.fields && typeof payload.fields === 'object' &&
+      typeof payload.fields.srvc === 'string' && payload.fields.srvc.length > 0;
+    $('bf-browser-handoff').textContent = valid ? JSON.stringify(payload) : '';
+    $('arcaptcha-handoff-status').textContent = valid
+      ? 'فرم قطار آماده است. روی آیکون افزونه BilitFast بزنید و «شروع تأیید در همین تب» را انتخاب کنید. صفحه رسمی در همین تب بارگذاری می‌شود و پنل BilitFast باز می‌ماند.'
+      : 'فرم شروع رزرو ناقص است. قطار را مجدداً انتخاب کنید؛ اطلاعات ساختگی ارسال نمی‌شود.';
+    $('btn-open-arcaptcha').disabled = !valid;
+    setStatus('در انتظار تأیید انسانی روی سایت رسمی', 'orange');
+    saveRouteState({ status: 'در انتظار تأیید ARCaptcha', statusColor: 'orange', isReserving: false });
+  }
+
+  $('btn-open-arcaptcha').addEventListener('click', () => {
+    const status = $('arcaptcha-handoff-status');
+    status.textContent = 'در همین تب روی آیکون افزونه BilitFast کلیک کنید؛ گزینه «شروع تأیید در همین تب + پنل BilitFast» را بزنید. اگر آیکون را نمی‌بینید از منوی افزونه‌ها (پازل) آن را Pin کنید.';
+    setStatus('منتظر بازکردن افزونه BilitFast', 'orange');
+  });
+
   function hideReserveAll() {
+    $('reserve-arcaptcha').style.display = 'none';
     $('reserve-captcha').style.display = 'none';
     $('reserve-payment').style.display = 'none';
     $('reserve-pay-confirm').style.display = 'none';
@@ -2228,6 +2529,13 @@
     await refreshCaptchaImage();
   });
 
+  // در نسخه دسکتاپ، صفحه مسیر یک پنجره مستقل است. بازگشت باید همان
+  // پنجره را ببندد و داشبورد اصلی را دست نخورده نگه دارد.
+  $('bf-route-back').addEventListener('click', async (event) => {
+    if (!window.bilitDesktop || !window.bilitDesktop.closeRouteWindow) return;
+    event.preventDefault();
+    await window.bilitDesktop.closeRouteWindow();
+  });
   window.reserve = reserve;
 
   (async function init() {
@@ -2236,6 +2544,7 @@
     const route = BilitFast.getRoute(ROUTE_ID);
     if (!route) { showRouteMissing(); return; }
     BilitFast.loadSharedConfig();
+    updateSafirCookieStatus();
     setStep(1, 'active');
     applyCaptchaModeUI();
     BilitFast.fetchLicenseState().then((ts) => {

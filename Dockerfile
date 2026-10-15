@@ -6,7 +6,7 @@
 # شکست می‌خورد — مشکل از کد نیست.
 
 # ---------- مرحله ۱: نصب وابستگی‌ها ----------
-FROM node:20-bookworm-slim AS deps
+FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 
 # فقط فایل‌های وابستگی کپی می‌شوند تا لایه کش با هر تغییر کد باطل نشود.
@@ -20,7 +20,7 @@ RUN if [ -f package-lock.json ]; then \
     fi
 
 # ---------- مرحله ۲: ایمیج نهایی ----------
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 WORKDIR /app
 
 ENV NODE_ENV=production \
@@ -49,6 +49,6 @@ EXPOSE 3000
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3000,path:'/api/health',timeout:4000},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3000,path:'/healthz',timeout:4000},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["node", "selfhost-server.js"]

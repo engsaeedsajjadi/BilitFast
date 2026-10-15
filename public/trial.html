@@ -39,11 +39,23 @@
   <script src="secure-store.js"></script>
   <script src="app.js"></script>
   <script>
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>\"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  }
   function showAlert(id, msg, ok) {
     const el = document.getElementById(id);
     el.style.display = 'block';
     el.className = 'alert ' + (ok ? 'alert-success' : 'alert-error');
     el.textContent = msg;
+  }
+
+  function activationForm() {
+    return '<form id="activate-form">' +
+      '<div class="field"><label for="code">کد فعال‌سازی دائمی:</label>' +
+      '<textarea id="code" rows="3" required autocomplete="off" placeholder="BF1...."></textarea></div>' +
+      '<button class="btn btn-primary btn-lg" type="submit">فعال‌سازی دائمی</button>' +
+      '</form><div id="alert" style="display:none"></div>';
   }
 
   async function renderStatus() {
@@ -53,31 +65,40 @@
 
     let html = '';
     if (ts.state === 'activated') {
-      html = '<div class="alert alert-success">✅ ' + (ts.message || 'برنامه به‌صورت دائمی فعال است') + '</div>' +
+      html = '<div class="alert alert-success">✅ ' + esc(ts.message || 'برنامه به‌صورت دائمی فعال است') + '</div>' +
         '<a class="btn btn-primary btn-lg" href="index.html">ورود به برنامه</a>';
     } else if (ts.state === 'active') {
-      html = '<div class="alert alert-success">دوره آزمایشی فعال است.</div>' +
-        '<a class="btn btn-primary btn-lg" href="index.html">ورود به برنامه</a>';
+      const hours = Math.max(0, Math.ceil((Number(ts.remainingMs) || 0) / 3600000));
+      const remaining = Number.isFinite(ts.remainingMs)
+        ? '<p>زمان باقی‌مانده: <strong>' + hours.toLocaleString('fa-IR') + ' ساعت</strong></p>'
+        : '';
+      html = '<div class="alert alert-success">دوره آزمایشی ۳ روزه فعال است.</div>' + remaining +
+        (ts.deviceId ? '<p class="muted">شناسه نصب برای دریافت کد: <code id="device-id"></code></p>' : '') +
+        '<a class="btn btn-primary btn-lg" href="index.html">ورود به برنامه</a>' +
+        '<p style="margin-top:18px">مدیر مجموعه هستید و کد دائمی استقرار را از فروشنده دریافت کرده‌اید؟ آن را همین‌جا وارد کنید:</p>' +
+        activationForm();
     } else if (ts.state === 'expired') {
-      html = '<div class="alert alert-error">دوره آزمایشی به پایان رسیده است.</div>' +
-        '<p>برای ادامه استفاده، کد فعال‌سازی خود را وارد کنید:</p>' +
-        '<form id="activate-form">' +
-        '<div class="field"><label for="code">کد فعال‌سازی:</label><input type="text" id="code" required autocomplete="off"></div>' +
-        '<button class="btn btn-primary btn-lg" type="submit">فعال‌سازی</button>' +
-        '</form><div id="alert" style="display:none"></div>';
+      html = '<div class="alert alert-error">دوره آزمایشی ۷۲ ساعته به پایان رسیده است.</div>' +
+        (ts.deviceId ? '<p class="muted">شناسه نصب برای دریافت کد: <code id="device-id"></code></p>' : '') +
+        '<p>برای فعال‌سازی استقرار، با حساب <strong>مدیر مجموعه</strong> وارد شوید و کد امضاشده فروشنده را وارد کنید:</p>' + activationForm();
+    } else if (ts.state === 'login_required') {
+      html = '<div class="alert alert-error">برای فعال‌سازی ابتدا وارد حساب سازمانی شوید.</div>' +
+        '<a class="btn btn-primary btn-lg" href="account.html">ورود به حساب</a>';
     } else if (ts.state === 'not_started') {
-      html = '<p>آیا مایل به شروع دوره آزمایشی هستید؟</p>' +
+      html = '<p>دوره آزمایشی ۳ روزه (۷۲ ساعت) را آغاز کنید:</p>' +
         '<button class="btn btn-primary btn-lg" id="start-trial">شروع دوره آزمایشی</button>' +
         '<p style="margin-top:18px">یا اگر کد فعال‌سازی دارید، آن را وارد کنید تا برنامه به‌صورت دائمی فعال شود:</p>' +
         '<form id="activate-form">' +
-        '<div class="field"><label for="code">کد فعال‌سازی:</label><input type="text" id="code" required autocomplete="off" placeholder="Sa..."></div>' +
+        '<div class="field"><label for="code">کد فعال‌سازی:</label><input type="text" id="code" required autocomplete="off" placeholder="BF-..."></div>' +
         '<button class="btn btn-primary btn-lg" type="submit">فعال‌سازی دائمی</button>' +
         '</form><div id="alert" style="display:none"></div>';
     } else {
-      html = '<div class="alert alert-error">⚠️ ' + (ts.message || 'خطا در ارتباط با سرور') + '</div>' +
+      html = '<div class="alert alert-error">⚠️ ' + esc(ts.message || 'خطا در ارتباط با سرور') + '</div>' +
         '<button class="btn btn-primary" id="retry-btn">تلاش مجدد</button>';
     }
     c.innerHTML = html;
+    const deviceEl = document.getElementById('device-id');
+    if (deviceEl) deviceEl.textContent = ts.deviceId || '';
 
     const retryBtn = document.getElementById('retry-btn');
     if (retryBtn) retryBtn.addEventListener('click', renderStatus);

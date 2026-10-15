@@ -41,3 +41,8 @@ coverage/
 # Temporary
 *.tmp
 *.temp
+# Local test output may reveal environment details.
+/test-results/
+
+# Seller-only private signing key. NEVER bundle with source, installer or EXE.
+/.license-private/

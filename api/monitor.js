@@ -35,6 +35,15 @@ module.exports = async (req, res) => {
     if (action === 'capability') {
       return res.status(200).json({ ok: true, ...monitor.capability() });
     }
+    if (action === 'start' && process.env.BILITFAST_SELF_HOSTED === '1' &&
+        !require('../lib/selfhost-license').status().allowed) {
+      return res.status(402).json({ok:false,licenseRequired:true,error:'مجوز استقرار فعال نیست.'});
+    }
+    if (action === 'start' && process.env.BILITFAST_DESKTOP === '1' &&
+        !require('../lib/desktop-entitlement').status().allowed) {
+      return res.status(402).json({ ok: false, licenseRequired: true,
+        error: 'دوره آزمایشی پایان یافته است. ابتدا برنامه را فعال کنید.' });
+    }
     if (action === 'start') {
       const cap = monitor.capability();
       if (!cap.supported) {

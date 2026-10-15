@@ -87,15 +87,39 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Lightweight liveness check for Docker/Kubernetes/Windows monitors.
+  // No Safir requests, secrets or user data are returned here.
+  if (url.pathname === '/healthz') {
+    send(res, 200, JSON.stringify({ ok: true, status: 'live', instanceId: process.env.BILITFAST_DESKTOP_INSTANCE_ID || null }),
+      { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    return;
+  }
+
   // مسیرهای API
   if (url.pathname.startsWith('/api/')) {
     const name = url.pathname.slice('/api/'.length) || 'index';
+    if (!/^[a-z0-9-]{1,70}$/i.test(name)) {
+      send(res, 404, JSON.stringify({ok:false,error:'Not Found'}), {'Content-Type':'application/json'});
+      return;
+    }
     const fnPath = path.join(API_DIR, name + '.js');
     if (!fs.existsSync(fnPath)) {
       send(res, 404, JSON.stringify({ ok: false, error: 'Not Found' }), { 'Content-Type': 'application/json' });
       return;
     }
     try {
+      // Defense in depth: no direct network API calls after desktop trial
+      // expiry, even if a controller loses its own license check later.
+      if (process.env.BILITFAST_DESKTOP === '1' &&
+          (name === 'search' || name === 'reserve')) {
+        const entitlement = require('./lib/desktop-entitlement').status();
+        if (!entitlement.allowed) {
+          send(res, 402, JSON.stringify({ ok: false, licenseRequired: true,
+            state: entitlement.state, error: entitlement.message }),
+          { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          return;
+        }
+      }
       const handler = require(fnPath);
       let body;
       try {
@@ -140,7 +164,8 @@ const server = http.createServer(async (req, res) => {
   // فایل‌های استاتیک از public/
   let filePath = path.join(PUBLIC, url.pathname === '/' ? 'index.html' : url.pathname);
   if (!path.extname(filePath)) filePath += '.html'; // cleanUrls
-  if (!filePath.startsWith(PUBLIC) || !fs.existsSync(filePath)) {
+  const relative = path.relative(PUBLIC, filePath);
+  if (relative.startsWith('..') || path.isAbsolute(relative) || !fs.existsSync(filePath)) {
     filePath = path.join(PUBLIC, 'index.html'); // fallback
   }
   const ext = path.extname(filePath).toLowerCase();
@@ -166,8 +191,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 // Local development is bound to loopback: no anonymous LAN access.
-const BIND_HOST = process.env.BILITFAST_BIND_HOST ||
-  (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
+const BIND_HOST = process.env.BILITFAST_DESKTOP === '1' ? '127.0.0.1' :
+  (process.env.BILITFAST_BIND_HOST ||
+    (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1'));
 server.listen(PORT, BIND_HOST, () => {
   console.log('BilitFast server: http://' + BIND_HOST + ':' + PORT);
   // بررسی پیکربندی امنیتی و پایداری ذخیره‌سازی هنگام بالا آمدن.
@@ -202,8 +228,10 @@ server.listen(PORT, BIND_HOST, () => {
         Math.round(keeper.REFRESH_INTERVAL_MS / 60000) + ' min)');
     }
   } catch (e) { /* اختیاری */ }
-  // راه‌اندازی مجدد پایشگرهای سمت سرور پس از بالا آمدن سرور
+  // راه‌اندازی مجدد پایشگرها فقط تا وقتی مجوز مستقل معتبر است.
   try {
+    if (process.env.BILITFAST_SELF_HOSTED === '1' && !require('./lib/selfhost-license').status().allowed)
+      throw new Error('Installation license inactive; monitors stay paused');
     const n = require('./lib/monitor').resumeAll();
     if (n) console.log('Server monitors resumed: ' + n);
   } catch (e) { /* پایشگر اختیاری است */ }

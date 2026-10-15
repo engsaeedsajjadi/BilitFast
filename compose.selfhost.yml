@@ -1,0 +1,44 @@
+# One customer = one isolated deployment (single app instance / persistent volume).
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      BILITFAST_SELF_HOSTED: "1"
+      BILITFAST_DATA_DIR: /data
+      BILITFAST_BIND_HOST: 0.0.0.0
+    volumes:
+      - bilitfast_data:/data
+    expose:
+      - "3000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/healthz',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      BILITFAST_DOMAIN: ${BILITFAST_DOMAIN:?Set BILITFAST_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile.selfhost:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  bilitfast_data:
+  caddy_data:
+  caddy_config:

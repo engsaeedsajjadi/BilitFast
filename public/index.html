@@ -40,7 +40,7 @@
       <ol class="qs-steps">
         <li id="qs-1"><b>یک مسیر جدید بسازید</b><span class="muted small">مبدا، مقصد و تاریخ سفر را مشخص کنید.</span></li>
         <li id="qs-2"><b>اطلاعات مسافران را وارد کنید</b><span class="muted small">کد ملی و تاریخ تولد برای رزرو لازم است.</span></li>
-        <li id="qs-3"><b>به صفیر ریل وارد شوید</b><span class="muted small">تا برنامه بتواند از طرف شما رزرو کند. <a href="login.html">صفحه ورود</a></span></li>
+        <li id="qs-3"><b>حساب صفیر ریل را متصل کنید</b><span class="muted small">فقط از افزونه BilitFast استفاده کنید. <a href="login.html">اتصال حساب</a></span></li>
         <li id="qs-4"><b>جستجو را شروع کنید</b><span class="muted small">برنامه تا پیدا شدن ظرفیت خودکار تلاش می‌کند.</span></li>
       </ol>
     </section>
@@ -128,7 +128,7 @@
           <td>${esc(cap)}</td>
           <td><span style="color:${color}">●</span> ${esc(status)}</td>
           <td>
-            <button class="btn btn-sm" onclick="openRoute(${parseInt(r.id, 10)})" title="باز کردن در همین پنجره">باز کردن</button>
+            <button class="btn btn-sm" onclick="openRoute(${parseInt(r.id, 10)})" title="بازکردن پنجره مسیر">باز کردن</button>
             <button class="btn btn-sm btn-danger" onclick="deleteRoute(${parseInt(r.id, 10)})">حذف</button>
           </td>
         </tr>`;
@@ -189,20 +189,26 @@
     renderRoutes();
   }
 
-  // پیمایش یکپارچه: مسیر در همین پنجره باز می‌شود (نه پنجره/تب جدید) تا
-  // رابط کاربری واحد بماند. با انیمیشن محو، انتقال نرم دیده می‌شود.
-  function openRoute(id) {
-    const url = 'route.html?id=' + id;
-    document.body.classList.add('page-leave');
-    // نوشتن رمزشده روی دیسک غیرهمگام است؛ اگر قبل از اتمام آن ناوبری کنیم،
-    // صفحه بعد مسیر تازه‌ساخته را پیدا نمی‌کند («مسیر یافت نشد»).
-    const settled = BilitFast.flushStorage();
-    const minDelay = new Promise((r) => setTimeout(r, 180));
-    Promise.all([settled, minDelay]).then(() => { window.location.href = url; });
-  }
-  // باز کردن در تب جدید فقط وقتی کاربر خودش Ctrl/⌘ را نگه دارد
-  function openRouteNewTab(id) {
-    window.open('route.html?id=' + id, '_blank', 'noopener');
+  // در نسخه وب، صفحه مسیر باید در همین تب باز شود. نشست موقت SafirRail
+  // در sessionStorage همین تب است و با window.open به تب دیگری منتقل نمی‌شود.
+  // Electron (اگر در نسخه‌های قدیمی هنوز اجرا شود) پنجره خود را دارد.
+  // اگر API مجوز در لحظه در دسترس نباشد، افزودن/ویرایش محلی مجاز است؛
+  // جستجو و رزرو همچنان در سمت سرور بدون مجوز معتبر مسدود می شوند.
+  async function openRoute(id) {
+    const numericId = Number(id);
+    if (!Number.isSafeInteger(numericId) || numericId < 1) return;
+    try {
+      await BilitFast.flushStorage();
+      if (window.bilitDesktop && window.bilitDesktop.openRouteWindow) {
+        const result = await window.bilitDesktop.openRouteWindow(numericId);
+        if (!result || !result.ok) throw new Error((result && result.error) || 'پنجره مسیر باز نشد.');
+      } else {
+        // Same tab, same origin, same sessionStorage. Do not use window.open.
+        window.location.assign('route.html?id=' + numericId);
+      }
+    } catch (e) {
+      BilitFast.toast('خطا در بازکردن مسیر: ' + (e && e.message || 'نامشخص'), 'error', 6500);
+    }
   }
 
   async function deleteRoute(id) {
@@ -225,7 +231,8 @@
 
   document.getElementById('btn-add-route').addEventListener('click', async () => {
     const ts = await BilitFast.fetchLicenseState();
-    if (ts.state === 'not_started' || ts.state === 'expired') { window.location.href = 'trial.html'; return; }
+    if (ts.state === 'not_started' || ts.state === 'expired' || ts.state === 'clock_invalid' || ts.state === 'install_invalid') { window.location.href = 'trial.html'; return; }
+    // Unknown means backend diagnostics, not proof that a local route cannot be edited.
     const id = BilitFast.nextRouteId();
     BilitFast.upsertRoute({
       id,
@@ -239,7 +246,7 @@
     });
     renderRoutes();
     BilitFast.toast('مسیر جدید ساخته شد.', 'success', 2000);
-    openRoute(id);
+    await openRoute(id);
   });
 
   document.getElementById('btn-close-all').addEventListener('click', () => {

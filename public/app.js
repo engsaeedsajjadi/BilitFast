@@ -145,20 +145,26 @@ const BilitFast = (function (global) {
   /** وضعیت مجوز از سرور: اشتراک فعال > فعال‌سازی دائمی > دوره آزمایشی. */
   async function fetchLicenseState(force = false) {
     const cache = readCache();
-    if (!force && cache && (Date.now() - (cache.ts || 0) < CACHE_TTL_MS) && (cache.session === isLoggedIn())) {
-      return { state: cache.state, message: cache.message };
+    if (!force && !isDesktopShell() && cache && (Date.now() - (cache.ts || 0) < CACHE_TTL_MS) && (cache.session === isLoggedIn())) {
+      return cache;
     }
     try {
       const data = await authFetch('/api/trial', { action: 'status', trialToken: localStorage.getItem(TRIAL_KEY) || '', licenseToken: localStorage.getItem(LICENSE_KEY) || '' });
       if (data && data.ok && data.state) {
-        const st = { state: data.state, message: data.message || '', subscription: data.subscription || null, session: isLoggedIn() };
+        const st = { state: data.state, message: data.message || '', deviceId: data.deviceId || '', remainingMs: data.remainingMs, expiresAt: data.expiresAt || '', trialDays: data.trialDays || 3, subscription: data.subscription || null, session: isLoggedIn() };
         writeCache(st);
         return st;
       }
-      throw new Error('bad response');
+      // A running server may return a structured 429/500 or license error.
+      // Preserve the reason instead of calling every failure an offline server.
+      throw new Error(data && data.error ? data.error : 'پاسخ سرویس مجوز نامعتبر است.');
     } catch (e) {
-      if (cache) return { state: cache.state, message: cache.message + ' (آفلاین)' };
-      return { state: 'not_started', message: 'دوره آزمایشی شروع نشده' };
+      // Fail closed: never accept an offline cached activation.
+      const reason = String(e && e.message || '');
+      const networkFailure = /failed to fetch|networkerror|fetch failed|load failed/i.test(reason);
+      return { state: 'unknown', message: networkFailure
+        ? 'ارتباط با سرور وب BilitFast برقرار نیست. آدرس و وضعیت میزبانی مشتری را بررسی کنید.'
+        : 'بررسی مجوز ناموفق بود: ' + (reason || 'خطای نامشخص') };
     }
   }
 
@@ -183,8 +189,10 @@ const BilitFast = (function (global) {
       // فعال‌سازی روی خود حساب (license_activated) ثبت شود و روی همه دستگاه‌ها
       // و بعد از خروج/ورود هم فعال بماند.
       const data = await authFetch('/api/activate', { code });
-      if (data && data.ok && data.token) {
-        localStorage.setItem(LICENSE_KEY, data.token);
+      if (data && data.ok) {
+        // Production grants are attached to the account and return no
+        // transferable bearer license token; legacy local grants may.
+        if (data.token) localStorage.setItem(LICENSE_KEY, data.token);
         writeCache({ state: 'activated', message: 'فعال‌سازی دائمی', session: isLoggedIn() });
         return { ok: true, message: data.message || 'برنامه فعال شد.' };
       }
@@ -511,21 +519,32 @@ const BilitFast = (function (global) {
    * می‌شود. منبع پایدارِ آن حساب کاربر روی سرور است و نگهدارنده نشست هر
    * ۵ دقیقه تازه‌اش می‌کند. */
   const COOKIES_KEY = 'bilitfast_cookies';
+  const VERIFICATION_COOKIES_KEY = 'bilitfast_verification_cookies';
 
-  function getCookies() {
+  function readScopedCookies(key) {
     try {
-      const v = sessionStorage.getItem(COOKIES_KEY);
-      return v ? (JSON.parse(v) || []) : [];
-    } catch (e) { return []; }
+      const raw = sessionStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) { return []; }
   }
-  function setCookies(c) {
-    try { sessionStorage.setItem(COOKIES_KEY, JSON.stringify(c || [])); }
-    catch (e) { /* ignore */ }
+  function getCookies() { return readScopedCookies(COOKIES_KEY); }
+  function getVerificationCookies() { return readScopedCookies(VERIFICATION_COOKIES_KEY); }
+  function setCookies(c, verificationCookies) {
+    // Keep /etrain cookies and /fa cookies separated. On a subsequent
+    // navigation, re-verification must not send /etrain-only credentials to /fa.
+    try {
+      sessionStorage.setItem(COOKIES_KEY, JSON.stringify(Array.isArray(c) ? c : []));
+      sessionStorage.setItem(VERIFICATION_COOKIES_KEY,
+        JSON.stringify(Array.isArray(verificationCookies) ? verificationCookies : []));
+    } catch (_) { /* Storage unavailable */ }
   }
   /** پاک‌کردن کوکی نشست از این دستگاه. */
   function clearCookies() {
-    try { sessionStorage.removeItem(COOKIES_KEY); } catch (e) { /* ignore */ }
-    try { localStorage.removeItem(COOKIES_KEY); } catch (e) { /* ignore */ }
+    for (const k of [COOKIES_KEY, VERIFICATION_COOKIES_KEY]) {
+      try { sessionStorage.removeItem(k); } catch (_) { /* ignore */ }
+      try { localStorage.removeItem(k); } catch (_) { /* ignore */ }
+    }
   }
 
   /* ---------------- تاریخ شمسی ---------------- */
@@ -830,7 +849,7 @@ const BilitFast = (function (global) {
     saveBooking, bookingResult, notifyPayment, listBookings, sendNotification,
     // داده محلی
     loadRoutes, saveRoutes, getRoute, upsertRoute, removeRoute, nextRouteId,
-    getCookies, setCookies, clearCookies, purgeLocalData,
+    getCookies, getVerificationCookies, setCookies, clearCookies, purgeLocalData,
     secureGet, secureSet, SECURE_KEYS, whenStorageReady, flushStorage,
     loadPassengerProfiles, savePassengerProfile, deletePassengerProfile,
     // تاریخ و اعتبارسنجی

@@ -322,9 +322,9 @@ test('لینک پنل مدیریت فقط برای ادمین است',
   /acc\.is_admin\s*\?[\s\S]{0,120}admin\.html/.test(accountHtml));
 
 const loginHtml = fsSrc.readFileSync(pathSrc.join(ROOT, 'public', 'login.html'), 'utf8');
-test('متن پیش‌نیاز بر اساس حالت نصب تنظیم می‌شود', /applyModeText/.test(loginHtml));
-test('صفحه ورود حالت چندکاربره را از سرور می‌پرسد',
-  /action:\s*'mode'/.test(loginHtml));
+test('فرم دوحسابی و روش‌های موازی از اتصال حذف شده‌اند', !/applyModeText|login-form|btn-smart-connect/.test(loginHtml));
+test('اتصال سفیر از کد جفت‌سازی استفاده می‌کند، بدون ورود مستقیم به سایت',
+  /safir-connection\.js/.test(loginHtml));
 
 /* ============ پایان ============ */
 

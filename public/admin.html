@@ -236,6 +236,23 @@
           await api('/api/admin-users', { action: 'update', id: u.id, is_active: !u.is_active });
           refresh();
         }));
+        cell.appendChild(btn('صدور مجوز', async function () {
+          if (!confirm('مجوز اختصاصی برای ' + u.username + ' صادر شود؟')) return;
+          var result = await api('/api/admin-users', { action: 'issue-license', id: u.id, valid_days: 14 });
+          if (result && result.ok) {
+            // Display only once; the server stores only its SHA-256 digest.
+            alert('کد یک‌بارمصرف مخصوص ' + u.username + ':\n\n' + result.code +
+              '\n\nتاریخ انقضا: ' + result.expiresAt + '\nاین کد را در اختیار صاحب همان حساب بگذارید.');
+          } else alert((result && result.error) || 'صدور مجوز ناموفق بود.');
+        }));
+        if (u.license_activated) {
+          cell.appendChild(btn('ابطال مجوز', async function () {
+            if (!confirm('مجوز ' + u.username + ' باطل شود؟')) return;
+            var result = await api('/api/admin-users', { action: 'revoke-license', id: u.id });
+            if (result && result.ok) refresh();
+            else alert((result && result.error) || 'ابطال مجوز ناموفق بود.');
+          }));
+        }
         cell.appendChild(btn('گذرواژه تازه', async function () {
           if (!confirm('گذرواژه ' + u.username + ' عوض شود؟ نشست‌های بازش بسته می‌شود.')) return;
           var x = await api('/api/admin-users', { action: 'reset-password', id: u.id });

@@ -2,16 +2,20 @@
   "name": "bilitfast",
   "version": "1.0.0",
   "private": true,
-  "description": "Bilit Fast — وب‌اپ رزرو بلیت قطار",
+  "description": "BilitFast Web Self-Hosted — independent customer-hosted commercial preview",
   "scripts": {
-    "start": "node dev-server.js",
-    "test": "node test/classification.test.js && node test/security.test.js && node test/account.test.js && node test/captcha.test.js && node test/ml.test.js && node test/cookie-sync.test.js && node test/rateplan.test.js && node test/search-validation.test.js && node test/charlearn.test.js && node test/swt.test.js && node test/captures.test.js && node test/captcha-modes.test.js && node test/ocr-config.test.js && node test/ocr-vision.test.js && node test/synthgen.test.js && node test/new-features.test.js && node test/security-audit.test.js && node test/ux.test.js && node test/route-navigation.test.js && node test/search-resilience.test.js && node test/connect.test.js && node test/session-recovery.test.js && node test/auto-relogin.test.js && node test/session-detect.test.js && node test/cookie-chain.test.js && node test/browser-cookies.test.js && node test/no-false-success.test.js && node test/cookie-doctor.test.js && node test/cookie-trace.test.js && node test/reserve-session-log.test.js && node test/locked-cookie-file.test.js && node test/multiuser.test.js && node test/persian-digits.test.js && node test/commercial-hardening.test.js",
-    "test:ocr": "node test/ocr-config.test.js && node test/ocr-vision.test.js && node test/synthgen.test.js && node test/ocr-integration.test.js",
-    "test:e2e": "node scripts/e2e-captcha-loop.js",
-    "benchmark": "node scripts/benchmark.js",
-    "benchmark:quick": "node scripts/benchmark.js --quick",
-    "audit:security": "node test/security-audit.test.js",
-    "start:prod": "NODE_ENV=production node server.js"
+    "start": "node selfhost-server.js",
+    "start:prod": "node selfhost-server.js",
+    "start:dev": "node dev-server.js",
+    "test:selfhost": "npm run test:official-handoff && node test/web-cookie-handoff.test.js && node test/selfhost-web.test.js && node test/extension-endpoint-discovery.test.js && node test/web-extension-connect.test.js && node test/extension-ui-layout.test.js && node test/single-extension-flow.test.js && node scripts/selfhost-smoke.js",
+    "test": "npm run test:selfhost && node test/security.test.js && node test/account.test.js && node test/multiuser.test.js && node test/city-picker-regression.test.js",
+    "license:seller": "node scripts/license-admin.js",
+    "prepare:customer": "node scripts/setup-selfhost.js",
+    "preview:web": "node dev-server.js",
+    "test:web-extension": "node test/web-extension-connect.test.js && node test/web-cookie-handoff.test.js && node test/single-extension-flow.test.js",
+    "test:official-handoff": "node test/browser-arcaptcha-handoff.test.js && node test/official-browser-flow-mock.test.js && node test/same-tab-worker.test.js && node test/official-checkout-confirmation.test.js && node test/integrated-human-reservation.test.js && node test/passenger-session-isolation.test.js",
+    "test:integrated-human": "node test/integrated-human-reservation.test.js && node test/passenger-session-isolation.test.js",
+    "test:checkout": "node test/official-checkout-confirmation.test.js && node test/integrated-human-reservation.test.js && node test/official-browser-flow-mock.test.js"
   },
   "engines": {
     "node": ">=18.17"

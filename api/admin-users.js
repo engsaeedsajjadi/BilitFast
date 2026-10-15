@@ -22,6 +22,7 @@ const { registerUser, hashPassword, validateUsername } = require('../lib/auth');
 const accounts = require('../lib/accounts');
 const activity = require('../lib/activity');
 const db = require('../lib/db');
+const entitlements = require('../lib/entitlements');
 
 function readBody(req) {
   if (typeof req.body === 'string') {
@@ -111,6 +112,21 @@ module.exports = async (req, res) => {
         note: 'این گذرواژه فقط همین یک‌بار نمایش داده می‌شود. آن را ذخیره کنید.',
       });
       return;
+    }
+
+    if (action === 'issue-license') {
+      const target = db.findById('users', String(body.id || ''));
+      if (!target) return res.status(404).json({ ok: false, error: 'کاربر یافت نشد.' });
+      const result = entitlements.issueCode(target.id, body.valid_days === undefined ? 14 : body.valid_days);
+      if (result.ok) activity.log({ userId: admin.id, type: 'LICENSE_ISSUED', meta: { target: target.username }, req });
+      return res.status(result.ok ? 200 : 400).json(result);
+    }
+    if (action === 'revoke-license') {
+      const target = db.findById('users', String(body.id || ''));
+      if (!target) return res.status(404).json({ ok: false, error: 'کاربر یافت نشد.' });
+      const result = entitlements.revokeUser(target.id);
+      if (result.ok) activity.log({ userId: admin.id, type: 'LICENSE_REVOKED', meta: { target: target.username }, req });
+      return res.status(result.ok ? 200 : 400).json(result);
     }
 
     if (action === 'update') {

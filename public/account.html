@@ -64,19 +64,6 @@
       </div>
 
       <hr style="margin:18px 0;border:none;border-top:1px solid #e5e7eb">
-      <h3>🔄 انتقال کوکی صفیر ریل از دستگاه دیگر</h3>
-      <p class="muted small">
-        روی دستگاهی که افزونه همگام‌سازی را اجرا می‌کنید (یا با ورود مستقیم) کوکی‌ها به‌صورت خودکار
-        در همین حساب ذخیره می‌شوند. روی این دستگاه (مثلاً موبایل) دکمه زیر را بزنید تا کوکی ذخیره‌شده
-        تحویل گرفته و برای جستجو/رزرو استفاده شود. توجه: کوکی نشست عمر محدود دارد و هر چند ساعت باید
-        از دستگاه اصلی دوباره تمدید شود.
-      </p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" id="btn-pull-cookies" type="button">📥 دریافت کوکی ذخیره‌شده از حساب</button>
-        <button class="btn" id="btn-push-cookies" type="button">📤 ذخیره کوکی این دستگاه در حساب</button>
-      </div>
-      <div id="cookie-sync-alert" style="display:none;margin-top:10px"></div>
-      <hr style="margin:18px 0;border:none;border-top:1px solid #e5e7eb">
       <h3>تغییر گذرواژه</h3>
       <div id="pass-alert" style="display:none"></div>
       <form id="pass-form">
@@ -174,7 +161,16 @@
       new_password: document.getElementById('new-pass').value,
     });
     showAlert('pass-alert', data.ok ? data.message : (data.error || 'خطا'), !!data.ok);
-    if (data.ok) { document.getElementById('pass-form').reset(); }
+    if (data.ok) {
+      document.getElementById('pass-form').reset();
+      if (data.reauthRequired) {
+        // Server revoked all old sessions after password change.
+        BilitFast.setSessionToken('');
+        localStorage.removeItem('bilitfast_license_cache');
+        alert('گذرواژه تغییر کرد. لطفاً با رمز تازه دوباره وارد شوید.');
+        location.reload();
+      }
+    }
   });
 
   function esc(s) {
@@ -248,34 +244,6 @@
     el.className = 'alert ' + (ok ? 'alert-success' : 'alert-error');
     el.textContent = msg;
   }
-
-  document.getElementById('btn-pull-cookies').addEventListener('click', async (e) => {
-    const btn = e.target;
-    btn.disabled = true;
-    const r = await BilitFast.pullAccountCookies();
-    btn.disabled = false;
-    if (r.ok) {
-      showInlineAlert('cookie-sync-alert', '✅ ' + r.count + ' کوکی از حساب دریافت و در این دستگاه ذخیره شد. حالا می‌توانید جستجو و رزرو کنید.', true);
-    } else {
-      showInlineAlert('cookie-sync-alert', r.error && r.error !== 'not_logged_in' ? r.error : 'کوکی‌ای در حساب شما ذخیره نشده است. ابتدا روی دستگاه اصلی (دسکتاپ) وارد صفیر ریل شوید و کوکی بگیرید.', false);
-    }
-  });
-
-  document.getElementById('btn-push-cookies').addEventListener('click', async (e) => {
-    const btn = e.target;
-    const cookies = BilitFast.getCookies();
-    if (!cookies.length) {
-      showInlineAlert('cookie-sync-alert', 'در این دستگاه کوکی‌ای ذخیره نشده است. اول در صفحه «ورود صفیر ریل» کوکی بگیرید.', false);
-      return;
-    }
-    btn.disabled = true;
-    const r = await BilitFast.pushCookiesToAccount(cookies);
-    btn.disabled = false;
-    showInlineAlert('cookie-sync-alert',
-      r.ok ? '✅ کوکی‌های این دستگاه در حساب شما ذخیره شد؛ روی دستگاه دیگر با «دریافت کوکی ذخیره‌شده» تحویل بگیرید.'
-           : 'ذخیره کوکی در حساب ممکن نشد. اتصال اینترنت را بررسی کنید.',
-      !!r.ok);
-  });
 
   render();
   // پس از رمزگشایی داده‌های محلی دوباره رندر کن (شمارش مسیرها درست شود).

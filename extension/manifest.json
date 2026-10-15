@@ -1,16 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "BilitFast — همگام‌سازی کوکی صفیر ریل",
-  "version": "1.1.0",
-  "description": "کوکی‌های ورود صفیر ریل را با کد جفت‌سازی یک‌بارمصرف به برنامه بیلیت فست منتقل می‌کند.",
+  "name": "BilitFast — اتصال سفیر ریل",
+  "version": "3.4.1",
+  "description": "تأیید انسانی در سایت رسمی و اجرای کنترل اصلی فرم مسافر تا صفحه تأیید خرید، بدون جعل توکن یا بازنویسی مسیر بانک.",
   "permissions": [
     "cookies",
-    "storage"
+    "activeTab",
+    "storage",
+    "scripting",
+    "sidePanel"
   ],
   "host_permissions": [
-    "https://safirrail.ir/*",
-    "http://localhost/*",
-    "http://127.0.0.1/*"
+    "https://safirrail.ir/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -19,8 +25,19 @@
     "default_title": "انتقال کوکی صفیر ریل به بیلیت فست",
     "default_popup": "popup.html"
   },
-  "options_ui": {
-    "page": "options.html",
-    "open_in_tab": true
+  "content_scripts": [
+    {
+      "matches": [
+        "https://safirrail.ir/etrain/*"
+      ],
+      "js": [
+        "checkout-flow.js",
+        "safir-passenger-helper.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "workspace.html"
   }
 }

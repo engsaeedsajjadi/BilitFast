@@ -57,6 +57,7 @@ function preflight() {
 
   try {
     require('./lib/db').assertReliableStorage();
+    if (process.env.BILITFAST_SELF_HOSTED === '1') require('./lib/selfhost-license').initial();
   } catch (e) {
     problems.push('ذخیره‌سازی: ' + (e && e.message ? e.message : String(e)));
   }

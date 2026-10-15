@@ -25,6 +25,7 @@ const crypto = require('crypto');
 const db = require('../lib/db');
 const { guardApi, getClientIp } = require('../lib/guard');
 const { getSessionUser } = require('../lib/auth');
+const secrets = require('../lib/secrets');
 
 const PAIR_TTL_MS = 2 * 60 * 1000;   // اعتبار کد جفت‌سازی: ۲ دقیقه
 const COOKIE_TTL_MS = 5 * 60 * 1000; // اعتبار کوکی تحویل‌نشده: ۵ دقیقه
@@ -49,13 +50,87 @@ function hashNonce(n) {
 }
 
 /** پاک‌سازی رکوردهای منقضی. */
+function sealCookies(cookies, recordId) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', secrets.stateKey(), iv);
+  cipher.setAAD(Buffer.from(recordId));
+  const encrypted = Buffer.concat([cipher.update(JSON.stringify(cookies), 'utf8'), cipher.final()]);
+  return { iv: iv.toString('base64'), data: encrypted.toString('base64'), tag: cipher.getAuthTag().toString('base64') };
+}
+function openCookies(payload, recordId) {
+  if (!payload || !payload.iv || !payload.data || !payload.tag) return null;
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', secrets.stateKey(), Buffer.from(payload.iv, 'base64'));
+    decipher.setAAD(Buffer.from(recordId));
+    decipher.setAuthTag(Buffer.from(payload.tag, 'base64'));
+    const result = JSON.parse(Buffer.concat([decipher.update(Buffer.from(payload.data, 'base64')), decipher.final()]).toString('utf8'));
+    return Array.isArray(result) || (result && Array.isArray(result.cookies) && Array.isArray(result.verificationCookies))
+      ? result : null;
+  } catch (_) { return null; }
+}
 function sweep() {
   const now = Date.now();
   for (const r of db.find('cookie_sync', () => true)) {
     const age = now - (r.created_at || 0);
-    const ttl = r.cookies ? COOKIE_TTL_MS : PAIR_TTL_MS;
+    const ttl = r.encrypted_cookies ? COOKIE_TTL_MS : PAIR_TTL_MS;
     if (age > ttl || r.consumed) db.remove('cookie_sync', r.id);
   }
+}
+
+function sanitizeCookies(value) {
+  return Array.isArray(value) ? value.filter(c => typeof c === 'string' && c.length <= 2000 &&
+    /^[!#$%&'*+.^_`|~\w-]{1,128}=[^\r\n;]*$/.test(c)).slice(0, 30) : [];
+}
+function hasSession(cookies) {
+  return cookies.some(c => /^PHPSESSID=[^\s;]+/i.test(c));
+}
+// Keep browser request scopes separate. The reservation initializer uses
+// POST /etrain/TresV-auth.php with a selected train; a plain GET on that path
+// is not a reliable test of whether an existing user is logged in.
+async function verifyImportedCookies(bookingCookies, verificationCookies) {
+  const core = require('../lib/core');
+  if (!hasSession(bookingCookies)) return { valid: false, reason: 'no_session_cookie' };
+
+  // Passive, read-only verification. Only an explicit account marker counts
+  // as proof; an ordinary public 200 response is inconclusive.
+  const booking = await core.verifySession(bookingCookies, {
+    loginPath: '/etrain/index.php', requirePositiveEvidence: true,
+  });
+  if (booking.valid) {
+    return { valid: true, bookingVerified: true, checkedScope: 'etrain' };
+  }
+
+  // Probe the general account using the exact cookies that the browser would
+  // send to /fa. Never send an /etrain-only cookie to an unrelated URL.
+  const general = hasSession(verificationCookies)
+    ? await core.verifySession(verificationCookies)
+    : { valid: false, reason: 'no_session_cookie' };
+  if (general.valid) {
+    if (booking.reason === 'not_logged_in') {
+      // A GET to the reservation landing page can display a login form even
+      // though the authenticated browser session was transferred correctly.
+      // Preserve the proven general session for read-only search and for the
+      // *real* reservation POST to evaluate. Do not claim bookingVerified.
+      return { valid: true, bookingVerified: false, generalValid: true,
+        reason: 'reservation_login_required', checkedScope: 'fa' };
+    }
+    // Allow search with a known general login, but DO NOT state that ticket
+    // reservation is authenticated. The real POST during booking is decisive.
+    return { valid: true, bookingVerified: false, generalValid: true,
+      reason: 'reservation_not_yet_verified', checkedScope: 'fa' };
+  }
+  // No proven login. Preserve network/inconclusive separately from an
+  // explicit login form rather than misdiagnosing every failure as expiry.
+  if (booking.reason === 'network' || booking.reason === 'verification_unavailable') {
+    return { valid: false, bookingVerified: false, reason: booking.reason, checkedScope: 'etrain' };
+  }
+  if (general.reason === 'network' || general.reason === 'verification_unavailable') {
+    return { valid: false, bookingVerified: false, reason: general.reason, checkedScope: 'fa' };
+  }
+  if (booking.reason === 'verification_inconclusive' || general.reason === 'verification_inconclusive') {
+    return { valid: false, bookingVerified: false, reason: 'verification_inconclusive', checkedScope: 'etrain' };
+  }
+  return { valid: false, bookingVerified: false, reason: 'not_logged_in', checkedScope: 'etrain' };
 }
 
 module.exports = async (req, res) => {
@@ -63,10 +138,15 @@ module.exports = async (req, res) => {
     res.status(405).json({ ok: false, error: 'Method Not Allowed' });
     return;
   }
-  if (!guardApi(req, res, { name: 'cookie-sync', limit: 60, windowMs: 60000 })) return;
-
   const body = readBody(req);
   const action = body.action || 'poll';
+  if (!guardApi(req, res, { name: action === 'push' ? 'cookie-sync-push' : 'cookie-sync',
+    limit: action === 'push' ? 12 : 60, windowMs: 60000 })) return;
+
+  if (action === 'ping') {
+    res.status(200).json({ ok: true, service: 'bilitfast-cookie-sync', version: 2 });
+    return;
+  }
   const user = getSessionUser(req, body);
   const local = isLocalRequest(req);
 
@@ -100,8 +180,26 @@ module.exports = async (req, res) => {
   try {
     sweep();
 
+    // Verification does not claim that the seller accepted a ticket or payment.
+    // It tests the imported login cookie against the seller's login page.
+    if (action === 'verify') {
+      const cookies = sanitizeCookies(body.cookies);
+      if (!local && !user) {
+        return res.status(401).json({ ok: false, loginRequired: true });
+      }
+      const verificationCookies = sanitizeCookies(body.verificationCookies);
+      const v = await verifyImportedCookies(cookies, verificationCookies);
+      return res.status(200).json({ ok: true, valid: !!v.valid, reason: v.reason || null,
+        checkedScope: v.checkedScope || null, bookingVerified: !!v.bookingVerified,
+        generalValid: !!v.generalValid });
+    }
+
     /* ۱) ساخت کد جفت‌سازی یک‌بارمصرف (از سمت برنامه) */
     if (action === 'pair') {
+      // Only one pending PIN per owner, so a stale popup cannot race with a new pairing.
+      for (const old of db.find('cookie_sync', r => r.owner === owner && !r.encrypted_cookies)) {
+        db.remove('cookie_sync', old.id);
+      }
       const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
       const nonce = crypto.randomBytes(24).toString('base64url');
       db.insert('cookie_sync', {
@@ -132,23 +230,26 @@ module.exports = async (req, res) => {
       }
       const now = Date.now();
       const rec = db.find('cookie_sync', (s) => s.kind === 'pair' && s.code === code &&
-        !s.consumed && !s.cookies && (now - (s.created_at || 0)) <= PAIR_TTL_MS)[0];
+        !s.consumed && !s.encrypted_cookies && (now - (s.created_at || 0)) <= PAIR_TTL_MS)[0];
       if (!rec) {
         res.status(400).json({ ok: false, error: 'کد جفت‌سازی نامعتبر یا منقضی شده است.' });
         return;
       }
 
-      const cookies = Array.isArray(body.cookies)
-        ? body.cookies.map((c) => String(c).slice(0, 2000)).filter(Boolean).slice(0, 30)
-        : [];
+      const cookies = sanitizeCookies(body.cookies);
+      const verificationCookies = sanitizeCookies(body.verificationCookies);
       if (!cookies.length) {
         res.status(400).json({ ok: false, error: 'کوکی‌ای ارسال نشده است.' });
         return;
       }
-      const hasSession = cookies.some((c) => /^PHPSESSID=/i.test(c));
+      const hasSession = cookies.some((c) => /^PHPSESSID=[^\s;]+/i.test(c));
+      if (!hasSession) {
+        res.status(422).json({ ok: false, error: 'کوکی نشست صفیر ریل یافت نشد؛ ابتدا وارد حساب سایت شوید.' });
+        return;
+      }
       db.update('cookie_sync', rec.id, {
-        cookies,
-        has_session: hasSession,
+        encrypted_cookies: sealCookies({ cookies, verificationCookies }, rec.id),
+        has_session: true,
         source: String(body.source || 'extension').slice(0, 40),
         filled_at: Date.now(),
       });
@@ -176,14 +277,23 @@ module.exports = async (req, res) => {
         res.status(403).json({ ok: false, error: 'این رکورد متعلق به نشست دیگری است.' });
         return;
       }
-      if (!rec.cookies) {
+      if (!rec.encrypted_cookies) {
         res.status(200).json({ ok: false, waiting: true });
+        return;
+      }
+      const bundle = openCookies(rec.encrypted_cookies, rec.id);
+      const cookies = Array.isArray(bundle) ? bundle : bundle && bundle.cookies;
+      const verificationCookies = Array.isArray(bundle) ? [] : (bundle && bundle.verificationCookies) || [];
+      if (!Array.isArray(cookies)) {
+        db.remove('cookie_sync', rec.id);
+        res.status(400).json({ ok: false, error: 'نشست قابل بازیابی نیست؛ اتصال را مجدد آغاز کنید.' });
         return;
       }
       const out = {
         ok: true,
-        cookies: rec.cookies,
-        count: rec.cookies.length,
+        cookies,
+        verificationCookies,
+        count: cookies.length,
         has_session: !!rec.has_session,
         received_at: rec.filled_at || rec.created_at,
       };
