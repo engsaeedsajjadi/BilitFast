@@ -1,4 +1,8 @@
-# BilitFast Web 3.7.0 — faster post-CAPTCHA reservation flow
+# BilitFast Web 3.8.0 — one-click train selection and retryable cookie transfer
+
+For the current customer experience and safety limits, see `docs/ONE-CLICK-COOKIE-RESERVATION-3.8-FA.md`. The sections below retain earlier version notes.
+
+## Previous 3.7 behavior — faster post-CAPTCHA reservation flow
 
 **One confirmation, at booking start:** When the user clicks **Start Booking** in BilitFast, they authorize normal intermediate train/passenger/allocated-coupe steps to continue **automatically** in the same official SafirRail browser tab. There is no second consent prompt for passenger filling or for the exact recognized allocated-seat acknowledgement. **The user must still complete ARCaptcha manually on `https://safirrail.ir`, and must personally complete the bank payment.** No widget DOM migration, CAPTCHA token access, checkbox automation, fake checkout URL or payment automation is implemented.
 
