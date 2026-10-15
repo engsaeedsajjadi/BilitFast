@@ -28,7 +28,7 @@ check('extension stores short-lived passenger data',()=>assert(popup.includes('b
 check('passenger info only released to official origin',()=>assert(bg.includes('safirrail\\.ir\\/etrain')));
 check('passenger info expires',()=>assert(bg.includes('15*60*1000')));
 const helper=fs.readFileSync(path.join(root,'extension/safir-passenger-helper.js'),'utf8');
-check('passenger fill requires click',()=>assert(helper.includes("button.addEventListener('click'") && !helper.includes('void fillFromExtension();return;')));
-check('helper does not simulate captcha click, forge token or submit payment',()=>assert(!/\.click\(\)|form\.submit\(|arcaptcha-token[^\n]*\.value\s*=/.test(helper)));
-check('user reviews before submitting on official page',()=>assert(helper.includes('قطار و مبلغ را بررسی')));
+check('passenger fill starts without another prompt only after official passenger page',()=>assert(helper.includes('if(!filled && !filling)void fillFromExtension()') && !helper.includes("button.addEventListener('click'")));
+check('helper does not simulate captcha click, forge token or submit payment',()=>assert(!/arcaptcha-token[^\n]*\.value\s*=|\.requestSubmit\s*\(|\.submit\s*\(/.test(helper)));
+check('user is not asked to reconfirm standard booking steps',()=>assert(helper.includes('autoContinuePassenger') && helper.includes('autoConfirmAllocation')));
 console.log('ALL '+assertions+' official-browser-handoff assertions passed');

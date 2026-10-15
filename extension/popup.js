@@ -128,6 +128,8 @@ document.getElementById('start-booking').addEventListener('click', async () => {
     // the popup itself may close as soon as this tab navigates.
     await chrome.storage.session.set({ bilitPendingPassengerFill: {
       passengers: snapshot.passengers, phone: snapshot.phone,
+      selection:{srvc:handoff.fields.srvc||'',wagon:handoff.fields.wagon||''},
+      autoAdvance:true, // The initial Start Booking click authorizes normal intermediate progression.
       createdAt: Date.now(), origin: target.origin,
       siteTabId: tab.id
     }});

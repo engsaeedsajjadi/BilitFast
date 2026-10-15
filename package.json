@@ -13,8 +13,8 @@
     "prepare:customer": "node scripts/setup-selfhost.js",
     "preview:web": "node dev-server.js",
     "test:web-extension": "node test/web-extension-connect.test.js && node test/web-cookie-handoff.test.js && node test/single-extension-flow.test.js",
-    "test:official-handoff": "node test/browser-arcaptcha-handoff.test.js && node test/official-browser-flow-mock.test.js && node test/same-tab-worker.test.js && node test/official-checkout-confirmation.test.js && node test/integrated-human-reservation.test.js && node test/passenger-session-isolation.test.js && node test/arcaptcha-safety.test.js",
-    "test:integrated-human": "node test/integrated-human-reservation.test.js && node test/passenger-session-isolation.test.js && node test/arcaptcha-safety.test.js",
+    "test:official-handoff": "node test/browser-arcaptcha-handoff.test.js && node test/official-browser-flow-mock.test.js && node test/same-tab-worker.test.js && node test/official-checkout-confirmation.test.js && node test/integrated-human-reservation.test.js && node test/passenger-session-isolation.test.js && node test/arcaptcha-safety.test.js && node test/selection-confirm-safety.test.js && node test/auto-official-flow.test.js && node test/auto-official-helper-mock.test.js",
+    "test:integrated-human": "node test/integrated-human-reservation.test.js && node test/passenger-session-isolation.test.js && node test/arcaptcha-safety.test.js && node test/selection-confirm-safety.test.js && node test/auto-official-flow.test.js && node test/auto-official-helper-mock.test.js",
     "test:checkout": "node test/official-checkout-confirmation.test.js && node test/integrated-human-reservation.test.js && node test/official-browser-flow-mock.test.js"
   },
   "engines": {

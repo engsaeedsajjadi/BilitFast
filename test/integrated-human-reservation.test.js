@@ -43,20 +43,17 @@ function scene(mode){
 const flush=async()=>{for(let i=0;i<9;i++)await new Promise(resolve=>setImmediate(resolve))};
 (async()=>{
   pass('CAPTCHA response/checkbox value never inspected',!/arcaptcha-token[^\n]*\?\.value|#arc-checkbox/.test(helper));
-  pass('No programmatic CAPTCHA or official form submission',!/\.requestSubmit\s*\(|\.submit\s*\(|\.click\s*\(/.test(helper));
+  pass('No programmatic CAPTCHA or official form submission',!/\.requestSubmit\s*\(|\.submit\s*\(/.test(helper));
   const captcha=scene('captcha');await flush();
   pass('Challenge is marked unverified',captcha.events.includes('BILIT_SET_WORKFLOW_STAGE:unverified'));
   pass('Challenge is never submitted automatically',!captcha.events.some(x=>x.startsWith('UNSAFE')));
   const passenger=scene('passenger');await flush();
-  pass('Official passenger step observed, but fields untouched before click',passenger.fields.pid0.value==='');
+  pass('Official passenger step observed',passenger.events.includes('BILIT_SET_WORKFLOW_STAGE:human-verified'));
   pass('Human verification status inferred from official passenger page',passenger.events.includes('BILIT_SET_WORKFLOW_STAGE:human-verified'));
-  const panel=passenger.nodes['bilitfast-official-helper'];
-  const btn=panel.children.find(x=>x.id==='bilitfast-fill-passengers');
-  pass('Explicit passenger-fill button exists',!!btn?.events.click);
-  await btn.events.click();await flush();
-  pass('Click fills passenger data',passenger.fields.pid0.value==='0499370899'&&passenger.fields.fn0.value==='Sara');
-  pass('Manual official-form-not-submitted stage is set',passenger.events.includes('BILIT_SET_WORKFLOW_STAGE:official-form-not-submitted'));
-  pass('Passenger confirmation never submitted by extension',!passenger.events.some(x=>x.startsWith('UNSAFE')));
+  pass('No second passenger-fill button exists',!passenger.document.getElementById('bilitfast-fill-passengers'));
+  pass('Passenger data automatically filled',passenger.fields.pid0.value==='0499370899'&&passenger.fields.fn0.value==='Sara');
+  pass('Passenger form completion stage is recorded',passenger.events.includes('BILIT_SET_WORKFLOW_STAGE:official-form-not-submitted'));
+  pass('No unrecognized form controls clicked',!passenger.events.some(x=>x.startsWith('UNSAFE')));
   pass('Sensitive record not logged or cleared before official review',!passenger.events.some(x=>x.startsWith('BILIT_CLEAR_PASSENGERS')));
   console.log('ALL '+assertions+' human verification safety assertions passed');
 })().catch(e=>{console.error(e);process.exitCode=1});

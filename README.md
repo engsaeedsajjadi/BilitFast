@@ -1,3 +1,23 @@
+# BilitFast Web 3.7.0 — faster post-CAPTCHA reservation flow
+
+**One confirmation, at booking start:** When the user clicks **Start Booking** in BilitFast, they authorize normal intermediate train/passenger/allocated-coupe steps to continue **automatically** in the same official SafirRail browser tab. There is no second consent prompt for passenger filling or for the exact recognized allocated-seat acknowledgement. **The user must still complete ARCaptcha manually on `https://safirrail.ir`, and must personally complete the bank payment.** No widget DOM migration, CAPTCHA token access, checkbox automation, fake checkout URL or payment automation is implemented.
+
+After SafirRail genuinely advances past the human CAPTCHA to the passenger form, the extension fills the pre-entered passenger details, checks exact field values, and invokes only the unique official `chkForm()` control. Once the official page provides the *specific allocated wagon/coupe acknowledgement* and a unique recognized continuation control, the extension can check **that ordinary booking acknowledgement** and proceed using the site's own form. A contradictory service/wagon marker, edited passenger data, unknown page/control, expired request, or changing site HTML **stops automation**. Each step can be claimed at most once for the same tab and booking; the allocated-coupe claim is limited to two minutes after passenger confirmation. If SafirRail shows no verifiable booking identity or has different labels, manual handling is required.
+
+**Important:** The acknowledgement checkbox for assigned seating is NOT the ARCaptcha checkbox. The official bank page is never clicked by the extension. The current source has NOT been verified against SafirRail's live booking HTML or gateway; unit tests alone cannot guarantee a successful checkout.
+
+Details: `docs/AUTO-CHECKOUT-AFTER-HUMAN-CAPTCHA-2026-10-15-FA.md`. Run `npm run test:official-handoff` and `npm test`.
+
+---
+
+## BilitFast 3.6 — automatic passenger fill with human-only CAPTCHA
+
+The official `safirrail.ir` reservation is displayed **in the same Chrome/Edge tab**, with the BilitFast side panel. A web site cannot create an actual cross-origin WebView with the official widget under its own domain; a native shell could show a first-party page, but would be a separate desktop distribution.
+
+After SafirRail itself advances from the human-operated CAPTCHA to the passenger form, BilitFast fills matching blank fields from the previously supplied booking data **automatically**, with no second prompt. It never overwrites conflicting human edits. A tightly bounded intermediary train/coupe action may be clicked only when the official first-party DOM has exactly one explicit `type=button` control with an exact train/coupe confirmation label **and** the official page's `srvc`/`wagon` marker matches the previous BilitFast selection. Missing/ambiguous markers or controls require manual handling. No CAPTCHA checkbox/token access, challenge submit, passenger final submit, purchase confirmation or bank payment is automated. Live DOM selectors and checkout require authorized real-browser testing.
+
+See `docs/AUTO-PASSENGER-FIRST-PARTY-2026-10-15-FA.md` and `npm run test:official-handoff`.
+
 # BilitFast Web — first-party ARCaptcha review (extension 3.5.0)
 
 **Supported path:** official `https://safirrail.ir/etrain/` page in the **same browser tab**, with a BilitFast Chrome/Edge side panel and small first-party-page helper. ARCaptcha stays at SafirRail's origin; the user completes the checkbox and presses the site's own confirmation button. The extension does **not** read widget response values, click its controls, synthesize/replay CAPTCHA tokens, auto-submit the CAPTCHA form, or auto-submit passenger confirmation. Passenger fields are filled only after a separate user click.

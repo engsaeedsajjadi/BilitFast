@@ -17,17 +17,20 @@ test('Widget only detected as an element, never read token value',()=>{
  assert(helper.includes('.arcaptcha[data-site-key],input[name="arcaptcha-token"]'));
  assert(!/arcaptcha-token[^\n]*\.value|#arc-checkbox|widget\.arcaptcha\.ir|bowman\.arcaptcha\.ir/i.test(helper));
 });
-test('No official CAPTCHA/passenger form auto submit',()=>{
- for(const code of [helper,checkout])assert(!/\.requestSubmit\s*\(|\.submit\s*\(|\.click\s*\(/.test(code));
+test('No CAPTCHA bypass or direct synthetic form submission',()=>{
+ for(const code of [helper,checkout])assert(!/\.requestSubmit\s*\(|\.submit\s*\(/.test(code));
+ assert(!/arc-checkbox|arcaptcha-token[^\n]*\.value/.test(helper));
  assert(!popup.includes('auto-continue'));assert(!ui.includes('auto-continue'));
+ assert(read('extension/auto-official-flow.js').includes('challenge(doc)'));
 });
-test('Passenger completion requires direct user click',()=>{
- assert(helper.includes("button.addEventListener('click'"));
- assert(helper.includes('fillFromExtension();'));
- assert(!/if\(hasPassengerForm\(\).*fillFromExtension/.test(helper));
+test('Passenger completion automatically starts only after official form appears',()=>{
+ assert(helper.includes('if(!filled && !filling)void fillFromExtension()'));
+ assert(!helper.includes("button.addEventListener('click'"));
+ assert(helper.includes('if(hasChallenge())'));
 });
 test('Only first-party original HTTPS origin has content script',()=>{
  assert.deepEqual(manifest.content_scripts[0].matches,['https://safirrail.ir/etrain/*']);
+ assert(manifest.content_scripts[0].js.includes('selection-confirm.js'));
  assert(popup.includes("chrome.tabs.update(tab.id, {url:'https://safirrail.ir/etrain/index.php'}"));
 });
 test('Explicit first-party start action cannot carry CAPTCHA fields',()=>{

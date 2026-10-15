@@ -66,7 +66,8 @@ async function testHelper(){
  const chrome={runtime:{async sendMessage(data){calls.push(data.type);if(data.type==='BILIT_GET_PASSENGERS')return {ok:true,passengers:[{national_code:'0499370899',birth_day:'01',birth_month:'02',birth_year:'1370',first_name:'سارا',last_name:'حقی'}]};return {ok:true}}}};
  vm.runInNewContext(helperCode,{chrome,document,location:{protocol:'https:',hostname:'safirrail.ir',pathname:'/etrain/TresV.php'},Event:class{constructor(name,o){this.type=name;this.bubbles=o.bubbles}},MutationObserver:class{observe(){}},setInterval(){return 1},clearInterval(){}});
  await new Promise(r=>setImmediate(r));
- pass('passenger fields NOT filled without user click',fields.pid0.value===''&&fields.fn0.value==='');
+ for(let i=0;i<8;i++)await new Promise(r=>setImmediate(r));
+ pass('passenger fields auto-filled after official page appears',fields.pid0.value==='0499370899'&&fields.fn0.value==='سارا');
  pass('passenger data retained until confirmed page',!calls.includes('BILIT_CLEAR_PASSENGERS'));
 }
 (async()=>{

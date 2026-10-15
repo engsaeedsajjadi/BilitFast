@@ -17,7 +17,24 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   const url = sender && sender.url || '';
   if (!/^https:\/\/safirrail\.ir\/etrain\//.test(url) || !sender.tab || !message ||
-      !['BILIT_GET_PASSENGERS','BILIT_CLEAR_PASSENGERS'].includes(message.type)) return;
+      !['BILIT_GET_PASSENGERS','BILIT_CLEAR_PASSENGERS','BILIT_CLAIM_SELECTION'].includes(message.type)) return;
+  if(message.type==='BILIT_CLAIM_SELECTION'){
+    chrome.storage.session.get('bilitPendingPassengerFill').then(async value=>{
+      const record=value?.bilitPendingPassengerFill;
+      const kind=message.kind;
+      if(!record || record.siteTabId!==sender.tab.id || Date.now()-record.createdAt>15*60*1000 ||
+          !['train','coupe','passenger','allocation'].includes(kind) ||
+          ((kind==='train'||kind==='coupe') && !record.selection?.[kind==='train'?'srvc':'wagon']) ||
+          ((kind==='passenger'||kind==='allocation') && record.autoAdvance!==true) ||
+          (kind==='allocation' && (!record.confirmedSelections?.includes('passenger') ||
+            Date.now() - (record.passengerConfirmedAt || 0) > 120000)) ||
+          record.confirmedSelections?.includes(kind)) {reply({ok:false});return;}
+      record.confirmedSelections=[...(record.confirmedSelections||[]),kind];
+      if (kind==='passenger') record.passengerConfirmedAt=Date.now();
+      await chrome.storage.session.set({bilitPendingPassengerFill:record});
+      reply({ok:true});
+    }).catch(()=>reply({ok:false}));return true;
+  }
   if (message.type === 'BILIT_CLEAR_PASSENGERS') {
     chrome.storage.session.get('bilitPendingPassengerFill').then(async value=>{
       const record=value?.bilitPendingPassengerFill;
@@ -39,7 +56,9 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       chrome.storage.session.remove('bilitPendingPassengerFill').catch(() => {});
       reply({ok:false,passengers:[]});return;
     }
-    reply({ok:true, passengers:record.passengers, phone:record.phone || ''});
+    reply({ok:true, passengers:record.passengers, phone:record.phone || '',
+      selection:{srvc:record.selection?.srvc||'',wagon:record.selection?.wagon||''},
+      autoAdvance:record.autoAdvance===true,passengerSubmitted:record.confirmedSelections?.includes('passenger')===true});
   }).catch(() => reply({ok:false,passengers:[]}));
   return true;
 });
@@ -49,7 +68,8 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
 const WORKFLOW_STAGES = new Set([
   'idle','unverified','human-verified','official-form-not-submitted',
   'network-session-error','return-to-official-page','purchase-review',
-  'payment-page','manual-review','awaiting-human','passenger-form'
+  'payment-page','manual-review','awaiting-human','passenger-form',
+  'auto-passenger-submitting','auto-allocation-confirming'
 ]);
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if (!message || typeof message.type !== 'string') return;

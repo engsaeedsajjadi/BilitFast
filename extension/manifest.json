@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "BilitFast — اتصال سفیر ریل",
-  "version": "3.5.0",
-  "description": "تأیید انسانی در سایت رسمی با پنل BilitFast؛ فقط درج اطلاعات مسافر با اقدام کاربر، بدون ارسال خودکار فرم یا دخالت در ARCaptcha.",
+  "version": "3.7.0",
+  "description": "تأیید انسانی ARCaptcha در مبدأ رسمی، درج خودکار مسافران و تکمیل و ادامه خودکار مراحل رسمی مسافر و تخصیص کوپه با کنترل تطابق، بدون اتوماسیون کپچا یا پرداخت بانکی.",
   "permissions": [
     "cookies",
     "activeTab",
@@ -32,6 +32,8 @@
       ],
       "js": [
         "checkout-flow.js",
+        "selection-confirm.js",
+        "auto-official-flow.js",
         "safir-passenger-helper.js"
       ],
       "run_at": "document_idle"
