@@ -34,7 +34,7 @@ check('Permission pattern removes port while actual fetch keeps it', () => {
   assert.equal(target.permissionPattern('https://tickets.example.org:8443'),'https://tickets.example.org/*');
 });
 check('Manifest declares local development permission explicitly', () => {
-  assert.equal(manifest.version,'3.6.0');
+  assert.equal(manifest.version,'3.8.0');
   assert(manifest.optional_host_permissions.includes('http://127.0.0.1/*'));
   assert(manifest.optional_host_permissions.includes('http://localhost/*'));
   assert(manifest.optional_host_permissions.includes('https://*/*'));
@@ -56,7 +56,7 @@ check('Customer no longer needs to type deployment URL into popup', () => {
   assert(popupHtml.includes('target-origin.js'));
 });
 check('App instructions now describe one-tab active origin discovery', () => {
-  assert(loginHtml.includes('نشانی همین تب خودکار تشخیص داده می‌شود'));
+  assert(loginHtml.includes('مقصد خودکار شناسایی می‌شود'));
 });
 
 async function exercisePopup({activeUrl, responseMode, cookieMode}) {
@@ -67,7 +67,7 @@ async function exercisePopup({activeUrl, responseMode, cookieMode}) {
   const calls = [];
   const endpoint = 'http://127.0.0.1:3000';
   const chrome = {
-    tabs: { async query(){ return [{url:activeUrl}]; } },
+    tabs: { async query(){ return [{id:8,url:activeUrl}]; } },
     permissions: { async request(obj){ calls.push(['permission',obj]); return true; } },
   };
   const mockFetch = async (url,options) => {
@@ -81,7 +81,7 @@ async function exercisePopup({activeUrl, responseMode, cookieMode}) {
   const chromeReader = {collect:async()=>{calls.push(['readCookies']);if(cookieMode==='missing')throw new Error('No Safir session');
     return {cookies:['PHPSESSID=test-in-memory'],verificationCookies:[],host:'safirrail.ir'}; }};
   vm.runInNewContext(popupCode, {chrome,fetch:mockFetch,document:{getElementById(id){return elements.get(id)}},
-    BilitCookieReader:chromeReader,BilitTargetOrigin:target, BilitOfficialHandoff:require('../extension/official-handoff'), console}, {filename:'popup.js'});
+    BilitCookieReader:chromeReader,BilitTargetOrigin:target, BilitRouteBridgeControl:{install:async()=>{}}, BilitOfficialHandoff:require('../extension/official-handoff'), console}, {filename:'popup.js'});
   await new Promise(r=>setImmediate(r));
   await elements.get('send').listeners.click();
   return {calls, elements, endpoint};

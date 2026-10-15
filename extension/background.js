@@ -12,6 +12,54 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 
+// The selected-train click in the authorized BilitFast installation replaces
+// the second extension-popup click. Only the paired origin may invoke it.
+if (typeof importScripts === 'function') importScripts('route-bridge-control.js');
+const pendingRouteStarts = new Set();
+chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if (!message || !['BILIT_PREPARE_PANEL','BILIT_START_FROM_SELECTION'].includes(message.type)) return;
+  const tab=sender?.tab;
+  (async()=>{
+    const origin=(await chrome.storage.local.get('bilitTrustedOrigin'))?.bilitTrustedOrigin;
+    if (!origin || !tab || !BilitRouteBridgeControl.matches(origin,sender.url||tab.url))
+      throw new Error('ابتدا یک‌بار اتصال امن افزونه را از تب همین BilitFast انجام دهید.');
+    if (message.type==='BILIT_PREPARE_PANEL') {
+      if (!chrome.sidePanel?.open) throw new Error('مرورگر پنل کناری را پشتیبانی نمی‌کند.');
+      await chrome.sidePanel.open({windowId:tab.windowId});
+      await chrome.storage.session.set({bilitSelectionPanelReady:{tabId:tab.id,at:Date.now()}});
+      reply({ok:true});return;
+    }
+    const panel=(await chrome.storage.session.get('bilitSelectionPanelReady'))?.bilitSelectionPanelReady;
+    if (!panel || panel.tabId!==tab.id || Date.now()-panel.at>180000)
+      throw new Error('پنل BilitFast برای همین انتخاب فعال نیست؛ قطار را دوباره انتخاب کنید.');
+    if(pendingRouteStarts.has(tab.id)) throw new Error('رزرو قبلاً در حال شروع است.');
+    pendingRouteStarts.add(tab.id);
+    try {
+      const snapshot=message.snapshot;
+      const handoff=BilitOfficialHandoff.validate(snapshot?.handoff);
+      const passengers=snapshot?.passengers;
+      if (!Array.isArray(passengers) || !passengers.length || passengers.length>6 ||
+          passengers.some(p=>!p || typeof p!=='object' ||
+            !/^[0-9]{8,12}$/.test(String(p.national_code||'')) ||
+            !String(p.first_name||'').trim() || !String(p.last_name||'').trim()))
+        throw new Error('اطلاعات مسافران ناقص است؛ ابتدا فرم BilitFast را کامل کنید.');
+      const stored={passengers,phone:String(snapshot.phone||'').slice(0,24),
+        selection:{srvc:handoff.fields.srvc||'',wagon:handoff.fields.wagon||''},
+        autoAdvance:true,createdAt:Date.now(),origin,siteTabId:tab.id};
+      await chrome.storage.session.set({
+        bilitPendingPassengerFill:stored,
+        bilitWorkflowStatus:{stage:'awaiting-human',at:Date.now()},
+        bilitOneTabHandoff:{tabId:tab.id,origin,createdAt:Date.now(),handoff}
+      });
+      // Same tab, official origin. Browser supplies its own first-party cookies.
+      await chrome.tabs.update(tab.id,{url:'https://safirrail.ir/etrain/index.php'});
+      await chrome.storage.session.remove('bilitSelectionPanelReady');
+      reply({ok:true});
+    } finally {pendingRouteStarts.delete(tab.id);}
+  })().catch(e=>reply({ok:false,error:String(e?.message||'شروع رزرو ناموفق بود.').slice(0,200)}));
+  return true;
+});
+
 // Only our content script on the REAL SafirRail reservation pages can request
 // the short-lived passenger data. No cookies, ARCaptcha tokens or bank data.
 chrome.runtime.onMessage.addListener((message, sender, reply) => {

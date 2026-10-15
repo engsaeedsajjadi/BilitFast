@@ -496,8 +496,8 @@
            tab. It never auto-clicks the widget or replays its token. -->
       <div id="reserve-arcaptcha" style="display:none; padding:16px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc">
         <h4 style="margin:0 0 8px">تأیید انسانی در فضای کاری BilitFast</h4>
-        <p class="muted small">برای حفظ نشست و پذیرش کپچا، چک‌باکس واقعی سفیر ریل در مبدأ رسمی آن نمایش داده می‌شود، اما پنل BilitFast در کنار صفحه رزرو داخل همان پنجره مرورگر باز می‌ماند. از افزونه «شروع رزرو در فضای کاری BilitFast» را بزنید؛ سپس خودتان چک‌باکس را تأیید کنید. اطلاعات مسافران در فرم رسمی تکمیل می‌شود و در صورت انتخاب ادامه خودکار، پس از تأیید معتبر به مرحله بعد می‌رود.</p>
-        <button class="btn btn-primary" id="btn-open-arcaptcha" type="button">تأیید انسانی در همین تب (با افزونه)</button>
+        <p class="muted small">برای حفظ نشست و پذیرش کپچا، چک‌باکس واقعی سفیر ریل در مبدأ رسمی آن نمایش داده می‌شود، اما پنل BilitFast در کنار صفحه رزرو داخل همان پنجره مرورگر باز می‌ماند. پس از انتخاب قطار، پنل BilitFast به‌صورت خودکار آماده می‌شود؛ سپس خودتان چک‌باکس را تأیید کنید. اطلاعات مسافران در فرم رسمی تکمیل می‌شود و در صورت انتخاب ادامه خودکار، پس از تأیید معتبر به مرحله بعد می‌رود.</p>
+        <details style="margin-top:10px"><summary class="muted small" style="cursor:pointer">اگر مرحله تأیید خودکار باز نشد</summary><button class="btn btn-sm" id="btn-open-arcaptcha" type="button">راهنمای اتصال</button></details>
         <p class="muted small" id="arcaptcha-handoff-status" aria-live="polite" style="margin-top:10px">ابتدا وارد حساب خود در تب سفیر ریل شوید. افزونه را از تب BilitFast باز کنید.</p>
         <pre id="bf-browser-handoff" style="display:none" aria-hidden="true"></pre>
       </div>
@@ -1578,7 +1578,7 @@
         <td>${esc(t['قیمت'])}</td>
         <td>${esc(t['نوع کوپه'])}</td>
         <td>${esc(t['ظرفیت'])}</td>
-        <td><button class="btn btn-sm btn-primary" data-train="${esc(t['شماره قطار'])}">انتخاب</button></td>
+        <td><button class="btn btn-sm btn-primary" data-train="${esc(t['شماره قطار'])}">انتخاب و تأیید ربات</button></td>
       </tr>`).join('');
   }
 
@@ -1683,8 +1683,8 @@
     if (!el) return;
     const present = BilitFast.hasSessionCookie(BilitFast.getCookies());
     el.textContent = present
-      ? '✓ کوکی نشست رزرو در همین تب موجود است؛ پذیرش توسط سفیر ریل هنگام درخواست رزرو مشخص می‌شود.'
-      : '⚠ کوکی نشست در این تب موجود نیست. ابتدا از همین تب به «اتصال سفیر ریل» بروید و پس از انتقال، به مسیر برگردید.';
+      ? '✓ نشست دریافت‌شده موجود است؛ اعتبار آن هنگام رزرو مشخص می‌شود.'
+      : '⚠ نشست سفیر ریل متصل نیست؛ برای اتصال از همین تب اقدام کنید.';
     return present;
   }
 
@@ -1932,7 +1932,7 @@
       typeof payload.fields.srvc === 'string' && payload.fields.srvc.length > 0;
     $('bf-browser-handoff').textContent = valid ? JSON.stringify(payload) : '';
     $('arcaptcha-handoff-status').textContent = valid
-      ? 'فرم قطار آماده است. روی آیکون افزونه BilitFast بزنید و «شروع تأیید در همین تب» را انتخاب کنید. صفحه رسمی در همین تب بارگذاری می‌شود و پنل BilitFast باز می‌ماند.'
+      ? 'قطار انتخاب شد؛ فضای تأیید انسانی در همین تب باز می‌شود. چک‌باکس را شخصاً تأیید کنید.'
       : 'فرم شروع رزرو ناقص است. قطار را مجدداً انتخاب کنید؛ اطلاعات ساختگی ارسال نمی‌شود.';
     $('btn-open-arcaptcha').disabled = !valid;
     setStatus('در انتظار تأیید انسانی روی سایت رسمی', 'orange');
@@ -1941,8 +1941,8 @@
 
   $('btn-open-arcaptcha').addEventListener('click', () => {
     const status = $('arcaptcha-handoff-status');
-    status.textContent = 'در همین تب روی آیکون افزونه BilitFast کلیک کنید؛ گزینه «شروع تأیید در همین تب + پنل BilitFast» را بزنید. اگر آیکون را نمی‌بینید از منوی افزونه‌ها (پازل) آن را Pin کنید.';
-    setStatus('منتظر بازکردن افزونه BilitFast', 'orange');
+    status.textContent = 'در صورت فعال‌نبودن شروع خودکار، افزونه BilitFast را باز کنید و قسمت «شروع رزرو خودکار نبود؟» را بررسی کنید.';
+    setStatus('راهنمای بازیابی اتصال افزونه', 'orange');
   });
 
   function hideReserveAll() {

@@ -1,4 +1,4 @@
-/* global chrome, BilitCookieReader, BilitTargetOrigin, BilitOfficialHandoff */
+/* global chrome, BilitCookieReader, BilitTargetOrigin, BilitOfficialHandoff, BilitRouteBridgeControl */
 'use strict';
 // One customer-facing flow: open BilitFast web tab -> click extension -> enter 6-digit PIN.
 // Never read a saved / manually typed target host and never upload automatically.
@@ -65,7 +65,17 @@ sendBtn.addEventListener('click', async () => {
     const { cookies, verificationCookies, host } = await BilitCookieReader.collect(chrome);
     await readJson(url, { action: 'push', code: codeInput.value, cookies,
       verificationCookies, source: 'extension', site: host }, 'تحویل نشست');
-    show('✓ نشست تحویل داده شد. تأیید واقعی ورود را در تب BilitFast ببینید.', 'ok');
+    // Enable direct row-selection handoff only AFTER the user authorizes this
+    // exact installation and explicitly sends the cookies to it.
+    const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+    try {
+      await BilitRouteBridgeControl.install(chrome, target.origin, tab?.id);
+      show('✓ نشست منتقل شد. حالا قطار را در BilitFast انتخاب کنید.', 'ok');
+    } catch (_) {
+      // Cookie upload ALREADY SUCCEEDED. Do not tell the user to re-enter
+      // the PIN for an unrelated, optional one-click UI setup failure.
+      show('✓ نشست منتقل شد، اما راه‌اندازی خودکار دکمه انتخاب قطار فعال نشد. افزونه را دوباره بارگذاری کنید؛ کد دوم لازم نیست.', 'ok');
+    }
     codeInput.value = '';
   } catch (error) { show((error && error.message) || 'اتصال انجام نشد.', 'err'); }
   finally { sendBtn.disabled = false; }

@@ -78,15 +78,22 @@ function call(action, fields = {}) {
       assert.equal(pushed.has_session, true);
     });
     const received = await call('poll', {nonce: pair.nonce});
-    check('Same browser-session nonce retrieves the complete handoff exactly once', () => {
+    check('Same browser-session nonce retrieves the complete handoff', () => {
       assert.equal(received.ok, true);
       assert.deepEqual(received.cookies, [synthetic, 'ui_lang=fa']);
       assert.deepEqual(received.verificationCookies, ['PHPSESSID=FAKE_GENERAL_TEST']);
     });
     const replay = await call('poll', {nonce:pair.nonce});
-    check('A consumed transfer cannot be replayed', () => {
-      assert.equal(replay.expired, true);
-      assert.equal(replay.ok, false);
+    check('Lost polling response can be retried without another PIN', () => {
+      assert.equal(replay.ok, true);
+      assert.deepEqual(replay.cookies, received.cookies);
+    });
+    const ack = await call('ack',{nonce:pair.nonce});
+    check('Stored-cookie acknowledgement removes the delivery record', () => assert.equal(ack.acknowledged,true));
+    const afterAck = await call('poll', {nonce:pair.nonce});
+    check('Acknowledged transfer cannot be replayed', () => {
+      assert.equal(afterAck.expired,true);
+      assert.equal(afterAck.ok,false);
     });
     const wrong = await call('push', {code:'000000', cookies:[synthetic]});
     check('Unpaired code is rejected', () => assert.equal(wrong.ok, false));

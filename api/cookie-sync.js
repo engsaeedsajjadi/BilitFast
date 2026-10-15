@@ -196,10 +196,9 @@ module.exports = async (req, res) => {
 
     /* ۱) ساخت کد جفت‌سازی یک‌بارمصرف (از سمت برنامه) */
     if (action === 'pair') {
-      // Only one pending PIN per owner, so a stale popup cannot race with a new pairing.
-      for (const old of db.find('cookie_sync', r => r.owner === owner && !r.encrypted_cookies)) {
-        db.remove('cookie_sync', old.id);
-      }
+      // Do not invalidate another still-live PIN merely because the user
+      // reopens the connection page. Concurrent older PINs expire normally;
+      // each remains one-time and is bound to the owner's nonce.
       const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
       const nonce = crypto.randomBytes(24).toString('base64url');
       db.insert('cookie_sync', {
@@ -297,10 +296,23 @@ module.exports = async (req, res) => {
         has_session: !!rec.has_session,
         received_at: rec.filled_at || rec.created_at,
       };
-      // یک‌بارمصرف واقعی: بلافاصله حذف می‌شود
-      db.remove('cookie_sync', rec.id);
+      // Delivery is retriable until the receiving browser confirms persistent
+      // tab-local storage with 'ack'. Dropping a polling response must not
+      // force the user to paste a second PIN. The record remains AES-GCM
+      // encrypted at rest and still expires after five minutes.
       res.status(200).json(out);
       return;
+    }
+
+    if (action === 'ack') {
+      const nonce = String(body.nonce || '');
+      if (!nonce) return res.status(400).json({ok:false,error:'nonce الزامی است.'});
+      const record = db.find('cookie_sync', r => r.nonce_hash === hashNonce(nonce) &&
+        r.owner === owner && !!r.encrypted_cookies &&
+        Date.now()-(r.created_at||0) <= COOKIE_TTL_MS)[0];
+      if (!record) return res.status(200).json({ok:false,expired:true});
+      db.remove('cookie_sync',record.id);
+      return res.status(200).json({ok:true,acknowledged:true});
     }
 
     res.status(400).json({ ok: false, error: 'اکشن ناشناخته: ' + action });

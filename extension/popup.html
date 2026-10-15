@@ -8,22 +8,18 @@ button{width:100%;background:#1d4ed8;color:white;padding:11px;border:0;border-ra
 button:disabled{background:#94a3b8}#endpoint{font-size:11px;line-height:1.8;margin:10px 0;padding:8px;background:#e2e8f0;border-radius:7px;overflow-wrap:anywhere}
 #msg{font-size:12px;line-height:1.9;margin-top:10px}.ok{color:#166534}.err{color:#991b1b}
 </style></head><body>
-<h3>🚆 اتصال سفیر ریل به BilitFast</h3>
-<ol><li>در همین مرورگر به سامانه رزرو سفیر ریل وارد شوید.</li>
-<li>به <b>تب وب‌سایت BilitFast خودتان</b> برگردید و کد ۶ رقمی اتصال را بگیرید.</li>
-<li>همان‌جا افزونه را باز کنید، کد را وارد کنید و اتصال را تأیید کنید.</li></ol>
+<h3>🚆 اتصال سفیر ریل</h3>
+<p>یک‌بار به سفیر ریل وارد شوید و در BilitFast کد اتصال را بگیرید. سپس کد را همین‌جا وارد کنید.</p>
 <div id="endpoint" aria-live="polite">در حال شناسایی تب BilitFast…</div>
 <label for="code" style="font-size:12px">کد شش‌رقمی اتصال</label>
 <input id="code" type="text" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="------">
 <button id="send" type="button">تأیید و ارسال نشست به همین BilitFast</button>
-<hr style="border:0;border-top:1px solid #cbd5e1;margin-top:14px">
-<p><b>هنگام نمایش ARCaptcha در BilitFast:</b> در تب مسیر BilitFast دکمه زیر را بزنید؛ پنل BilitFast باز می‌ماند و همین تب به صفحه رسمی می‌رود. تأیید «من ربات نیستم» در همان مرورگر توسط خودتان انجام می‌شود.</p>
-<p class="muted" style="color:#475569">هیچ فرم رسمی بعد از نمایش ARCaptcha خودکار ارسال نمی‌شود. تأیید ضدربات و دکمه تأیید نهایی را خودتان در سایت رسمی بزنید.</p>
-<button id="start-booking" type="button">شروع تأیید در همین تب + پنل BilitFast</button>
-<p class="muted" style="color:#475569">تیک «من ربات نیستم» فقط توسط شما زده می‌شود. پس از تأیید، فرم مسافر در صفحه رسمی با کمک افزونه پر می‌شود؛ قبل از ادامه اطلاعات را بررسی کنید.</p>
-<div id="msg" role="status" aria-live="polite"></div>
+<details style="margin-top:12px"><summary style="font-size:12px;cursor:pointer">شروع رزرو خودکار نبود؟</summary>
+<p>پس از انتخاب قطار در BilitFast، مرحله انسانی باید خودکار آغاز شود. این دکمه فقط برای بازیابی اتصال در نسخه‌های قدیمی است.</p>
+<button id="start-booking" type="button">شروع رزرو از همین تب (بازیابی)</button>
+</details>
 <script src="target-origin.js"></script>
 <script src="session-cookies.js"></script>
 <script src="official-handoff.js"></script>
-<script src="popup.js"></script>
+<script src="route-bridge-control.js"></script><script src="popup.js"></script>
 </body></html>

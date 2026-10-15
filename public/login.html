@@ -32,7 +32,7 @@
 <ol class="connect-steps">
 <li>در Chrome یا Edge، <a href="https://safirrail.ir/etrain/index.php" target="_blank" rel="noopener noreferrer">بخش رزرو سفیر ریل</a> را باز کنید و <strong>به حساب خود وارد شوید</strong>. افزونه تب سایت را به‌صورت خودکار پیدا می‌کند.</li>
 <li>اگر افزونه را نصب نکرده‌اید، <a href="extension-help.html">راهنمای نصب افزونه</a> را ببینید (فقط بار اول).</li>
-<li>دکمه زیر را بزنید، سپس کد نمایش‌داده‌شده را در افزونه <strong>از تب همین BilitFast</strong> وارد کنید. نتیجه انتقال و نتیجه تأیید ورود جداگانه نمایش داده می‌شود.</li>
+<li>دکمه «اتصال» را بزنید و کد را فقط یک‌بار در افزونه همین تب وارد کنید. با دریافت نشست، انتقال خودکار تأیید می‌شود و می‌توانید قطار را انتخاب کنید.</li>
 </ol>
 <div id="conn-state" class="connect-state" data-state="idle" role="status" aria-live="polite">در انتظار اتصال</div>
 <div class="connect-buttons"><button class="btn btn-primary btn-lg" type="button" id="btn-ext-sync">🔑 اتصال به سفیر ریل</button></div>
@@ -40,11 +40,11 @@
 <p style="margin:12px 0 4px">کد یک‌بارمصرف اتصال (اعتبار: ۲ دقیقه):</p>
 <div class="connect-code" id="pair-code" aria-label="کد شش رقمی"></div>
 <div class="connect-buttons"><button class="btn btn-sm" type="button" id="copy-pair-code">📋 کپی کد</button><span id="pair-timer" class="connect-muted"></span></div>
-<p>روی افزونه BilitFast در همان پروفایل مرورگر کلیک کنید، فقط کد را وارد نمایید؛ نشانی همین تب خودکار تشخیص داده می‌شود. نتیجه در این صفحه به‌صورت خودکار نمایش داده می‌شود.</p>
+<p>افزونه را از همین تب باز کنید، کد را یک‌بار وارد کنید و ارسال نشست را بزنید. مقصد خودکار شناسایی می‌شود.</p>
 </div>
 <div id="connect-result" class="connect-state" hidden role="alert" aria-live="polite"></div>
 <div class="connect-buttons"><button type="button" class="btn btn-primary" id="return-to-route" hidden>↩ بازگشت به همین مسیر</button></div>
-<p class="connect-muted">کوکی نشست با تأیید شما و از طریق HTTPS به سرور BilitFast متعلق به همین آژانس فرستاده می‌شود؛ این سرور باید مورد اعتماد شما باشد. دریافت کوکی، تأیید ورود عمومی و تأیید دسترسی رزرو سه وضعیت متفاوت هستند؛ تا وقتی پاسخ واقعی بخش رزرو تأیید نشود، برنامه رزرو را تأییدشده اعلام نمی‌کند. در صورت انقضای نشست کافی است دوباره همین مسیر را انجام دهید.</p>
+<details class="connect-muted"><summary>حریم خصوصی و وضعیت نشست</summary><p>نشست با موافقت شما به سرور همین آژانس ارسال می‌شود. دریافت نشست با تأیید ورود و مجوز رزرو یکسان نیست؛ نتیجه قطعی را سایت رسمی مشخص می‌کند.</p></details>
 </section></main>
 <script src="secure-store.js"></script>
 <script src="jalaali.min.js"></script>

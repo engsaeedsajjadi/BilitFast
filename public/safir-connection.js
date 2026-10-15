@@ -88,7 +88,7 @@
         const data = await BilitFast.authFetch('/api/cookie-sync', { action: 'poll', nonce: pair.nonce });
         if (ticket !== sequence) return;
         if (data && data.ok && Array.isArray(data.cookies) && data.cookies.length) {
-          // Verify with the real service BEFORE persisting the imported session.
+          // Verify first when available, but do not discard inconclusive transfers.
           show('کوکی منتقل شد؛ در حال تأیید ورود واقعی در سفیر ریل…', 'working');
           clearInterval(running); running = null;
           let v;
@@ -112,6 +112,10 @@
             end();
             return;
           }
+          // Ack only after successful tab-local storage. A dropped poll
+          // response or blocked storage can now retry the SAME PIN.
+          try { await BilitFast.authFetch('/api/cookie-sync', {action:'ack',nonce:pair.nonce}); }
+          catch (_) { /* record expires server-side; cookie already stored */ }
           const returning = new URLSearchParams(window.location.search).get('return');
           const safeReturn = returning && /^route\.html\?id=[1-9][0-9]*$/.test(returning);
           if (v && v.ok && v.valid && v.bookingVerified) {
@@ -156,8 +160,23 @@
     await poll();
   }
   copyBtn.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(codeEl.textContent); copyBtn.textContent = 'کپی شد ✓'; }
-    catch (_) { copyBtn.textContent = 'کد را از بالا انتخاب و کپی کنید'; }
+    const value = codeEl.textContent.trim();
+    if (!/^\d{6}$/.test(value)) return;
+    let copied = false;
+    try { await navigator.clipboard.writeText(value); copied = true; }
+    catch (_) {
+      // Older/insecure browser contexts may block Clipboard API. Select the
+      // text once as a manual fallback; never falsely report successful copy.
+      try {
+        const selection = window.getSelection?.();
+        const range = document.createRange?.();
+        if (selection && range) {
+          range.selectNodeContents(codeEl);
+          selection.removeAllRanges();selection.addRange(range);
+        }
+      } catch (_) { /* best effort, leave readable code on screen */ }
+    }
+    copyBtn.textContent = copied ? 'کد کپی شد ✓' : 'کد انتخاب شد؛ Ctrl+C بزنید';
   });
   btn.addEventListener('click', start);
   window.addEventListener('pagehide', () => { sequence++; end(); });

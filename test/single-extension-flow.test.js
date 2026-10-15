@@ -35,6 +35,7 @@ function runtime(verified, options = {}) {
       calls.push(payload.action);
       if (payload.action === 'pair') return {ok:true,code:'123456',nonce:'SECRET-NONCE',expiresInMs:120000};
       if (payload.action === 'poll') return {ok:true,cookies:options.noSession?['lang=fa']:['PHPSESSID=TEST','lang=fa']};
+      if (payload.action === 'ack') return {ok:true,acknowledged:true};
       if (payload.action === 'verify') {
         verificationPayloads.push(payload);
         reads.push(saved); // Must not have persisted prior to verification.
@@ -63,7 +64,7 @@ function runtime(verified, options = {}) {
   await test('Successful pairing verifies BEFORE persisting the session', async () => {
     const app=runtime(true);
     await app.start();
-    assert(app.calls.includes('pair') && app.calls.includes('poll') && app.calls.includes('verify'));
+    assert(app.calls.includes('pair') && app.calls.includes('poll') && app.calls.includes('verify') && app.calls.includes('ack'));
     assert.equal(app.reads[0], null);
     assert(app.saved && app.saved.includes('PHPSESSID=TEST'));
     assert.equal(app.el('conn-state').dataset.state,'ok');
