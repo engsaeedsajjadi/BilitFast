@@ -34,7 +34,7 @@ check('Permission pattern removes port while actual fetch keeps it', () => {
   assert.equal(target.permissionPattern('https://tickets.example.org:8443'),'https://tickets.example.org/*');
 });
 check('Manifest declares local development permission explicitly', () => {
-  assert.equal(manifest.version,'3.4.1');
+  assert.equal(manifest.version,'3.5.0');
   assert(manifest.optional_host_permissions.includes('http://127.0.0.1/*'));
   assert(manifest.optional_host_permissions.includes('http://localhost/*'));
   assert(manifest.optional_host_permissions.includes('https://*/*'));

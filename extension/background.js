@@ -39,49 +39,40 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       chrome.storage.session.remove('bilitPendingPassengerFill').catch(() => {});
       reply({ok:false,passengers:[]});return;
     }
-    reply({ok:true, passengers:record.passengers, phone:record.phone || '', autoContinue:!!record.autoContinue});
+    reply({ok:true, passengers:record.passengers, phone:record.phone || ''});
   }).catch(() => reply({ok:false,passengers:[]}));
   return true;
 });
 
 // Side-panel state consists of stage labels only. No personal data, cookies,
 // ARCaptcha tokens or hidden form values are exposed in the workspace.
-const CLAIM_LOCKS = new Set();
-const WORKFLOW_STAGES = new Set(['awaiting-human','captcha-confirmed','passenger-form',
-  'passengers-filled','passenger-submitted','purchase-review','manual-review','payment-page','idle']);
+const WORKFLOW_STAGES = new Set([
+  'idle','unverified','human-verified','official-form-not-submitted',
+  'network-session-error','return-to-official-page','purchase-review',
+  'payment-page','manual-review','awaiting-human','passenger-form'
+]);
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if (!message || typeof message.type !== 'string') return;
-  const official = /^https:\/\/safirrail\.ir\/etrain\//.test(sender.url || '');
-  const panel = sender.id === chrome.runtime.id &&
+  const official=/^https:\/\/safirrail\.ir\/etrain\//.test(sender.url || '');
+  const panel=sender.id===chrome.runtime.id &&
     (sender.url || '').startsWith(chrome.runtime.getURL('workspace.html'));
-  if (message.type === 'BILIT_WORKSPACE_STATUS' && panel) {
-    chrome.storage.session.get('bilitWorkflowStatus').then(obj => {
-      const data=obj?.bilitWorkflowStatus;
-      reply({stage:data && WORKFLOW_STAGES.has(data.stage) ? data.stage : 'idle'});
-    }).catch(()=>reply({stage:'idle'}));
+  if(message.type==='BILIT_WORKSPACE_STATUS'&&panel){
+    chrome.storage.session.get('bilitWorkflowStatus').then(obj=>{
+      const value=obj?.bilitWorkflowStatus;
+      reply({stage:value&&WORKFLOW_STAGES.has(value.stage)?value.stage:'idle'});
+    }).catch(()=>reply({stage:'network-session-error'}));
     return true;
   }
-  if (message.type === 'BILIT_SET_WORKFLOW_STAGE' && official &&
-      sender.tab && WORKFLOW_STAGES.has(message.stage)) {
-    chrome.storage.session.set({bilitWorkflowStatus:{stage:message.stage,at:Date.now()}})
-      .then(()=>reply({ok:true})).catch(()=>reply({ok:false}));
-    return true;
-  }
-  if (message.type === 'BILIT_CLAIM_WORKFLOW_STEP' && official && sender.tab &&
-      (message.step === 'captcha' || message.step === 'passenger')) {
-    const key = 'bilitPendingPassengerFill';
-    const lockKey = String(sender.tab.id)+':'+message.step;
-    if (CLAIM_LOCKS.has(lockKey)) {reply({ok:false});return true;}
-    CLAIM_LOCKS.add(lockKey);
-    chrome.storage.session.get(key).then(async data=>{
-      const value=data[key];
-      if (!value || !Array.isArray(value.passengers) ||
-          (value.siteTabId && value.siteTabId !== sender.tab.id) ||
-          Date.now()-value.createdAt > 15*60*1000 || !value.autoContinue ||
-          value[message.step+'Submitted']) return reply({ok:false});
-      await chrome.storage.session.set({[key]:{...value,[message.step+'Submitted']:true}});
+  if(message.type==='BILIT_SET_WORKFLOW_STAGE'&&official&&sender.tab&&
+     WORKFLOW_STAGES.has(message.stage)){
+    chrome.storage.session.get('bilitPendingPassengerFill').then(async value=>{
+      const record=value?.bilitPendingPassengerFill;
+      if(!record || record.siteTabId!==sender.tab.id || Date.now()-record.createdAt>15*60*1000){
+        reply({ok:false});return;
+      }
+      await chrome.storage.session.set({bilitWorkflowStatus:{stage:message.stage,at:Date.now()}});
       reply({ok:true});
-    }).catch(()=>reply({ok:false})).finally(()=>CLAIM_LOCKS.delete(lockKey));
+    }).catch(()=>reply({ok:false}));
     return true;
   }
 });
@@ -96,6 +87,18 @@ chrome.tabs?.onUpdated?.addListener?.((tabId, changes, tab) => {
   if (changes.status !== 'complete' || !tab?.url) return;
   let page;
   try { page = new URL(tab.url); } catch (_) { return; }
+  // A reservation should never silently continue if the user leaves the
+  // official origin. A bank redirect is handled separately below.
+  if (!(page.protocol === 'https:' && page.hostname === 'safirrail.ir') &&
+      !(page.protocol === 'https:' && page.hostname === 'pec.shaparak.ir' &&
+        /^\/NewIPG\//i.test(page.pathname))) {
+    void chrome.storage.session.get('bilitPendingPassengerFill').then(async data=>{
+      const record=data?.bilitPendingPassengerFill;
+      if(record && record.siteTabId===tabId && Date.now()-record.createdAt<15*60*1000)
+        await chrome.storage.session.set({bilitWorkflowStatus:{stage:'return-to-official-page',at:Date.now()}});
+    }).catch(()=>{});
+    return;
+  }
   if (page.protocol === 'https:' && page.hostname === 'pec.shaparak.ir' &&
       /^\/NewIPG\//i.test(page.pathname)) {
     // Observe only the legitimate bank hostname/path. Never log/retain Token.
@@ -146,7 +149,7 @@ chrome.tabs?.onUpdated?.addListener?.((tabId, changes, tab) => {
   })().catch(async err => {
     await chrome.storage.session.remove('bilitOneTabHandoff').catch(()=>{});
     await chrome.storage.session.set({
-      bilitWorkflowStatus:{stage:'manual-review',at:Date.now()},
+      bilitWorkflowStatus:{stage:'network-session-error',at:Date.now()},
       bilitWorkflowError:String(err?.message||'خطا در شروع رزرو رسمی').slice(0,200)
     }).catch(()=>{});
   }).finally(()=>oneTabClaims.delete(tabId));

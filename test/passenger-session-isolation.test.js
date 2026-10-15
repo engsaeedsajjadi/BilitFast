@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const vm=require('node:vm');
 const content=fs.readFileSync(path.join(__dirname,'../extension/background.js'),'utf8');
 const actions=[];const sessions={bilitPendingPassengerFill:{siteTabId:77,createdAt:Date.now(),
-  passengers:[{first_name:'test'}],autoContinue:true}};
+  passengers:[{first_name:'test'}]}};
 const extensionOrigin='chrome-extension://bilitfast-id/';
 const chrome={
   runtime:{id:'bilitfast-id',getURL(name){return extensionOrigin+name;},
@@ -34,16 +34,14 @@ let count=0;function pass(msg,result){assert(result,msg);count++;console.log('PA
   pass('Another Safir tab cannot clear passenger workflow',result.ok===false&&!!sessions.bilitPendingPassengerFill);
   result=await send('BILIT_GET_PASSENGERS',77);
   pass('Selected official tab receives passenger details',result.ok===true&&result.passengers.length===1);
-  result=await send('BILIT_CLAIM_WORKFLOW_STEP',88,undefined,{step:'captcha'});
-  pass('Another tab cannot claim CAPTCHA submission',result.ok===false);
-  result=await send('BILIT_CLAIM_WORKFLOW_STEP',77,undefined,{step:'captcha'});
-  pass('Selected tab can claim CAPTCHA submission',result.ok===true);
-  result=await send('BILIT_CLAIM_WORKFLOW_STEP',77,undefined,{step:'captcha'});
-  pass('CAPTCHA submission cannot be replayed',result.ok===false);
-  result=await send('BILIT_SET_WORKFLOW_STAGE',77,undefined,{stage:'captcha-confirmed'});
-  pass('Only whitelisted workspace stages accepted',result.ok===true);
+  result=await send('BILIT_SET_WORKFLOW_STAGE',88,undefined,{stage:'human-verified'});
+  pass('Another tab cannot forge human-verified status',result.ok===false);
+  result=await send('BILIT_SET_WORKFLOW_STAGE',77,undefined,{stage:'human-verified'});
+  pass('Selected official tab can report official passenger page',result.ok===true);
+  result=await send('BILIT_SET_WORKFLOW_STAGE',77,undefined,{stage:'arbitrary-invalid-stage'});
+  pass('Unknown status is not accepted',result===null);
   result=await send('BILIT_WORKSPACE_STATUS',0,extensionOrigin+'workspace.html');
-  pass('Workspace receives only status, no session or passenger PII',result.stage==='captcha-confirmed'&&!result.passengers&&!result.cookies);
+  pass('Workspace receives only status, no session or passenger PII',result.stage==='human-verified'&&!result.passengers&&!result.cookies);
   result=await send('BILIT_CLEAR_PASSENGERS',77);
   pass('Only selected official tab clears passenger data',result.ok===true&&!sessions.bilitPendingPassengerFill);
   console.log('ALL '+count+' passenger session isolation checks passed');
