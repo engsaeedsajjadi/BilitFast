@@ -530,7 +530,6 @@
           <img id="reserve-captcha-img" alt="کپچا" style="max-width:220px;border:1px solid #ccc;border-radius:6px;background:#fff"/>
           <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm" id="btn-captcha-refresh" type="button">🔄 کپچای جدید</button>
-            <button class="btn btn-sm" id="btn-captcha-auto-now" type="button">🤖 حل خودکار همین کپچا</button>
           </div>
           <div class="field" style="margin-top:8px">
             <label>کد امنیتی:</label>
@@ -1653,8 +1652,10 @@
   function derivedCaptchaMode() {
     return BilitFast.captchaModeForTrain($('bf_train').value);
   }
+  // Automatic CAPTCHA solving was removed in 3.13.4: CAPTCHA is always
+  // entered by the human user. Older saved 'auto' preferences are ignored.
   function activeCaptchaMode() {
-    return (reserveCtx && reserveCtx.mode) || derivedCaptchaMode();
+    return 'manual';
   }
 
   function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -1716,18 +1717,8 @@
     return false;
   }
 
-  function reportCaptchaSample(attempt) {
-    try {
-      const src = $('reserve-captcha-img').src;
-      if (!src || !/^data:image/i.test(src)) return;
-      if (!/^[A-Za-z0-9]{3,8}$/.test(attempt.text || '')) return;
-      fetch('/api/learn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'captcha-sample', image: src, text: attempt.text, source: attempt.source }),
-      }).catch(() => {});
-    } catch (e) { /* ignore */ }
-  }
+  // Captcha training-sample upload removed in 3.13.4.
+  function reportCaptchaSample() {}
 
   // Session status is tab-scoped: this deliberately reveals only presence,
   // never cookie content. Never confuse it with verified booking access.
@@ -2099,9 +2090,7 @@
     }
     const hint = $('captcha-mode-hint');
     if (hint) {
-      hint.textContent = (mode === 'auto')
-        ? 'سیستم به صورت خودکار تا رسیدن به صفحه پرداخت به پیش می‌رود.'
-        : 'در صورت نیاز، دکمه «🤖 حل خودکار همین کپچا» یک‌بار حل خودکار را امتحان می‌کند.';
+      hint.textContent = 'کد امنیتی را خودتان وارد کنید؛ حل خودکار کپچا پشتیبانی نمی‌شود.';
     }
     const autoNowBtn = $('btn-captcha-auto-now');
     if (autoNowBtn) autoNowBtn.style.display = (mode === 'manual') ? '' : 'none';
@@ -2111,13 +2100,6 @@
     if (!autoSolving) applyCaptchaModeUI();
   });
 
-  $('btn-captcha-auto-now').addEventListener('click', () => {
-    if (autoSolving) return;
-    userManuallyStopped = false;
-    autoSolveStop = false;
-    setStatus('حل خودکار کپچای فعلی شروع شد...', 'blue');
-    autoSolveLoop(reserveCtx.captchaImageUrl, { untilAccepted: false });
-  });
 
   $('btn-auto-cancel').addEventListener('click', () => {
     userManuallyStopped = true;
@@ -2129,152 +2111,13 @@
     setStatus('رزرو خودکار لغو شد — می‌توانید کد را دستی وارد کنید.', 'orange');
   });
 
-  /* ---------------- حلقه حل خودکار کپچا (با سرعت و دقت بهینه‌شده) ---------------- */
-  async function autoSolveLoop(captchaImageUrl, opts) {
-    if (autoSolving) return;
-    autoSolving = true;
-    autoSolveStop = false;
-    const untilAccepted = !!(opts && opts.untilAccepted);
-
-    let currentUrl = captchaImageUrl;
-    const perRound = BilitFast.getCaptchaMaxAttempts() || CAPTCHA_MAX_AUTO_ATTEMPTS;
-    const hardCap = untilAccepted ? 9999 : perRound;
-    const AUTO_RETRY_DELAY_MS = 900;
-    
-    let total = 0;
-    let accepted = false;
-    let keepSuggestion = false;
-    let restartingReserve = false;
-
-    async function refreshWithRetry() {
-      for (let r = 0; r < 3; r++) {
-        const url = await refreshCaptchaImage();
-        if (url) return url;
-        await sleep(AUTO_RETRY_DELAY_MS * (r + 1));
-      }
-      return null;
-    }
-
-    function applyCacheBuster(url) {
-      if (!url || /^data:image/i.test(url)) return url;
-      const sep = url.includes('?') ? '&' : '?';
-      return url + sep + '_=' + Date.now();
-    }
-
-    try {
-      while (!autoSolveStop && total < hardCap) {
-        total++;
-        updateAutoPilotStatus('در حال تحلیل و خواندن تصویر کپچا...', total);
-
-        // 1. خواندن کپچا با OCR
-        const solved = await callReserve({
-          action: 'solve-captcha',
-          captchaImageUrl: currentUrl,
-       geUrl: currentUrl,
-          stateToken: reserveCtx.token,
-        });
-
-        if (autoSolveStop || userManuallyStopped) break;
-
-        // 2. بررسی نتیجه خواندن
-        if (solved && solved.text) {
-          $('reserve-captcha-input').value = solved.text;
-          keepSuggestion = true;
-
-          if (BilitFast.shouldAutoSubmit(solved, untilAccepted)) {
-            updateAutoPilotStatus(`ارسال کد «${solved.text}» به صفیر ریل...`, total);
-
-            const resp = await callReserve({
-              action: 'submit',
-              stateToken: reserveCtx.token,
-              captcha: solved.text,
-              captchaCaptureId: solved.captureId || null,
-              passengers: reserveCtx.passengers,
-              phone: reserveCtx.phone,
-            });
-
-            if (autoSolveStop || userManuallyStopped) break;
-
-            // 3. بررسی پاسخ سفیر ریل
-            if (resp && resp.ok && (resp.step === 'passenger_form' || resp.step === 'payment' || resp.step === 'success')) {
-              lastCaptchaAttempt = { text: solved.text, source: 'ocr' };
-              accepted = true;
-              handleReserveStep(resp);
-              break;
-            }
-
-            // ❌ کد اشتباه بود یا سشن نیاز به تازه‌سازی دارد
-            keepSuggestion = false;
-            $('reserve-captcha-input').value = '';
-            
-            if (untilAccepted || getFields().train_number) {
-              if (!userManuallyStopped) {
-                restartingReserve = true;
-                autoSolveStop = true;
-                autoSelectTrainAgain(450, `کد تأیید نشد — کلیک مجدد در پس‌زمینه...`);
-                break;
-              }
-            } else {
-              if (resp && resp.captchaImageUrl) {
-                currentUrl = applyCacheBuster(resp.captchaImageUrl);
-                reserveCtx.captchaImageUrl = currentUrl;
-                await loadCaptchaImage(currentUrl);
-              } else {
-                const fresh = await refreshWithRetry();
-                if (fresh) currentUrl = fresh;
-              }
-              await sleep(AUTO_RETRY_DELAY_MS);
-              continue;
-            }
-
-          } else {
-            if (untilAccepted || getFields().train_number) {
-              updateAutoPilotStatus('تصویر واضح نبود — دریافت تصویر جدید...', total);
-              const fresh = await refreshWithRetry();
-              if (fresh) {
-                currentUrl = fresh;
-                await sleep(AUTO_RETRY_DELAY_MS);
-                continue;
-              } else {
-                restartingReserve = true;
-                autoSolveStop = true;
-                autoSelectTrainAgain(500, 'دریافت نشست تازه...');
-                break;
-              }
-            } else {
-              break;
-            }
-          }
-        } else {
-          if (untilAccepted || getFields().train_number) {
-            updateAutoPilotStatus('تصویر ناخوانا بود — دریافت تصویر جدید...', total);
-            const fresh = await refreshWithRetry();
-            if (fresh) {
-              currentUrl = fresh;
-              await sleep(AUTO_RETRY_DELAY_MS);
-              continue;
-            } else {
-              restartingReserve = true;
-              autoSolveStop = true;
-              autoSelectTrainAgain(500, 'دریافت نشست تازه...');
-              break;
-            }
-          } else {
-            break;
-          }
-        }
-      } 
-    } catch (errLoop) {
-      try { console.error('autoSolveLoop:', errLoop); } catch (e) { /* ignore */ }
-    } finally {
-      autoSolving = false;
-      if (restartingReserve) {
-         // رزرو مجدد در جریان است
-      } else if (!accepted && !autoSolveStop && untilAccepted) {
-         setStatus('حلقه خودکار متوقف شد.', 'red');
-         showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl, keepInput: keepSuggestion });
-      }
-    }
+  /* حل خودکار کپچا در 3.13.4 حذف شد. این تابع فقط برای سازگاری با
+   * فراخوانی‌های قدیمی باقی مانده و کاربر را به ورود دستی هدایت می‌کند. */
+  async function autoSolveLoop() {
+    autoSolving = false;
+    autoSolveStop = true;
+    showReserveCaptcha({ captchaImageUrl: reserveCtx.captchaImageUrl, autoSolving: false });
+    setStatus('کد امنیتی را خودتان وارد کنید.', 'orange');
   }
 
   async function refreshCaptchaImage() {

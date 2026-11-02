@@ -3,7 +3,7 @@
 // توجه: این قابلیت فقط در اجرای محلی (دسترسی به فایل‌سیستم کاربر) کار می‌کند.
 const { readFirefoxCookies } = require('../lib/cookies');
 const { readChromeCookies } = require('../lib/chrome-cookies');
-const { guardApi, getClientIp } = require('../lib/guard');
+const { guardApi, isLoopbackSocket } = require('../lib/guard');
 const trace = require('../lib/cookie-trace');
 
 /**
@@ -14,8 +14,8 @@ const trace = require('../lib/cookie-trace');
  * کاربر واردشده باشد.
  */
 function isLocalRequest(req) {
-  const ip = String(getClientIp(req) || '');
-  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+  // 3.13.4: only the real socket address counts; proxy headers are ignored.
+  return isLoopbackSocket(req);
 }
 
 module.exports = async (req, res) => {

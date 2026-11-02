@@ -1,6 +1,6 @@
 // api/auth.js — حساب کاربری: ثبت‌نام / ورود / وضعیت / خروج / به‌روزرسانی پروفایل
 const { registerUser, loginUser, publicUser, getSessionUser, verifyPassword, hashPassword } = require('../lib/auth');
-const { guardApi, isLockedOut, recordLoginFailure, clearLoginFailures } = require('../lib/guard');
+const { guardApi, getClientIp, isLockedOut, recordLoginFailure, clearLoginFailures } = require('../lib/guard');
 const db = require('../lib/db');
 const accounts = require('../lib/accounts');
 const activity = require('../lib/activity');
@@ -46,7 +46,8 @@ module.exports = async (req, res) => {
     if (action === 'login') {
       /* قفل موقت پس از چند تلاش ناموفق روی همین نام کاربری — مکمل محدودیت
        * مبتنی بر آی‌پی، برای حالتی که مهاجم از چندین آی‌پی حمله می‌کند. */
-      const lock = isLockedOut(body.username);
+      const clientIp = getClientIp(req);
+      const lock = isLockedOut(body.username, Date.now(), clientIp);
       if (lock.locked) {
         const mins = Math.ceil(lock.retryInMs / 60000);
         return res.status(429).json({
@@ -62,11 +63,11 @@ module.exports = async (req, res) => {
           activity.log({ type: 'LOGIN_BLOCKED', meta: { username: String(body.username || '').slice(0, 64) }, req });
           return res.status(200).json(r);
         }
-        recordLoginFailure(body.username);
+        recordLoginFailure(body.username, Date.now(), clientIp);
         activity.log({ type: 'LOGIN_FAILED', meta: { username: String(body.username || '').slice(0, 64) }, req });
         return res.status(200).json(r);
       }
-      clearLoginFailures(body.username);
+      clearLoginFailures(body.username, clientIp);
       /* حساب غیرفعال یا منقضی نباید اصلاً توکن بگیرد. بررسی اینجا (نه فقط در
        * APIهای بعدی) باعث می‌شود کاربر پیام روشن ببیند، نه خطای مبهم بعدی. */
       const st = accounts.accountStatus(r.user);
