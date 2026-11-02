@@ -1358,8 +1358,14 @@
       giveUp('برای ادامه جستجو، تأیید انسانی در صفحه رسمی سفیر ریل لازم است.', data && data.hint);
       return;
     }
+    if (outcome === 'app_login_required') {
+      giveUp('در این مرورگر وارد برنامه BilitFast نشده‌اید یا ورودتان منقضی شده است. از منوی «حساب کاربری» با حساب مالک وارد شوید و جستجو را دوباره شروع کنید.');
+      showAppLoginAction();
+      return;
+    }
     if (outcome === 'session_required') {
-      giveUp('نشست ورود سفیر ریل معتبر نیست. در مرورگر وارد حساب شوید.', data && data.hint);
+      giveUp('سایت سفیر ریل به‌جای نتیجه جستجو، صفحه ورود برگرداند؛ نشست سفیر ریل منقضی یا نامعتبر است. در تب سفیر ریل دوباره وارد حساب شوید و افزونه را یک بار دیگر بزنید.',
+        (data && data.error) || (data && data.hint));
       return;
     }
     if (outcome === 'blocked' || outcome === 'unexpected') {
@@ -1454,6 +1460,19 @@
   }
 
   /** توقف جستجو پس از خطای دائمی یا خطاهای پیاپی، با پیام روشن. */
+  // A one-click way back to the BilitFast login, returning to this route.
+  function showAppLoginAction() {
+    const box = $('status');
+    if (!box || document.getElementById('btn-app-login')) return;
+    const a = document.createElement('a');
+    a.id = 'btn-app-login';
+    a.className = 'btn btn-primary btn-sm';
+    a.style.marginTop = '10px';
+    a.href = 'account.html?return=' + encodeURIComponent(location.pathname.replace(/^\//, '') + location.search);
+    a.textContent = 'ورود به حساب BilitFast';
+    box.insertAdjacentElement('afterend', a);
+  }
+
   function giveUp(reason, hint) {
     stopPolling();
     const full = reason + (hint ? ' — ' + hint : '');

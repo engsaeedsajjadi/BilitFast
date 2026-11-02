@@ -140,6 +140,12 @@
     } catch (err) { /* انتقال بهترین تلاش است */ }
 
     showAlert('alert', '✅ وارد شدید.', true);
+    // Return to the page that asked for login (same-origin relative paths only).
+    const back = new URLSearchParams(location.search).get('return') || '';
+    if (/^(index|route|history|settings|login)\.html(\?[\w=&%-]*)?$/.test(back)) {
+      setTimeout(() => { location.href = back; }, 400);
+      return;
+    }
     setTimeout(render, 500);
   });
 

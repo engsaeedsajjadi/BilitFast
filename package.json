@@ -1,6 +1,6 @@
 {
   "name": "bilitfast",
-  "version": "3.14.0",
+  "version": "3.14.1",
   "private": true,
   "description": "BilitFast Web Self-Hosted — single-owner, machine-bound deployment",
   "scripts": {
