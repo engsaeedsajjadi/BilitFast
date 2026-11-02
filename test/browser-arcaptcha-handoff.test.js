@@ -22,9 +22,9 @@ check('web route publishes explicit handoff',()=>assert(page.includes("$('bf-bro
 check('route no longer invokes desktop ARCaptcha bridge',()=>assert(!page.includes('openSafirHumanChallenge')));
 const popup=fs.readFileSync(path.join(root,'extension/popup.js'),'utf8');
 const bg=fs.readFileSync(path.join(root,'extension/background.js'),'utf8');
-check('official first-party POST queued for the same-tab worker',()=>assert(popup.includes("bilitOneTabHandoff") && bg.includes("form.method='POST'")));
-check('extension prevents different profile transfer',()=>assert(popup.includes('sourceStore.id !== destinationStore.id')));
-check('extension stores short-lived passenger data',()=>assert(popup.includes('bilitPendingPassengerFill')));
+check('official first-party POST queued for the same-tab worker',()=>assert(bg.includes("bilitOneTabHandoff") && bg.includes("form.method='POST'")));
+check('extension prevents different profile transfer',()=>assert(popup.includes('BilitDirectSession.select') && popup.includes('app.windowId!==officialTab.windowId')));
+check('extension stores short-lived passenger data',()=>assert(bg.includes('bilitPendingPassengerFill')));
 check('passenger info only released to official origin',()=>assert(bg.includes('safirrail\\.ir\\/etrain')));
 check('passenger info expires',()=>assert(bg.includes('15*60*1000')));
 const helper=fs.readFileSync(path.join(root,'extension/safir-passenger-helper.js'),'utf8');

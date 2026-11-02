@@ -5,13 +5,19 @@
 (() => {
   if (globalThis.__bilitRouteBridge || location.pathname !== '/route.html') return;
   globalThis.__bilitRouteBridge = true;
+  // Observable readiness marker: the app can fail fast when an old/disabled
+  // extension did not inject the first-party selection bridge.
+  document.documentElement?.setAttribute?.('data-bilitfast-route-bridge', '3.12.0');
   let armed = false;
   let panelReady = false;
   let submitting = false;
   let lastHandoff = '';
   const status = message => {
+    document.documentElement?.setAttribute?.('data-bilitfast-route-handoff-error', String(message).slice(0,250));
     const el = document.getElementById('arcaptcha-handoff-status');
     if (el) el.textContent = message;
+    const feedback = document.getElementById('reserve-message');
+    if (feedback) feedback.textContent = message;
   };
   function snapshot() {
     const section = document.getElementById('reserve-arcaptcha');
@@ -48,6 +54,7 @@
     armed=true;
     panelReady=false;
     lastHandoff='';
+    document.documentElement?.removeAttribute?.('data-bilitfast-route-handoff-error');
     // Panel opening is tied to the user's REAL selection click. Do not
     // navigate to SafirRail when the helper panel cannot remain visible.
     chrome.runtime.sendMessage({type:'BILIT_PREPARE_PANEL'}).then(result=>{
@@ -57,6 +64,7 @@
         return;
       }
       panelReady=true;
+      if (result.panelError) status(result.panelError + ' مرحله رسمی رزرو ادامه می‌یابد.');
       continueWhenReady();
     }).catch(()=>{armed=false;status('افزونه BilitFast در دسترس نیست.');});
   }, true);

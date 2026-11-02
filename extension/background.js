@@ -1,16 +1,11 @@
-// background.js — از نسخه ۱.۲ ارسال کوکی از طریق پنجره افزونه (popup.html)
-// انجام می‌شود، چون به «کد جفت‌سازی یک‌بارمصرف» نیاز دارد.
-//
-// دلیل امنیتی: ارسال بی‌قید کوکی با یک کلیک، یعنی هر کسی که به endpoint
-// دسترسی داشته باشد می‌تواند کوکی نشست را تحویل بگیرد. حالا کوکی فقط به
-// صفحه‌ای می‌رسد که کد را ساخته است.
-
+// Extension background: new-tab first-party reservation handoff; BilitFast tab stays open.
+// The user-triggered popup now imports the authorized SafirRail session
+// directly into the matched BilitFast tab; no pairing PIN or upload to
+// the cookie-sync API is involved in the current browser flow.
 chrome.runtime.onInstalled.addListener(() => {
-  try {
-    chrome.action.setTitle({ title: 'انتقال کوکی صفیر ریل — برای وارد کردن کد کلیک کنید' });
-  } catch (e) { /* ignore */ }
+  try { chrome.action.setTitle({ title:'BilitFast — اتصال مستقیم از تب سفیر ریل' }); }
+  catch (_) { /* non-critical */ }
 });
-
 
 // The selected-train click in the authorized BilitFast installation replaces
 // the second extension-popup click. Only the paired origin may invoke it.
@@ -24,10 +19,17 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
     if (!origin || !tab || !BilitRouteBridgeControl.matches(origin,sender.url||tab.url))
       throw new Error('ابتدا یک‌بار اتصال امن افزونه را از تب همین BilitFast انجام دهید.');
     if (message.type==='BILIT_PREPARE_PANEL') {
-      if (!chrome.sidePanel?.open) throw new Error('مرورگر پنل کناری را پشتیبانی نمی‌کند.');
-      await chrome.sidePanel.open({windowId:tab.windowId});
+      // Browser sidePanel.open can lose user-gesture authorization across a
+      // service-worker message/await boundary. Never block the first-party
+      // booking navigation when only the optional helper panel failed.
+      let panelOpened = false;
+      let panelError = '';
+      if (chrome.sidePanel?.open) {
+        try { await chrome.sidePanel.open({windowId:tab.windowId}); panelOpened=true; }
+        catch (_) { panelError='پنل خودکار باز نشد؛ در صورت نیاز از آیکون افزونه بازش کنید.'; }
+      } else panelError='این مرورگر پنل کناری را پشتیبانی نمی‌کند.';
       await chrome.storage.session.set({bilitSelectionPanelReady:{tabId:tab.id,at:Date.now()}});
-      reply({ok:true});return;
+      reply({ok:true,panelOpened,panelError});return;
     }
     const panel=(await chrome.storage.session.get('bilitSelectionPanelReady'))?.bilitSelectionPanelReady;
     if (!panel || panel.tabId!==tab.id || Date.now()-panel.at>180000)
@@ -43,18 +45,43 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
             !/^[0-9]{8,12}$/.test(String(p.national_code||'')) ||
             !String(p.first_name||'').trim() || !String(p.last_name||'').trim()))
         throw new Error('اطلاعات مسافران ناقص است؛ ابتدا فرم BilitFast را کامل کنید.');
-      const stored={passengers,phone:String(snapshot.phone||'').slice(0,24),
-        selection:{srvc:handoff.fields.srvc||'',wagon:handoff.fields.wagon||''},
-        autoAdvance:true,createdAt:Date.now(),origin,siteTabId:tab.id};
-      await chrome.storage.session.set({
-        bilitPendingPassengerFill:stored,
-        bilitWorkflowStatus:{stage:'awaiting-human',at:Date.now()},
-        bilitOneTabHandoff:{tabId:tab.id,origin,createdAt:Date.now(),handoff}
-      });
-      // Same tab, official origin. Browser supplies its own first-party cookies.
-      await chrome.tabs.update(tab.id,{url:'https://safirrail.ir/etrain/index.php'});
-      await chrome.storage.session.remove('bilitSelectionPanelReady');
-      reply({ok:true});
+      // Create an empty reservation tab FIRST, then bind the pending job to
+      // its actual tab ID before navigating. This closes the onUpdated race.
+      // Never navigate the BilitFast source tab: it is the recovery workspace.
+      let reservationTabId = null;
+      try {
+        const created = await chrome.tabs.create({windowId:tab.windowId,
+          index:Number.isSafeInteger(tab.index)?tab.index+1:undefined,
+          active:true,url:'about:blank'});
+        if (!Number.isSafeInteger(created?.id)) throw new Error('تب رزرو ساخته نشد.');
+        reservationTabId = created.id;
+        const stored={passengers,phone:String(snapshot.phone||'').slice(0,24),
+          selection:{srvc:handoff.fields.srvc||'',wagon:handoff.fields.wagon||''},
+          autoAdvance:true,createdAt:Date.now(),origin,
+          siteTabId:reservationTabId,sourceTabId:tab.id};
+        await chrome.storage.session.set({
+          bilitPendingPassengerFill:stored,
+          bilitWorkspaceSourceTab:{tabId:tab.id,siteTabId:reservationTabId,origin},
+          bilitWorkflowStatus:{stage:'awaiting-human',at:Date.now()},
+          bilitOneTabHandoff:{tabId:reservationTabId,origin,createdAt:Date.now(),handoff}
+        });
+        // Chrome/Edge applies the browser's own SafirRail cookies here.
+        await chrome.tabs.update(reservationTabId,{url:'https://safirrail.ir/etrain/index.php'});
+        await chrome.storage.session.remove('bilitSelectionPanelReady');
+        reply({ok:true,siteTabId:reservationTabId});
+      } catch (error) {
+        // Do not leave an orphan blank tab or stale booking data when the
+        // browser refused to create/navigate the reservation tab.
+        if (reservationTabId !== null) {
+          const current=(await chrome.storage.session.get('bilitOneTabHandoff').catch(()=>({})))?.bilitOneTabHandoff;
+          if (current?.tabId===reservationTabId) {
+            await chrome.storage.session.remove(['bilitOneTabHandoff','bilitPendingPassengerFill',
+              'bilitWorkspaceSourceTab']).catch(()=>{});
+          }
+          await chrome.tabs.remove(reservationTabId).catch(()=>{});
+        }
+        throw error;
+      }
     } finally {pendingRouteStarts.delete(tab.id);}
   })().catch(e=>reply({ok:false,error:String(e?.message||'شروع رزرو ناموفق بود.').slice(0,200)}));
   return true;
@@ -145,16 +172,18 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   }
 });
 
-// Same-tab handoff: use the ORIGINAL BilitFast tab for the official first-party
-// reservation challenge, while Chrome's side panel continues to show BilitFast.
-// ARCaptcha is neither copied to the customer origin nor automated here.
+// New-tab handoff: reserve in an official SafirRail tab while the ORIGINAL
+// BilitFast tab (and its route/search state) remains intact. The side panel
+// is optional; ARCaptcha is never copied or automated here.
 // Persist the intent before navigation: the popup can close on tab navigation.
 if (typeof importScripts === 'function') importScripts('official-handoff.js');
-const oneTabClaims = new Set();
+const reservationClaims = new Set();
 chrome.tabs?.onUpdated?.addListener?.((tabId, changes, tab) => {
   if (changes.status !== 'complete' || !tab?.url) return;
   let page;
   try { page = new URL(tab.url); } catch (_) { return; }
+  // Ignore the temporary empty tab while it is being prepared.
+  if (tab.url === 'about:blank') return;
   // A reservation should never silently continue if the user leaves the
   // official origin. A bank redirect is handled separately below.
   if (!(page.protocol === 'https:' && page.hostname === 'safirrail.ir') &&
@@ -180,8 +209,8 @@ chrome.tabs?.onUpdated?.addListener?.((tabId, changes, tab) => {
   }
   if (
       !/^https:\/\/safirrail\.ir\/etrain\/index\.php(?:[?#]|$)/i.test(tab.url) ||
-      oneTabClaims.has(tabId)) return;
-  oneTabClaims.add(tabId);
+      reservationClaims.has(tabId)) return;
+  reservationClaims.add(tabId);
   (async () => {
     const {bilitOneTabHandoff: job} = await chrome.storage.session.get('bilitOneTabHandoff');
     if (!job || job.tabId !== tabId) return;
@@ -220,5 +249,5 @@ chrome.tabs?.onUpdated?.addListener?.((tabId, changes, tab) => {
       bilitWorkflowStatus:{stage:'network-session-error',at:Date.now()},
       bilitWorkflowError:String(err?.message||'خطا در شروع رزرو رسمی').slice(0,200)
     }).catch(()=>{});
-  }).finally(()=>oneTabClaims.delete(tabId));
+  }).finally(()=>reservationClaims.delete(tabId));
 });

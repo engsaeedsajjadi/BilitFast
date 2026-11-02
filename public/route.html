@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
+<meta name="bilitfast-installation" content="first-party-web-v1">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>مسیر — Bilit Fast</title>
@@ -402,8 +403,8 @@
       </table>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-sm" id="btn-add-row">➕ افزودن ردیف</button>
-        <button class="btn btn-sm" id="btn-save-profile" type="button">💾 ذخیره به‌عنوان الگوی مسافران</button>
-        <select id="profile-select" style="padding:6px;border:1px solid var(--border);border-radius:6px" title="الگوی ذخیره‌شده"></select>
+        <button class="btn btn-sm" id="btn-save-profile" type="button" disabled>💾 ذخیره به‌عنوان الگوی مسافران</button>
+        <select id="profile-select" style="padding:6px;border:1px solid var(--border);border-radius:6px" title="الگوی ذخیره‌شده" disabled><option value="">در حال بارگذاری الگوها…</option></select>
       </div>
       <div class="field" style="margin-top:10px">
         <label for="bf_contact">شماره همراه (برای رزرو):</label>
@@ -491,14 +492,14 @@
       <h3>رزرو</h3>
       <p id="reserve-message" class="status"></p>
 
-      <!-- Web-only: ARCaptcha is interactive and runs on the official origin.
-           The extension submits the selected-train POST from SafirRail's own
-           tab. It never auto-clicks the widget or replays its token. -->
+      <!-- The extension opens a NEW SafirRail tab and submits the official
+           selected-train POST there; the BilitFast tab remains unchanged.
+           The user alone interacts with ARCaptcha. -->
       <div id="reserve-arcaptcha" style="display:none; padding:16px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc">
         <h4 style="margin:0 0 8px">تأیید انسانی در فضای کاری BilitFast</h4>
-        <p class="muted small">برای حفظ نشست و پذیرش کپچا، چک‌باکس واقعی سفیر ریل در مبدأ رسمی آن نمایش داده می‌شود، اما پنل BilitFast در کنار صفحه رزرو داخل همان پنجره مرورگر باز می‌ماند. پس از انتخاب قطار، پنل BilitFast به‌صورت خودکار آماده می‌شود؛ سپس خودتان چک‌باکس را تأیید کنید. اطلاعات مسافران در فرم رسمی تکمیل می‌شود و در صورت انتخاب ادامه خودکار، پس از تأیید معتبر به مرحله بعد می‌رود.</p>
+        <p class="muted small">صفحه رسمی رزرو در یک تب جدید از همین پنجره باز می‌شود و BilitFast با نتایج جستجو و اطلاعات ثبت‌شده در تب اصلی باقی می‌ماند. چک‌باکس واقعی فقط در مبدأ رسمی سفیر ریل نمایش داده می‌شود. پس از انتخاب قطار، پنل BilitFast به‌صورت خودکار آماده می‌شود؛ سپس خودتان چک‌باکس را تأیید کنید. اطلاعات مسافران در فرم رسمی تکمیل می‌شود و در صورت انتخاب ادامه خودکار، پس از تأیید معتبر به مرحله بعد می‌رود.</p>
         <details style="margin-top:10px"><summary class="muted small" style="cursor:pointer">اگر مرحله تأیید خودکار باز نشد</summary><button class="btn btn-sm" id="btn-open-arcaptcha" type="button">راهنمای اتصال</button></details>
-        <p class="muted small" id="arcaptcha-handoff-status" aria-live="polite" style="margin-top:10px">ابتدا وارد حساب خود در تب سفیر ریل شوید. افزونه را از تب BilitFast باز کنید.</p>
+        <p class="muted small" id="arcaptcha-handoff-status" aria-live="polite" style="margin-top:10px">ابتدا در تب رسمی سفیر ریل وارد شوید و افزونه را از همان تب باز کنید؛ نیازی به کد اتصال نیست.</p>
         <pre id="bf-browser-handoff" style="display:none" aria-hidden="true"></pre>
       </div>
 
@@ -583,6 +584,7 @@
   <script src="secure-store.js"></script>
   <script src="city-picker.js"></script>
   <script src="app.js"></script>
+  <script src="search-outcome.js"></script>
   <script src="datepicker.js"></script>
   <script>
   const params = new URLSearchParams(window.location.search);
@@ -952,13 +954,19 @@
   $('btn-add-row').addEventListener('click', () => addPassengerRow());
 
   /* الگوی مسافران */
-  function refreshProfileSelect() {
+  async function refreshProfileSelect() {
+    // Encrypted profile data is loaded asynchronously from the browser's
+    // persistent storage. A synchronous read during initial page load
+    // otherwise leaves the dropdown empty after navigating to a new route.
+    await BilitFast.whenStorageReady();
     const sel = $('profile-select');
     const list = BilitFast.loadPassengerProfiles();
     sel.innerHTML = '<option value="">— بارگذاری الگوی ذخیره‌شده —</option>' +
       list.map((p) => '<option value="' + esc(p.name) + '">' + esc(p.name) + ' (' + p.passengers.length + ' مسافر)</option>').join('');
+    sel.disabled = list.length === 0;
   }
   $('btn-save-profile').addEventListener('click', async () => {
+    await BilitFast.whenStorageReady();
     const pass = getPassengers();
     if (!pass.length) { BilitFast.toast('ابتدا حداقل یک مسافر اضافه کنید.', 'error'); return; }
     const name = await BilitFast.promptDialog({
@@ -968,9 +976,15 @@
       placeholder: 'مثلاً: خانواده',
     });
     if (!name || !name.trim()) return;
-    BilitFast.savePassengerProfile(name.trim(), pass);
-    refreshProfileSelect();
-    BilitFast.toast('الگوی مسافران ذخیره شد.', 'success');
+    try {
+      BilitFast.savePassengerProfile(name.trim(), pass);
+      // Saving is only successful after the encrypted browser write completes.
+      await BilitFast.flushStorage();
+      await refreshProfileSelect();
+      BilitFast.toast('الگوی مسافران ذخیره شد.', 'success');
+    } catch (err) {
+      BilitFast.toast('ذخیره امن الگو ناموفق بود. لطفاً HTTPS/فضای مرورگر را بررسی کنید.', 'error');
+    }
   });
   $('profile-select').addEventListener('change', (e) => {
     const name = e.target.value;
@@ -982,7 +996,7 @@
     BilitFast.toast('الگو بارگذاری شد (' + BilitFast.faNum(prof.passengers.length) + ' مسافر).', 'success');
     e.target.value = '';
   });
-  refreshProfileSelect();
+  // Initialized after encrypted storage becomes available (see init()).
 
   /* ---------------- پایشگر سمت سرور ---------------- */
   let activeServerMonitorId = null;
@@ -1144,7 +1158,7 @@
   }
 
   /** ثبت رسید یک تلاش موفق (پاسخ واقعی از صفیر ریل رسیده است). */
-  function recordReceipt(receipt, trainsCount) {
+  function recordReceipt(receipt, trainsCount, emptySummary) {
     liveStats.ok++;
     $('m-ok').textContent = BilitFast.faNum(liveStats.ok);
     if (!receipt) return;
@@ -1157,14 +1171,14 @@
       ' | ' + (receipt.totalMs || 0) + 'ms | ' + (receipt.bytes || 0) + 'B | ' +
       (receipt.rowsParsed != null ? receipt.rowsParsed : 0) + ' rows | found=' + (trainsCount || 0),
       trainsCount ? 'ok' : '');
-    setLive('on', 'ارتباط با صفیر ریل برقرار است ✓',
-      'پاسخ واقعی سرور دریافت شد (کد ' + BilitFast.faNum(receipt.httpStatus || 200) + ')');
+    setLive('on', 'پاسخ از سامانه دریافت شد ✓',
+      'پاسخ HTTP دریافت شد (کد ' + BilitFast.faNum(receipt.httpStatus || 200) + ')؛ این کد اعتبار ورود را ثابت نمی‌کند.');
     // جمله ساده: بدون کد HTTP و اصطلاح فنی
     if (trainsCount) {
       setSimpleLine('✅ ظرفیت پیدا شد — ' + BilitFast.faNum(trainsCount) + ' قطار موجود است.');
     } else {
-      setSimpleLine('🔎 سامانه پاسخ داد؛ فعلاً ظرفیتی نیست. تلاش ' +
-        BilitFast.faNum(liveStats.ok + liveStats.fail) + ' انجام شد — جستجو ادامه دارد.');
+      setSimpleLine(emptySummary || ('🔎 پاسخی دریافت شد، ولی ظرفیت کافی تأیید نشده است. تلاش ' +
+        BilitFast.faNum(liveStats.ok + liveStats.fail) + ' — جستجو ادامه دارد.'));
     }
   }
 
@@ -1264,7 +1278,16 @@
 
   async function doOneAttempt() {
     const route = BilitFast.getRoute(ROUTE_ID);
-    if (!route || !route.running) { stopPolling(); return; }
+    if (!route || !route.running) {
+      const explanation = !route ? 'مسیر در حافظه پیدا نشد.' : 'وضعیت مسیر غیرفعال شده است.';
+      stopPolling();
+      setStatus('جستجو اجرا نشد: ' + explanation, 'red');
+      setLive('err', 'جستجو آغاز نشد', explanation);
+      setSimpleLine('⛔ جستجو آغاز نشد: ' + explanation);
+      $('btn-start').disabled = false;
+      $('btn-stop').disabled = true;
+      return;
+    }
     searchAttempts++;
     setStep(3, 'active');
     setSearchingUI(true);
@@ -1304,39 +1327,49 @@
     /* اگر سرور مجبور شد خودش نشست را بسازد (یعنی کوکی از این تب به سرور
      * نرسیده بود)، همان نشست تازه را نگه می‌داریم تا درخواست‌های بعدی —
      * و مهم‌تر، رزرو — دوباره دست‌خالی نروند. */
-    if (data.sessionRecovered && Array.isArray(data.cookies) && data.cookies.length) {
+    if (data && data.sessionRecovered && Array.isArray(data.cookies) && data.cookies.length) {
       BilitFast.setCookies(data.cookies);
     }
 
-    // قطار پیدا شد → بازه داغ (فاصله کوتاه) فعال شود تا در لحظه فروش سریع‌تر بگیریم
-    if (data.trains && data.trains.length) markHot();
-
-    if (!data.ok) {
-      // خطای واقعاً دائمی (سرور صریحاً fatal اعلام کرده): ادامه بی‌فایده است.
-      if (data.fatal) {
-        giveUp(data.error || 'خطای دائمی اتصال', data.hint);
-        return;
-      }
-      // بقیه خطاها گذرا فرض می‌شوند: سامانه صفیر ریل زیاد قطع و وصل می‌شود.
+    const outcome = BilitSearchOutcome.classify(data);
+    // Only an actual, valid match may trigger the short polling window.
+    if (outcome === 'found') markHot();
+    if (outcome === 'captcha_required') {
+      giveUp('برای ادامه جستجو، تأیید انسانی در صفحه رسمی سفیر ریل لازم است.', data && data.hint);
+      return;
+    }
+    if (outcome === 'session_required') {
+      giveUp('نشست ورود سفیر ریل معتبر نیست. در مرورگر وارد حساب شوید.', data && data.hint);
+      return;
+    }
+    if (outcome === 'blocked' || outcome === 'unexpected') {
+      // An invalid response or input is not a failed availability check.
+      // Do not silently retry with escalating delays or report "no seats".
+      giveUp((data && data.error) || 'پاسخ قابل استفاده از سامانه دریافت نشد؛ وضعیت نشست و ورودی‌ها را بررسی کنید.', data && data.hint);
+      return;
+    }
+    if (outcome === 'transport_error') {
       consecFails++;
-      recordFailure(data.error || 'خطای نامشخص از صفیر ریل');
+      recordFailure((data && data.error) || 'خطای واقعی ارتباط با سامانه');
       if (consecFails >= MAX_CONSEC_FAILS) {
         giveUp('پس از ' + BilitFast.faNum(MAX_CONSEC_FAILS) +
-          ' تلاش پیاپی، اتصال به سامانه صفیر ریل برقرار نشد', data.hint);
+          ' خطای ارتباطی پیاپی، اتصال برقرار نشد', data && data.hint);
         return;
       }
       const w = backoffMs();
-      const retryMsg = (data.error || 'خطا') + ' — تلاش ' +
+      const retryMsg = ((data && data.error) || 'خطای ارتباط') + ' — خطای ارتباطی ' +
         BilitFast.faNum(consecFails) + ' از ' + BilitFast.faNum(MAX_CONSEC_FAILS) +
         '؛ تلاش بعدی تا ' + BilitFast.faNum(Math.round(w / 1000)) + ' ثانیه دیگر';
       setStatus(retryMsg, 'orange');
-      setSimpleLine('⚠️ سامانه پاسخ نداد؛ برنامه تا چند لحظه دیگر دوباره تلاش می‌کند.');
+      setSimpleLine('⚠️ خطای ارتباطی؛ تلاش بعدی با فاصله محافظتی انجام می‌شود.');
       saveRouteState({ status: retryMsg, statusColor: 'orange' });
       scheduleNextPoll(w);
       return;
     }
+    // Both a real match and a valid empty search are successes. Reset
+    // network backoff and use the normal per-route polling interval.
     noteSuccess();
-    if (data.trains && data.trains.length) {
+    if (outcome === 'found') {
       // قطار پیدا شد → جستجو بلافاصله و خودکار متوقف می‌شود (منتظر دکمه توقف نمی‌مانیم).
       recordReceipt(data.receipt || { totalMs: Date.now() - tSend }, data.trains.length);
       stopNextBar();
@@ -1368,15 +1401,30 @@
       });
       const wantedTrain = (f0.train_number || '').trim();
       if (wantedTrain) {
-        const target = data.trains.find((t) => t['شماره قطار'] === wantedTrain) || data.trains[0];
+        const normalizeTrain = (v) => String(v == null ? '' : v).trim()
+          .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+          .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+        const matchingTrains = data.trains.filter((t) => normalizeTrain(t['شماره قطار']) === normalizeTrain(wantedTrain));
+        if (matchingTrains.length !== 1 || !matchingTrains[0].srvc) {
+          const mismatch = 'شماره قطار در نتایج با انتخاب شما مطابقت قطعی ندارد؛ رزرو خودکار برای جلوگیری از انتخاب قطار اشتباه متوقف شد.';
+          setStatus(mismatch, 'red');
+          saveRouteState({ status: mismatch, statusColor: 'red', running: false });
+          BilitFast.toast(mismatch, 'error', 7000);
+          return;
+        }
+        const target = matchingTrains[0];
         setStatus('🚆 قطار «' + wantedTrain + '» یافت شد — رزرو خودکار آغاز می‌شود...', 'green');
         saveRouteState({ status: 'رزرو خودکار قطار ' + wantedTrain, statusColor: 'blue' });
         await reserve(target['شماره قطار'], false);
       }
-    } else {
-      // مهم: «نتیجه‌ای نبود» یعنی درخواست موفق رفته و پاسخ آمده ولی ظرفیت نبوده.
-      // رسید زیر دقیقاً همین را ثابت می‌کند.
-      recordReceipt(data.receipt || { totalMs: Date.now() - tSend }, 0);
+    } else if (outcome === 'no_capacity' || outcome === 'no_match' || outcome === 'availability_unverified') {
+      // HTTP 200 is not proof of zero capacity or a valid authenticated session.
+      const summary = outcome === 'availability_unverified'
+        ? '⚠️ ظرفیت بعضی ردیف‌ها قابل تشخیص نیست؛ جستجو ادامه دارد.'
+        : outcome === 'no_match'
+          ? '🔎 قطار در نتایج این تلاش مشاهده نشد؛ جستجو ادامه دارد.'
+          : '🔎 ظرفیت کافی در پاسخ همین تلاش گزارش نشد؛ جستجو ادامه دارد.';
+      recordReceipt(data.receipt || { totalMs: Date.now() - tSend }, 0, summary);
       const msg = data.note || 'هیچ قطاری با ظرفیت کافی یافت نشد.';
       setStatus(msg, 'orange');
       saveRouteState({ status: msg, statusColor: 'orange' });
@@ -1405,11 +1453,11 @@
     if (!BilitFast.isDebugMode() || !data.diag) { $('diag-section').style.display = 'none'; return; }
     $('diag-section').style.display = 'block';
     let html = '<p><b>وضعیت نشست:</b> ' +
-      (data.sessionOk ? '✅ کوکی سشن (PHPSESSID) ارسال شد' : '❌ کوکی سشن (PHPSESSID) ارسال نشده') +
+      (data.sessionOk ? 'کوکی نشست PHPSESSID ارسال شد (اعتبار ورود تأیید نشده)' : 'کوکی نشست PHPSESSID ارسال نشده (وضعیت ورود نامشخص)') +
       ' | <b>تعداد کل قطارها:</b> ' + data.diag.totalRows + '</p>';
     if (data.diag.trains && data.diag.trains.length) {
       html += '<p><b>موجودی همه قطارها (شماره قطار → موجودی):</b></p><p style="direction:ltr;text-align:left">';
-      html += data.diag.trains.map((t) => t.num + ':' + t.avail).join(' ، ');
+      html += data.diag.trains.map((t) => esc(t.num) + ':' + esc(t.avail || 'نامشخص')).join(' ، ');
       html += '</p>';
     }
     el.innerHTML = html;
@@ -1584,8 +1632,13 @@
 
   $('found-table').querySelector('tbody').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-train]');
-    if (!btn) return;
-    reserve(btn.getAttribute('data-train'), false);
+    if (!btn || btn.disabled) return;
+    const buttons = Array.from($('found-table').querySelectorAll('button[data-train]'));
+    buttons.forEach(b => { b.disabled = true; });
+    setStatus('در حال آماده‌سازی صفحه رسمی سفیر ریل…', 'blue');
+    Promise.resolve(reserve(btn.getAttribute('data-train'), false))
+      .catch(err => showReserveError('آغاز رزرو ناموفق بود: ' + String(err?.message || err)))
+      .finally(() => buttons.forEach(b => { b.disabled = false; }));
   });
 
   const RESERVE_MAX_STEPS = 8;
@@ -1688,23 +1741,28 @@
     return present;
   }
 
+  window.addEventListener('bilitfast-direct-session-ready', updateSafirCookieStatus);
+
   async function reserve(trainNumber, isRetry = false) {
     let route = BilitFast.getRoute(ROUTE_ID);
     if (!route) { setStatus('مسیر یافت نشد.', 'red'); return; }
 
     const age = route.foundAt ? (Date.now() - route.foundAt) : Infinity;
+    // Do not make an unrelated server-side refresh a prerequisite for
+    // opening the official first-party booking page. The real site will
+    // independently validate live inventory, allocation and price.
     if (age > FRESH_WINDOW_MS) {
-      const fresh = await refreshFoundTrains();
-      if (!fresh) {
-        setStatus('در جستجوی تازه ظرفیتی یافت نشد.', 'orange');
-        showReserveError('ظرفیتی برای این مسیر در جستجوی تازه یافت نشد.');
-        return;
-      }
-      route = BilitFast.getRoute(ROUTE_ID);
+      setStatus('نتیجه جستجو قدیمی است؛ ظرفیت و قیمت در صفحه رسمی سفیر ریل دوباره بررسی می‌شود.', 'orange');
     }
 
-    const train = (route.foundTrains || []).find((t) => t['شماره قطار'] === trainNumber);
+    const train = (route.foundTrains || []).find((t) =>
+      String(t['شماره قطار'] ?? '').trim() === String(trainNumber ?? '').trim());
     if (!train) { setStatus('قطار یافت نشد.', 'red'); return; }
+    if (document.documentElement.getAttribute('data-bilitfast-route-bridge') !== '3.12.0') {
+      $('reserve-section').style.display = 'block';
+      showReserveError('افزونه نسخه 3.12.0 در این تب فعال نیست. نسخه قدیمی را غیرفعال و افزونه جدید را Load unpacked کنید؛ سپس تب BilitFast را یک‌بار Reload کنید و انتخاب قطار را تکرار کنید.');
+      return;
+    }
 
     reserveCtx = {
       token: null,
@@ -1748,24 +1806,22 @@
       isReserving: true
     });
 
-    // Do not fall back to the older cookie/profile/password methods.
-    // A missing cookie needs the one official extension connection flow.
-    if (!updateSafirCookieStatus()) {
-      await handleLoginRequired({ message:
-        'کوکی نشست رزرو در همین تب موجود نیست. از دکمه «اتصال دوباره با افزونه» استفاده کنید و سپس در همین تب به مسیر برگردید؛ هیچ تب جدیدی برای مسیر باز نکنید.' });
-      return;
-    }
-
+    // Browser-first-party booking does not need a duplicated cookie to
+    // initiate the official page. The browser itself owns and sends its
+    // SafirRail session, independent of BilitFast server-side login probes.
+    // A missing locally transferred cookie should never suppress navigation.
+    updateSafirCookieStatus();
     await reserveStart();
   }
 
   async function reserveStart() {
+    // No SafirRail network request from the server. The official POST is
+    // performed by the extension under safirrail.ir after user train selection.
     const data = await callReserve({
-      action: 'start',
+      action: 'prepare-official-handoff',
       fields: reserveCtx.fields,
       passengers: reserveCtx.passengers,
       train: reserveCtx.train,
-      cookies: BilitFast.getCookies(),
     });
     handleReserveStep(data);
   }
@@ -1817,7 +1873,7 @@
       const button = document.createElement('button');
       button.className = 'btn btn-primary';
       button.id = 'btn-fix-session';
-      button.textContent = '🔌 اتصال دوباره با افزونه';
+      button.textContent = '🔌 راهنمای اتصال از تب سفیر ریل';
       button.addEventListener('click', openExtensionConnection);
       area.appendChild(button);
       box.appendChild(area);
@@ -1826,11 +1882,10 @@
 
   function handleReserveStep(data) {
     if (!data || !data.ok) {
-      const errMsg = (data && data.error) || 'خطا در رزرو';
-      if (getFields().train_number && !userManuallyStopped) {
-        autoSelectTrainAgain(500, errMsg + ' — تلاش مجدد...');
-        return;
-      }
+      const errMsg = (data && data.error) || 'خطا در آماده‌سازی فرم رسمی رزرو';
+      // Repeated background retries hide the real error and can race the
+      // extension handoff. One selection must produce either navigation or
+      // a clear, user-visible error.
       showReserveError(errMsg);
       return;
     }
@@ -1924,16 +1979,17 @@
     if (typeof clearAutoSelectTimer === 'function') clearAutoSelectTimer();
     hideReserveAll();
     $('reserve-arcaptcha').style.display = 'block';
-    $('reserve-message').textContent = 'برای حفظ اعتبار تأیید، صفحه رسمی سفیر ریل در همین تب نمایش داده می‌شود و پنل BilitFast کنار آن باز می‌ماند. چک‌باکس واقعی را خودتان تأیید کنید.';
+    $('reserve-message').textContent = 'فرم رسمی قطار آماده شد. رزرو در تب جدید سفیر ریل باز می‌شود؛ این صفحه BilitFast محفوظ می‌ماند.';
     const payload = reserveCtx.browserHandoff;
     const valid = payload && payload.method === 'POST' &&
       payload.url === 'https://safirrail.ir/etrain/TresV-auth.php' &&
       payload.fields && typeof payload.fields === 'object' &&
       typeof payload.fields.srvc === 'string' && payload.fields.srvc.length > 0;
     $('bf-browser-handoff').textContent = valid ? JSON.stringify(payload) : '';
-    $('arcaptcha-handoff-status').textContent = valid
-      ? 'قطار انتخاب شد؛ فضای تأیید انسانی در همین تب باز می‌شود. چک‌باکس را شخصاً تأیید کنید.'
-      : 'فرم شروع رزرو ناقص است. قطار را مجدداً انتخاب کنید؛ اطلاعات ساختگی ارسال نمی‌شود.';
+    const handoffError = document.documentElement.getAttribute('data-bilitfast-route-handoff-error');
+    $('arcaptcha-handoff-status').textContent = handoffError || (valid
+      ? 'قطار انتخاب شد؛ تأیید انسانی در تب جدید سفیر ریل انجام می‌شود. برای بازگشت، تب BilitFast را انتخاب کنید.'
+      : 'فرم شروع رزرو ناقص است. قطار را مجدداً انتخاب کنید؛ اطلاعات ساختگی ارسال نمی‌شود.');
     $('btn-open-arcaptcha').disabled = !valid;
     setStatus('در انتظار تأیید انسانی روی سایت رسمی', 'orange');
     saveRouteState({ status: 'در انتظار تأیید ARCaptcha', statusColor: 'orange', isReserving: false });
@@ -2541,6 +2597,7 @@
   (async function init() {
     // منتظر رمزگشایی داده‌های محلی بمان، سپس وجود مسیر را بررسی کن.
     await BilitFast.whenStorageReady();
+    await refreshProfileSelect();
     const route = BilitFast.getRoute(ROUTE_ID);
     if (!route) { showRouteMissing(); return; }
     BilitFast.loadSharedConfig();
@@ -2554,6 +2611,7 @@
     const pass = route && route.passengers ? route.passengers : [];
     if (pass.length) pass.forEach((p) => addPassengerRow(p));
     else addPassengerRow();
+    $('btn-save-profile').disabled = false;
     
     if (route && route.status) setStatus(route.status, route.statusColor || 'black');
     if (route && route.running) {

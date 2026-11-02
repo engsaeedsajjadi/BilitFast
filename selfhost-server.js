@@ -3,6 +3,7 @@
 process.env.BILITFAST_SELF_HOSTED='1';
 process.env.BILITFAST_DESKTOP='0';
 process.env.BILITFAST_MULTIUSER='1';
+process.env.BILITFAST_SINGLE_USER='1';
 process.env.BILITFAST_ENFORCE_SECURITY='1';
 process.env.BILITFAST_ENFORCE_LICENSE='1';
 // server.js loads .env and validates the production configuration.

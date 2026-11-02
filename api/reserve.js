@@ -13,6 +13,8 @@ const accounts = require('../lib/accounts');
 const { checkAccess } = require('../lib/license');
 const config = require('../config.json');
 const { ensureCookies } = require('../lib/session-fallback');
+const { buildReserveForm } = require('../lib/core');
+const { buildReserveInitBody } = require('../lib/reserve');
 
 function readBody(req) {
   if (typeof req.body === 'string') {
@@ -56,6 +58,29 @@ module.exports = async (req, res) => {
   const action = body.action || (req.query && req.query.action) || 'start';
 
   try {
+    // First-party browser reservation: prepare the official form WITHOUT
+    // contacting SafirRail from the customer's hosting server. The actual
+    // POST is made only in the official browser tab, using that tab's session.
+    // This also prevents a slow/failed server-side login probe from blocking
+    // the user's selected-train click.
+    if (action === 'prepare-official-handoff') {
+      const prepared = buildReserveForm({
+        fields: body.fields, passengers: body.passengers, train: body.train,
+      });
+      if (!prepared.ok) return respond(res, prepared);
+      const officialUrl = new URL(config.reserve_init_url || '/etrain/TresV-auth.php', config.base_url);
+      if (officialUrl.protocol !== 'https:' || officialUrl.hostname !== 'safirrail.ir' ||
+          officialUrl.pathname !== '/etrain/TresV-auth.php')
+        return respond(res, { ok: false, error: 'مقصد رسمی شروع رزرو معتبر نیست.' });
+      return respond(res, {
+        ok: true, step: 'arcaptcha_required',
+        message: 'فرم قطار آماده شد؛ مرحله انسانی فقط در صفحه رسمی سفیر ریل انجام می‌شود.',
+        browserHandoff: {
+          url: officialUrl.toString(), method: 'POST',
+          fields: buildReserveInitBody(prepared.reserveData),
+        },
+      });
+    }
     if (action === 'start') {
       /* همان تور ایمنی جستجو: رزرو بدون نشست معتبر قطعاً به «نیاز به ورود»
        * می‌خورد. اگر کوکی به سرور نرسیده، پیش از شروع یک بار جبران می‌کنیم

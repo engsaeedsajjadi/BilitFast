@@ -28,10 +28,11 @@ test('Passenger completion automatically starts only after official form appears
  assert(!helper.includes("button.addEventListener('click'"));
  assert(helper.includes('if(hasChallenge())'));
 });
-test('Only first-party original HTTPS origin has content script',()=>{
+test('Only first-party SafirRail origin has content script',()=>{
  assert.deepEqual(manifest.content_scripts[0].matches,['https://safirrail.ir/etrain/*']);
  assert(manifest.content_scripts[0].js.includes('selection-confirm.js'));
- assert(popup.includes("chrome.tabs.update(tab.id, {url:'https://safirrail.ir/etrain/index.php'}"));
+ assert(bg.includes("chrome.tabs.create({windowId:tab.windowId"));
+ assert(bg.includes("chrome.tabs.update(reservationTabId,{url:'https://safirrail.ir/etrain/index.php'}"));
 });
 test('Explicit first-party start action cannot carry CAPTCHA fields',()=>{
  const {validate,OFFICIAL}=require('../extension/official-handoff');

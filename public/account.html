@@ -32,12 +32,12 @@
     <section class="card narrow" id="guest-section" style="display:none">
       <h2>حساب کاربری</h2>
       <p class="muted small">
-        با ساخت حساب، مسیرها و کوکی‌های صفیر ریل شما در حساب ذخیره می‌شود و می‌توانید
-        آن‌ها را روی دستگاه‌های دیگر (مثل موبایل) تحویل بگیرید؛ اطلاعیه‌ها هم روی تلگرام/پیامک قابل دریافت است.
+        هر لایسنس فقط یک حساب مالک دارد. برای ورود از حسابی که هنگام نصب ساخته شده استفاده کنید.
+        الگوهای مسافر فقط در همین مرورگر و آدرس BilitFast ذخیره می‌شوند.
       </p>
       <div class="tabs" style="display:flex;gap:8px;margin:12px 0">
         <button class="btn btn-primary tab-btn" id="tab-login" type="button">ورود</button>
-        <button class="btn tab-btn" id="tab-register" type="button">ثبت‌نام</button>
+
       </div>
       <div id="alert" style="display:none"></div>
       <form id="auth-form">
@@ -72,8 +72,8 @@
           <input type="password" id="cur-pass" required style="direction:ltr;text-align:left">
         </div>
         <div class="field">
-          <label>گذرواژه جدید (حداقل ۶ کاراکتر):</label>
-          <input type="password" id="new-pass" required minlength="6" style="direction:ltr;text-align:left">
+          <label>گذرواژه جدید (حداقل ۱۲ کاراکتر):</label>
+          <input type="password" id="new-pass" required minlength="12" style="direction:ltr;text-align:left">
         </div>
         <button class="btn" type="submit">تغییر گذرواژه</button>
       </form>
@@ -84,7 +84,7 @@
   <script src="secure-store.js"></script>
   <script src="app.js"></script>
   <script>
-  let mode = 'login';
+  let mode = 'login'; // only one owner account
 
   function showAlert(id, msg, ok) {
     const el = document.getElementById(id);
@@ -96,11 +96,11 @@
   function setMode(m) {
     mode = m;
     document.getElementById('tab-login').className = 'btn tab-btn' + (m === 'login' ? ' btn-primary' : '');
-    document.getElementById('tab-register').className = 'btn tab-btn' + (m === 'register' ? ' btn-primary' : '');
+
     document.getElementById('submit-btn').textContent = m === 'login' ? 'ورود' : 'ثبت‌نام';
   }
   document.getElementById('tab-login').addEventListener('click', () => setMode('login'));
-  document.getElementById('tab-register').addEventListener('click', () => setMode('register'));
+
 
   document.getElementById('auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -108,7 +108,7 @@
     const password = document.getElementById('password').value;
     const btn = document.getElementById('submit-btn');
     btn.disabled = true;
-    const data = await BilitFast.authFetch('/api/auth', { action: mode, username, password });
+    const data = await BilitFast.authFetch('/api/auth', { action: 'login', username, password });
     btn.disabled = false;
     if (!data.ok) {
       /* سه حالت جدید که پیام مخصوص خود را دارند تا کاربر بداند چه کند:
@@ -129,13 +129,12 @@
     // انتقال داده‌های محلی (مسیرها/کوکی‌ها) به حساب — یک‌بار
     try {
       const routes = BilitFast.loadRoutes();
-      const cookies = BilitFast.getCookies();
-      if (routes.length || cookies.length) {
-        await BilitFast.authFetch('/api/auth', { action: 'import-local', routes, cookies });
+      if (routes.length) {
+        await BilitFast.authFetch('/api/auth', { action: 'import-local', routes });
       }
     } catch (err) { /* انتقال بهترین تلاش است */ }
 
-    showAlert('alert', mode === 'register' ? '✅ حساب شما ساخته شد و وارد شدید.' : '✅ وارد شدید.', true);
+    showAlert('alert', '✅ وارد شدید.', true);
     setTimeout(render, 500);
   });
 
@@ -186,7 +185,7 @@
       guest.style.display = 'block';
       userEl.style.display = 'none';
       document.getElementById('import-note').textContent =
-        (BilitFast.loadRoutes().length ? '📌 مسیرهای ذخیره‌شده در این مرورگر بعد از ورود/ثبت‌نام به حساب شما منتقل می‌شوند.' : '');
+        (BilitFast.loadRoutes().length ? '📌 مسیرهای ذخیره‌شده در این مرورگر پس از ورود در دسترس خواهند بود.' : '');
       return;
     }
     const data = await BilitFast.authFetch('/api/auth', { action: 'me' });

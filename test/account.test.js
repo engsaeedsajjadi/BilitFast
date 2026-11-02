@@ -1,3 +1,4 @@
+process.env.BILITFAST_SINGLE_USER = '0'; // regression coverage of legacy multi-user behavior
 // تست‌های حساب کاربری، دیتابیس، اشتراک و تاریخچه رزرو.
 // اجرا: node test/account.test.js
 process.env.BILITFAST_DATA_DIR = require('fs').mkdtempSync(require('os').tmpdir() + '/bf-test-');

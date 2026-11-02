@@ -5,11 +5,11 @@ const handoff=require('../extension/official-handoff');
 const code=fs.readFileSync(path.join(__dirname,'../extension/background.js'),'utf8');
 let checks=0;function check(label,cond){assert(cond,label);checks++;console.log('PASS '+label)}
 (async()=>{
- const listeners=[],state={},navigation=[],panelCalls=[];
+ const listeners=[],state={},navigation=[],newTabs=[],panelCalls=[];
  const chrome={
   runtime:{id:'bf',onInstalled:{addListener(){}},onMessage:{addListener(fn){listeners.push(fn)}},getURL(s){return 'chrome-extension://bf/'+s}},
   action:{setTitle(){}},sidePanel:{async open(o){panelCalls.push(o)}},
-  tabs:{async update(id,change){navigation.push([id,change.url])},onUpdated:{addListener(){}}},
+  tabs:{async create(options){newTabs.push(options);return {id:88,...options}},async update(id,change){navigation.push([id,change.url])},async remove(id){navigation.push([id,"removed"])},onUpdated:{addListener(){}}},
   storage:{local:{async get(){return {bilitTrustedOrigin:'https://agency.example'}}},session:{
    async get(k){return {[k]:state[k]}},async set(o){Object.assign(state,o)},async remove(k){delete state[k]}
   }}
@@ -18,7 +18,7 @@ let checks=0;function check(label,cond){assert(cond,label);checks++;console.log(
   BilitOfficialHandoff:handoff,importScripts(){}});
  function send(message,url='https://agency.example/route.html?id=7',id=7){
   return new Promise((resolve,reject)=>{
-   const sender={url,tab:{id,windowId:3,url}};
+   const sender={url,tab:{id,windowId:3,index:2,url}};
    const listener=listeners.find(fn=>fn(message,sender,resolve)===true);
    if(!listener)reject(Error('missing message listener'));
   });
@@ -32,7 +32,8 @@ let checks=0;function check(label,cond){assert(cond,label);checks++;console.log(
  result=await send({type:'BILIT_PREPARE_PANEL'});
  check('Explicit selection authorizes a side panel for matching tab',result.ok===true&&panelCalls.length===1);
  result=await send({type:'BILIT_START_FROM_SELECTION',snapshot});
- check('One selected train navigates same tab to SafirRail first party',result.ok===true&&navigation.length===1&&navigation[0][0]===7);
+ check('Selection opens NEW active reservation tab; original BilitFast tab is preserved',result.ok===true&&newTabs.length===1&&newTabs[0].url==='about:blank'&&newTabs[0].active===true&&navigation.length===1&&navigation[0][0]===88&&navigation[0][1]==='https://safirrail.ir/etrain/index.php');
+ check('Temporary passenger data and handoff are bound to new tab, not source',state.bilitPendingPassengerFill.siteTabId===88 && state.bilitPendingPassengerFill.sourceTabId===7 && state.bilitOneTabHandoff.tabId===88 && state.bilitWorkspaceSourceTab.tabId===7);
  check('No captcha token transferred into worker intent',!JSON.stringify(state.bilitPendingPassengerFill).includes('arcaptcha-token'));
  check('Official POST uses selected service without forging CAPTCHA',state.bilitOneTabHandoff?.handoff?.fields?.srvc==='ticket-42');
  result=await send({type:'BILIT_START_FROM_SELECTION',snapshot});

@@ -57,7 +57,7 @@ function check(message,fn){fn();count++;console.log('PASS '+message)}
   visible=true;
   handoffText=JSON.stringify({url:handoff.OFFICIAL,method:'POST',fields:{srvc:'123',from:'1',to:'2',passCnt:'1'}});
   change();await new Promise(r=>setImmediate(r));
-  check('Challenge-ready state starts same-tab official reservation automatically',()=>{
+  check('Challenge-ready state starts NEW-tab official reservation automatically',()=>{
     assert.equal(messages.length,2);
     assert.equal(messages[1].type,'BILIT_START_FROM_SELECTION');
     assert.equal(messages[1].snapshot.passengers[0].national_code,'0012345678');

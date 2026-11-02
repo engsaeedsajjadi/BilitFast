@@ -169,30 +169,45 @@
     return Object.prototype.hasOwnProperty.call(cache, k) ? cache[k] : null;
   }
 
-  /* نوشتن رمزشده غیرهمگام است؛ برای اینکه ناوبری به صفحه بعد قبل از
-   * کامل شدن نوشتن انجام نشود، نوشتن‌های در جریان دنبال می‌شوند. */
+  /* نوشتن رمزشده غیرهمگام است، اما وضعیت همان تب باید فوراً قابل خواندن
+   * باشد. قبلاً cache فقط پس از encrypt/localStorage.setItem تغییر می‌کرد؛
+   * شروع جستجو running=true را می‌نوشت و بلافاصله running=false می‌خواند و
+   * بدون حتی یک درخواست متوقف می‌شد. برای هر کلید، صف نوشتن ترتیبی داریم تا
+   * رمزنگاری هم‌زمان دو نسخه، داده جدید را با نسخه قدیمی بازنویسی نکند. */
   var pending = [];
+  var writeQueue = Object.create(null);
+  var lastWriteError = null;
 
-  /** نوشتن: کش فوراً، دیسک به‌صورت رمزشده. */
   function setItem(k, v) {
-    cache[k] = v;
-    var job = encrypt(v).then(function (blob) {
-      try {
-        if (blob) global.localStorage.setItem(k, blob);
-        else global.localStorage.setItem(k, v); // بدون WebCrypto (HTTP قدیمی): همان رفتار قبلی
-      } catch (e) {}
-    }).catch(function () { /* ignore */ });
+    if (!hasCrypto) {
+      return Promise.reject(new Error('رمزنگاری امن مرورگر در دسترس نیست؛ از HTTPS یا localhost استفاده کنید.'));
+    }
+    var value = String(v);
+    // در حافظه فقط؛ هرگز متن ساده روی دیسک نوشته نمی‌شود.
+    cache[k] = value;
+    var previous = writeQueue[k] || Promise.resolve();
+    var job = previous.then(function () { return encrypt(value); }).then(function (blob) {
+      if (!blob || blob.indexOf('enc1:') !== 0) throw new Error('رمزنگاری داده ناموفق بود.');
+      global.localStorage.setItem(k, blob);
+    }).catch(function (err) {
+      lastWriteError = err; // در flush() به کاربر/فراخواننده گزارش می‌شود.
+    });
+    writeQueue[k] = job;
     pending.push(job);
     job.then(function () {
       var i = pending.indexOf(job);
       if (i >= 0) pending.splice(i, 1);
+      if (writeQueue[k] === job) delete writeQueue[k];
     });
     return job;
   }
-
-  /** منتظر ماندن تا همه نوشتن‌های رمزشدهٔ در جریان روی دیسک بنشینند. */
   function flush() {
-    return Promise.all(pending.slice()).catch(function () { /* ignore */ });
+    // Error propagation is necessary for the UI to avoid false "saved" toast.
+    return Promise.all(pending.slice()).then(function () {
+      if (lastWriteError) {
+        var err = lastWriteError; lastWriteError = null; throw err;
+      }
+    });
   }
 
   function removeItem(k) {

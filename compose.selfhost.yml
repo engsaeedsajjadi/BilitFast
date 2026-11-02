@@ -8,8 +8,13 @@ services:
       BILITFAST_SELF_HOSTED: "1"
       BILITFAST_DATA_DIR: /data
       BILITFAST_BIND_HOST: 0.0.0.0
+      # Linux host machine-id (not a randomly regenerated container ID).
+      BILITFAST_HOST_MACHINE_ID_FILE: /host/etc/machine-id
     volumes:
       - bilitfast_data:/data
+      # Supported for Linux-host deployments. Windows Docker Desktop needs a
+      # separately documented OS-host identity mapping; do not copy an ID.
+      - /etc/machine-id:/host/etc/machine-id:ro
     expose:
       - "3000"
     read_only: true

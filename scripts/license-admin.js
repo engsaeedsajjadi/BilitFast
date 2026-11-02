@@ -5,18 +5,24 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { createOfflineCode } = require('../lib/vendor-license');
+const { createOfflineCode, createMigrationCode } = require('../lib/vendor-license');
 const root = path.join(__dirname, '..');
 const privatePath = process.env.BILITFAST_VENDOR_PRIVATE_KEY_PATH ||
   path.join(os.homedir(), '.bilitfast-seller', 'vendor-private.pem');
 const publicPath = path.join(root, 'config', 'license-public.pem');
 const [command, arg, flag, daysArg] = process.argv.slice(2);
 function run() {
-  if (command === 'init') {
+  if (command === 'init' || command === 'init-new') {
     const privateExists = fs.existsSync(privatePath);
     const publicExists = fs.existsSync(publicPath);
     if (publicExists && !privateExists) {
       throw new Error('The public key exists, but the seller private key is missing. Restore your private key backup.');
+    }
+    if (!privateExists && command === 'init') {
+      throw new Error('Existing seller private key not found. Restore it; do not silently rotate signing keys. A first-ever seller may deliberately run init-new with BILITFAST_ALLOW_NEW_VENDOR_KEY=1.');
+    }
+    if (!privateExists && command === 'init-new' && process.env.BILITFAST_ALLOW_NEW_VENDOR_KEY !== '1') {
+      throw new Error('Creating a NEW signing identity requires BILITFAST_ALLOW_NEW_VENDOR_KEY=1 and init-new. Old activation codes will not work with this key.');
     }
     fs.mkdirSync(path.dirname(privatePath), { recursive: true });
     fs.mkdirSync(path.dirname(publicPath), { recursive: true });
@@ -45,6 +51,23 @@ function run() {
     console.log('Never distribute this key. Back it up securely outside the project.');
     return;
   }
+  if (command === 'issue-migration') {
+    const hostHash = flag;
+    const expiryFlag = daysArg;
+    const expiry = process.argv[6];
+    if (!fs.existsSync(privatePath) || !fs.existsSync(publicPath))
+      throw new Error('Restore seller key pair first (init).');
+    const pem = fs.readFileSync(privatePath, 'utf8');
+    const publicPem = fs.readFileSync(publicPath, 'utf8');
+    const derived = crypto.createPublicKey(pem).export({format:'pem',type:'spki'});
+    if (derived !== publicPem) throw new Error('Existing seller keys do not match.');
+    if (expiryFlag && expiryFlag !== '--days') throw new Error('Usage: issue-migration <DEVICE_ID> <HOST_HASH> [--days 7]');
+    const issued = createMigrationCode(pem, arg, hostHash, {redeemDays: expiry === undefined ? 7 : Number(expiry)});
+    console.log('Seller-approved migration code for:', arg);
+    console.log('Host hash:', hostHash);
+    console.log('Migration code:\n' + issued.code);
+    return;
+  }
   if (command === 'issue') {
     if (!fs.existsSync(privatePath) || !fs.existsSync(publicPath)) {
       throw new Error('Run node scripts/license-admin.js init before issuing codes.');
@@ -61,7 +84,7 @@ function run() {
     console.log('Permanent activation code:\n' + code);
     return;
   }
-  console.log('Usage:\n  node scripts/license-admin.js init\n  node scripts/license-admin.js issue <DEVICE_ID> [--days 30]');
+  console.log('Usage:\n  node scripts/license-admin.js init   # restore PUBLIC key from existing PRIVATE key\n  BILITFAST_ALLOW_NEW_VENDOR_KEY=1 node scripts/license-admin.js init-new  # first-time seller only\n  node scripts/license-admin.js issue <DEVICE_ID> [--days 30]\n  node scripts/license-admin.js issue-migration <DEVICE_ID> <HOST_HASH> [--days 7]');
   if (command) process.exitCode = 1;
 }
 try { run(); } catch (e) { console.error('ERROR:', e.message); process.exitCode = 1; }

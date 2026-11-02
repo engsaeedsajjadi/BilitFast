@@ -1,25 +1,23 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{font-family:Tahoma,Arial,sans-serif;width:316px;padding:16px;margin:0;background:#f8fafc;color:#0f172a}
-h3{font-size:16px;margin:0 0 10px}p,li{font-size:12px;line-height:1.85}ol{padding-right:18px;margin:0 0 12px}
-input{box-sizing:border-box;width:100%;font-size:20px;text-align:center;letter-spacing:5px;padding:10px;border:1px solid #94a3b8;border-radius:9px;direction:ltr}
-button{width:100%;background:#1d4ed8;color:white;padding:11px;border:0;border-radius:9px;font-family:inherit;font-size:13px;margin-top:10px;cursor:pointer}
-button:disabled{background:#94a3b8}#endpoint{font-size:11px;line-height:1.8;margin:10px 0;padding:8px;background:#e2e8f0;border-radius:7px;overflow-wrap:anywhere}
+body{font-family:Tahoma,Arial,sans-serif;width:318px;padding:16px;margin:0;background:#f8fafc;color:#0f172a}
+h3{font-size:16px;margin:0 0 10px}p{font-size:12px;line-height:1.9}
+button{width:100%;background:#1d4ed8;color:white;padding:12px;border:0;border-radius:9px;font-family:inherit;font-size:13px;margin-top:10px;cursor:pointer}
+button:disabled{background:#94a3b8}#endpoint{font-size:12px;line-height:1.8;margin:10px 0;padding:8px;background:#e2e8f0;border-radius:7px;overflow-wrap:anywhere}
 #msg{font-size:12px;line-height:1.9;margin-top:10px}.ok{color:#166534}.err{color:#991b1b}
 </style></head><body>
-<h3>🚆 اتصال سفیر ریل</h3>
-<p>یک‌بار به سفیر ریل وارد شوید و در BilitFast کد اتصال را بگیرید. سپس کد را همین‌جا وارد کنید.</p>
-<div id="endpoint" aria-live="polite">در حال شناسایی تب BilitFast…</div>
-<label for="code" style="font-size:12px">کد شش‌رقمی اتصال</label>
-<input id="code" type="text" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="------">
-<button id="send" type="button">تأیید و ارسال نشست به همین BilitFast</button>
-<details style="margin-top:12px"><summary style="font-size:12px;cursor:pointer">شروع رزرو خودکار نبود؟</summary>
-<p>پس از انتخاب قطار در BilitFast، مرحله انسانی باید خودکار آغاز شود. این دکمه فقط برای بازیابی اتصال در نسخه‌های قدیمی است.</p>
-<button id="start-booking" type="button">شروع رزرو از همین تب (بازیابی)</button>
-</details>
+<h3>🚆 اتصال سریع BilitFast</h3>
+<p>در همین تبِ رسمی سفیر ریل وارد حساب شوید. تب BilitFast را در همین پنجره باز نگه دارید و یک بار دکمه زیر را بزنید.</p>
+<div id="endpoint" aria-live="polite">در حال شناسایی تب‌های مرورگر…</div>
+<button id="send" type="button">اتصال نشست به BilitFast</button>
+<div id="msg" role="status" aria-live="polite"></div>
+<details style="margin-top:14px"><summary style="font-size:12px;cursor:pointer">اگر اتصال انجام نشد</summary>
+<p>تب‌های BilitFast و سفیر ریل باید در یک پنجره و یک پروفایل مرورگر باشند. افزونه را در تب <strong>safirrail.ir/etrain</strong> باز کنید. بدون کد شش‌رقمی یا کپی دستی.</p>
+<p>انتقال، اثبات ورود موفق نزد سرور سفیر ریل نیست؛ اعتبار نشست هنگام درخواست رسمی مشخص می‌شود.</p></details>
 <script src="target-origin.js"></script>
 <script src="session-cookies.js"></script>
-<script src="official-handoff.js"></script>
-<script src="route-bridge-control.js"></script><script src="popup.js"></script>
+<script src="direct-session.js"></script>
+<script src="route-bridge-control.js"></script>
+<script src="popup.js"></script>
 </body></html>

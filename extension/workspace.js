@@ -4,7 +4,7 @@ const workflow = document.getElementById('workflow');
 const detail = document.getElementById('detail');
 const stages = Object.freeze({
   'idle':['در انتظار رزرو','از ردیف نتایج قطار، «انتخاب و تأیید ربات» را بزنید.'],
-  'awaiting-human':['در انتظار صفحه رسمی','صفحه safirrail.ir در همین تب بارگذاری می‌شود.'],
+  'awaiting-human':['در انتظار صفحه رسمی','رزرو در تب جدید safirrail.ir باز می‌شود. تب BilitFast محفوظ است.'],
   'unverified':['تأیید انسانی انجام نشده','در صفحه رسمی safirrail.ir تیک «من ربات نیستم» و سپس دکمه رسمی تأیید را شخصاً بزنید.'],
   'human-verified':['مرحله تأیید در سایت عبور شد','سامانه رسمی فرم اطلاعات مسافر را نمایش داد. این وضعیت از تغییر مرحله سایت است، نه از خواندن توکن.'],
   'passenger-form':['فرم مسافر آماده است','اطلاعات اولیه پس از تأیید انسانی، بدون سؤال دوباره درج می‌شود.'],
@@ -32,9 +32,24 @@ async function update() {
 }
 document.getElementById('focus-site').addEventListener('click', async () => {
   try {
-    const tabs = await chrome.tabs.query({url:'https://safirrail.ir/etrain/*',currentWindow:true});
-    if (tabs.length) await chrome.tabs.update(tabs[0].id,{active:true});
-    else detail.textContent='تب رزرو سفیر ریل پیدا نشد. ابتدا از افزونه شروع رزرو را بزنید.';
-  } catch (_) {detail.textContent='امکان نمایش تب رسمی وجود ندارد.';}
+    const state=await chrome.storage.session.get('bilitWorkspaceSourceTab');
+    const id=state?.bilitWorkspaceSourceTab?.siteTabId;
+    if (!Number.isSafeInteger(id)) throw new Error('تب رزرو ثبت نشده است.');
+    const tab=await chrome.tabs.get(id);
+    if (!tab?.url || !/^https:\/\/safirrail\.ir\/etrain\//.test(tab.url))
+      throw new Error('تب رسمی رزرو در دسترس نیست.');
+    await chrome.tabs.update(tab.id,{active:true});
+  } catch (_) {detail.textContent='تب رسمی رزرو در دسترس نیست؛ از BilitFast دوباره قطار را انتخاب کنید.';}
+});
+document.getElementById('focus-bilitfast').addEventListener('click', async () => {
+  try {
+    const state=await chrome.storage.session.get('bilitWorkspaceSourceTab');
+    const ref=state?.bilitWorkspaceSourceTab;
+    if (!Number.isSafeInteger(ref?.tabId)) throw new Error('تب برنامه ثبت نشده است.');
+    const tab=await chrome.tabs.get(ref.tabId);
+    if (new URL(tab.url).origin !== ref.origin || new URL(tab.url).pathname !== '/route.html')
+      throw new Error('آدرس صفحه تغییر کرده است.');
+    await chrome.tabs.update(tab.id,{active:true});
+  } catch (_) {detail.textContent='تب اصلی BilitFast در دسترس نیست؛ از فهرست تب‌ها آن را انتخاب کنید.';}
 });
 void update();setInterval(update,1200);

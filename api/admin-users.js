@@ -44,7 +44,10 @@ module.exports = async (req, res) => {
   try {
     // Public, non-sensitive capability probe for the installer UI.
     if (action === 'bootstrap-status') {
-      return res.status(200).json({ ok: true, needsBootstrap: !accounts.hasAdmin() });
+      const single = require('../lib/single-user');
+      const st = single.state();
+      return res.status(200).json({ ok: st.ok, needsBootstrap: st.ok && single.enabled() ? !st.owner : !accounts.hasAdmin(),
+        singleUser: single.enabled(), error: st.ok ? undefined : st.error });
     }
 
     /* --- راه‌اندازی نخستین ادمین --- */
@@ -58,11 +61,14 @@ module.exports = async (req, res) => {
         res.status(403).json({ ok: false, error: 'راز راه‌اندازی مدیر معتبر نیست.' });
         return;
       }
+      if (require('../lib/single-user').enabled() && require('../lib/single-user').users().length) {
+        return res.status(403).json({ok:false,error:'حساب مالک از قبل وجود دارد؛ داده‌های قبلی حذف نمی‌شوند.'});
+      }
       if (accounts.hasAdmin()) {
         res.status(403).json({ ok: false, error: 'ادمین از قبل وجود دارد. این مسیر بسته است.' });
         return;
       }
-      const r = registerUser(body.username, body.password);
+      const r = registerUser(body.username, body.password, {ownerBootstrap:true});
       if (!r.ok) { res.status(200).json(r); return; }
       db.update('users', r.user.id, {
         role: 'admin',
@@ -80,6 +86,15 @@ module.exports = async (req, res) => {
     if (!gate.ok) return;
     const admin = gate.user;
 
+    // One licensed installation has one owner. Do not expose legacy user
+    // management, even if a client calls the hidden endpoints directly.
+    if (require('../lib/single-user').enabled() &&
+        !['list','activity','reset-password'].includes(action)) {
+      return res.status(403).json({ok:false,error:'مدیریت چندکاربره در نسخه تک‌کاربره غیرفعال است.'});
+    }
+    if (require('../lib/single-user').enabled() && action === 'reset-password' && String(body.id||'') !== admin.id) {
+      return res.status(403).json({ok:false,error:'فقط رمز مالک این نصب قابل تغییر است.'});
+    }
     if (action === 'list') {
       res.status(200).json({ ok: true, users: accounts.listUsers() });
       return;

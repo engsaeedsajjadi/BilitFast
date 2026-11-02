@@ -20,6 +20,6 @@ console.log('PASS permissions use Chrome match pattern without TCP port');
 assert(src.includes('chrome.permissions.request'),'User must grant domain permission');
 assert(src.includes('BilitCookieReader.collect(chrome)'),'Use the scoped Safir cookie collector');
 assert(!src.includes('CANDIDATES'),'No desktop port scanning');
-assert(!src.includes('bilitfastOrigin'),'No stored arbitrary destination');
+assert(src.includes('BilitDirectSession.select'),'Destination selected only from same-window tabs');
 console.log('PASS explicit user click and no stale origin');
 console.log('ALL self-hosted extension endpoint checks passed');

@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "BilitFast — اتصال سفیر ریل",
-  "version": "3.8.0",
-  "description": "انتخاب قطار با شروع خودکار مرحله تأیید انسانی روی مبدأ رسمی؛ انتقال نشست قابل تأیید و بدون اتوماسیون کپچا.",
+  "version": "3.13.3",
+  "description": "انتقال مستقیم نشست با یک کلیک از تب رسمی SafirRail به تب باز BilitFast؛ بدون PIN یا سرور واسط.",
   "permissions": [
     "cookies",
     "activeTab",
     "storage",
     "scripting",
-    "sidePanel"
+    "sidePanel",
+    "tabs"
   ],
   "host_permissions": [
     "https://safirrail.ir/*"
@@ -22,7 +23,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "انتقال کوکی صفیر ریل به بیلیت فست",
+    "default_title": "اتصال مستقیم نشست از تب سفیر ریل به BilitFast",
     "default_popup": "popup.html"
   },
   "content_scripts": [

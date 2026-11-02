@@ -23,7 +23,8 @@
 // Production must not accept opt-outs that disable critical guards.
 process.env.NODE_ENV = 'production';
 process.env.BILITFAST_ENFORCE_SECURITY = '1';
-process.env.BILITFAST_MULTIUSER = '1';
+process.env.BILITFAST_MULTIUSER = '1'; // Auth required, not multiple accounts.
+process.env.BILITFAST_SINGLE_USER = '1';
 process.env.BILITFAST_ENFORCE_LICENSE = '1';
 
 const path = require('path');
@@ -57,6 +58,7 @@ function preflight() {
 
   try {
     require('./lib/db').assertReliableStorage();
+    require('./lib/single-user').assertReady();
     if (process.env.BILITFAST_SELF_HOSTED === '1') require('./lib/selfhost-license').initial();
   } catch (e) {
     problems.push('ذخیره‌سازی: ' + (e && e.message ? e.message : String(e)));
@@ -90,7 +92,7 @@ preflight();
 const server = require('./dev-server.js');
 
 console.log('BilitFast production — NODE_ENV=' + process.env.NODE_ENV +
-  ' — چندکاربره=' + process.env.BILITFAST_MULTIUSER);
+  ' — حساب‌های مجاز=۱ (مالک)');
 
 /* ---------- خاموشی تمیز ---------- */
 let shuttingDown = false;

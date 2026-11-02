@@ -46,12 +46,13 @@ function call(action, fields = {}) {
     });
     check('Connection returns to route via same-window navigation', () => {
       assert.match(route, /window\.location\.href = 'login\.html\?return='/);
-      assert.match(client, /window\.location\.assign\(returning\)/);
+      assert.match(client, /location\.assign\(ret\)/);
       assert.match(login, /id="return-to-route"/);
     });
-    check('Route requires a real PHP session cookie rather than just an array item', () => {
+    check('Cookie status is visible, but the official-tab flow never blocks on a copied cookie', () => {
       assert.match(route, /BilitFast\.hasSessionCookie\(BilitFast\.getCookies\(\)\)/);
-      assert.match(route, /if \(!updateSafirCookieStatus\(\)\)/);
+      assert.doesNotMatch(route, /if \(!updateSafirCookieStatus\(\)\)/);
+      assert.match(route, /action:\s*'prepare-official-handoff'/);
       assert.match(route, /id="safir-cookie-status"/);
     });
     check('Cookie handoff stays in tab-scoped storage, not durable localStorage', () => {

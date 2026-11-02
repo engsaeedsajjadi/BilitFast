@@ -1,3 +1,4 @@
+process.env.BILITFAST_SINGLE_USER = '0'; // regression coverage of legacy multi-user behavior
 // -*- coding: utf-8 -*-
 /**
  * test/multiuser.test.js — جداسازی کاربران، مجوزدهی، سهمیه و امنیت نشست.

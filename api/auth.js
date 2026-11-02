@@ -29,6 +29,9 @@ module.exports = async (req, res) => {
 
   try {
     if (action === 'register') {
+      if (require('../lib/single-user').enabled()) {
+        return res.status(403).json({ok:false,error:'ثبت‌نام غیرفعال است؛ این نصب فقط یک مالک دارد.'});
+      }
       // Commercial deployments provision users through the admin console.
       // Opt-in to public self-registration only when explicitly required.
       if (process.env.NODE_ENV === 'production' &&
@@ -125,8 +128,8 @@ module.exports = async (req, res) => {
       if (!verifyPassword(body.current_password || '', user.pass)) {
         return res.status(200).json({ ok: false, error: 'گذرواژه فعلی نادرست است.' });
       }
-      if (String(body.new_password || '').length < 6) {
-        return res.status(200).json({ ok: false, error: 'گذرواژه جدید باید حداقل ۶ کاراکتر باشد.' });
+      if (String(body.new_password || '').length < (require('../lib/single-user').enabled() ? 12 : 6)) {
+        return res.status(200).json({ ok: false, error: 'گذرواژه جدید باید حداقل ۱۲ کاراکتر باشد.' });
       }
       db.update('users', user.id, { pass: hashPassword(body.new_password) });
       // Password changes must invalidate every existing bearer token.
@@ -177,7 +180,9 @@ module.exports = async (req, res) => {
         patch.local_routes = body.routes.slice(0, 50);
         patch.imported_routes = true;
       }
-      if (Array.isArray(body.cookies) && body.cookies.length) {
+      // On single-owner deployments do not persist copied session cookies
+      // in the plaintext JSON user record. First-party Chrome sessions remain separate.
+      if (!require('../lib/single-user').enabled() && Array.isArray(body.cookies) && body.cookies.length) {
         patch.safir_cookies = body.cookies.slice(0, 30);
       }
       db.update('users', user.id, patch);
@@ -190,7 +195,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         ok: true,
         routes: user.local_routes || [],
-        cookies: user.safir_cookies || [],
+        cookies: require('../lib/single-user').enabled() ? [] : (user.safir_cookies || []),
       });
     }
 

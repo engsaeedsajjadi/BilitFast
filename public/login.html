@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
+<meta name="bilitfast-installation" content="first-party-web-v1">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>اتصال به سفیر ریل — BilitFast</title>
@@ -27,24 +28,12 @@
 <nav class="topnav"><a href="index.html">مسیرها</a><a href="history.html">تاریخچه</a><a href="login.html">اتصال سفیر ریل</a><a href="settings.html">تنظیمات</a><a href="account.html">حساب</a><a href="privacy.html">حریم خصوصی</a></nav></div></header>
 <main class="container">
 <section class="card connect-card" id="extension-connect-card">
-<h2>🔗 اتصال حساب سفیر ریل</h2>
-<p>برای اتصال فقط از <strong>افزونه BilitFast</strong> در Chrome یا Edge استفاده کنید. نیازی به وارد کردن رمز عبور یا کپی دستی کوکی نیست.</p>
-<ol class="connect-steps">
-<li>در Chrome یا Edge، <a href="https://safirrail.ir/etrain/index.php" target="_blank" rel="noopener noreferrer">بخش رزرو سفیر ریل</a> را باز کنید و <strong>به حساب خود وارد شوید</strong>. افزونه تب سایت را به‌صورت خودکار پیدا می‌کند.</li>
-<li>اگر افزونه را نصب نکرده‌اید، <a href="extension-help.html">راهنمای نصب افزونه</a> را ببینید (فقط بار اول).</li>
-<li>دکمه «اتصال» را بزنید و کد را فقط یک‌بار در افزونه همین تب وارد کنید. با دریافت نشست، انتقال خودکار تأیید می‌شود و می‌توانید قطار را انتخاب کنید.</li>
-</ol>
-<div id="conn-state" class="connect-state" data-state="idle" role="status" aria-live="polite">در انتظار اتصال</div>
-<div class="connect-buttons"><button class="btn btn-primary btn-lg" type="button" id="btn-ext-sync">🔑 اتصال به سفیر ریل</button></div>
-<div id="pair-panel" hidden>
-<p style="margin:12px 0 4px">کد یک‌بارمصرف اتصال (اعتبار: ۲ دقیقه):</p>
-<div class="connect-code" id="pair-code" aria-label="کد شش رقمی"></div>
-<div class="connect-buttons"><button class="btn btn-sm" type="button" id="copy-pair-code">📋 کپی کد</button><span id="pair-timer" class="connect-muted"></span></div>
-<p>افزونه را از همین تب باز کنید، کد را یک‌بار وارد کنید و ارسال نشست را بزنید. مقصد خودکار شناسایی می‌شود.</p>
-</div>
-<div id="connect-result" class="connect-state" hidden role="alert" aria-live="polite"></div>
-<div class="connect-buttons"><button type="button" class="btn btn-primary" id="return-to-route" hidden>↩ بازگشت به همین مسیر</button></div>
-<details class="connect-muted"><summary>حریم خصوصی و وضعیت نشست</summary><p>نشست با موافقت شما به سرور همین آژانس ارسال می‌شود. دریافت نشست با تأیید ورود و مجوز رزرو یکسان نیست؛ نتیجه قطعی را سایت رسمی مشخص می‌کند.</p></details>
+<h2>🔗 اتصال مستقیم سفیر ریل</h2>
+<p>کد شش‌رقمی حذف شده است. <strong>تب BilitFast را باز نگه دارید</strong>، در همین پنجره به حساب خود در <a href="https://safirrail.ir/etrain/index.php" target="_blank" rel="noopener noreferrer">سایت رسمی سفیر ریل</a> وارد شوید و افزونه BilitFast را <strong>از تب سفیر ریل</strong> باز کنید.</p>
+<p>یک بار «اتصال نشست به BilitFast» را بزنید؛ نشست فقط در همین تب BilitFast ذخیره می‌شود.</p>
+<div id="conn-state" class="connect-state" data-state="idle" role="status" aria-live="polite">در انتظار اتصال از افزونه…</div>
+<div class="connect-buttons"><button class="btn btn-primary" type="button" id="btn-ext-sync">بررسی وضعیت اتصال</button><button class="btn btn-primary" type="button" id="return-to-route" hidden>↩ بازگشت به همین مسیر</button></div>
+<details class="connect-muted"><summary>نکات اتصال</summary><p>هر دو تب باید در یک پنجره و پروفایل Chrome/Edge باشند. انتقال موفق به معنی تأیید ورود نزد سرور سفیر ریل نیست. در استقرار عمومی، فقط به دامنه متعلق به آژانس خود مجوز بدهید.</p><p><a href="extension-help.html">راهنمای نصب افزونه</a></p></details>
 </section></main>
 <script src="secure-store.js"></script>
 <script src="jalaali.min.js"></script>

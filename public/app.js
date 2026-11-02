@@ -35,15 +35,15 @@ const BilitFast = (function (global) {
       const raw = localStorage.getItem(k);
       return (raw && raw.indexOf('enc1:') === 0) ? null : raw;
     }
-    return localStorage.getItem(k);
+    return null; // No plaintext fallback for sensitive values.
   }
   function secureSet(k, v) {
-    if (global.BilitSecureStore && global.BilitSecureStore.available) {
-      global.BilitSecureStore.setItem(k, v);
-      return;
+    if (!global.BilitSecureStore || !global.BilitSecureStore.available) {
+      throw new Error('برای ذخیره اطلاعات مسافر و مسیر، HTTPS یا localhost و رمزنگاری مرورگر لازم است.');
     }
-    try { localStorage.setItem(k, v); } catch (e) { /* ignore */ }
+    return global.BilitSecureStore.setItem(k, v);
   }
+
   /**
    * تا وقتی ذخیره‌ساز امن داده‌های رمزشده را رمزگشایی نکرده، خواندن مسیرها
    * null برمی‌گرداند. هر صفحه‌ای که در لحظه بارگذاری به مسیرها نیاز دارد باید
@@ -499,8 +499,7 @@ const BilitFast = (function (global) {
   }
   function savePassengerProfiles(list) {
     // الگوهای مسافر هم داده هویتی دارند → رمزشده ذخیره می‌شوند
-    try { secureSet(PASSENGER_PROFILES_KEY, JSON.stringify(Array.isArray(list) ? list.slice(0, 50) : [])); }
-    catch (e) { /* ignore */ }
+    return secureSet(PASSENGER_PROFILES_KEY, JSON.stringify(Array.isArray(list) ? list.slice(0, 50) : []));
   }
   function savePassengerProfile(name, passengers) {
     const list = loadPassengerProfiles().filter((p) => p.name !== name);
@@ -755,7 +754,18 @@ const BilitFast = (function (global) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(withLicenseTokens(payload)),
     });
-    return res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      // A non-JSON response is not evidence of a network outage, nor
+      // proof that there is no train capacity.
+      return { ok: false, reason: 'unexpected_response',
+        error: 'پاسخ غیرمنتظره از API جستجو دریافت شد.', httpStatus: res.status };
+    }
+    if (data && typeof data === 'object' && !res.ok && data.httpStatus == null)
+      data.httpStatus = res.status;
+    return data;
   }
   async function apiReserve(payload) {
     const res = await fetch('/api/reserve', {
