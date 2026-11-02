@@ -1,4 +1,4 @@
-// api/login.js — ورود به سامانه صفیر ریل و بازگرداندن کوکی‌ها
+// api/login.js — ورود به سامانه سفیر ریل و بازگرداندن کوکی‌ها
 const { login } = require('../lib/core');
 const { guardApi, isLoopbackSocket } = require('../lib/guard');
 const { requireUser } = require('../lib/apiauth');

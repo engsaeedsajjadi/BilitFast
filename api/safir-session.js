@@ -1,14 +1,14 @@
-// api/safir-session.js — مدیریت نشست خودکار صفیر ریل.
+// api/safir-session.js — مدیریت نشست خودکار سفیر ریل.
 //
 // اقدام‌ها (action):
-//   save    → ذخیره رمزشده شناسه/گذرواژه صفیر ریل + یک ورود فوری برای گرفتن کوکی
+//   save    → ذخیره رمزشده شناسه/گذرواژه سفیر ریل + یک ورود فوری برای گرفتن کوکی
 //   status  → وضعیت تازه‌سازی خودکار (فعال؟ آخرین نتیجه؟ چند کوکی؟)
 //   refresh → تازه‌سازی فوری نشست (دکمه «همین حالا تازه کن»)
 //   pull    → تحویل گرفتن آخرین کوکی‌های ذخیره‌شده روی حساب
 //   clear   → خاموش‌کردن تازه‌سازی خودکار و حذف اعتبارنامه
 //
 // همه اقدام‌ها نیازمند ورود به حساب برنامه هستند، چون اعتبارنامه روی رکورد
-// کاربر ذخیره می‌شود. گذرواژه صفیر هرگز به مرورگر بازگردانده نمی‌شود.
+// کاربر ذخیره می‌شود. گذرواژه سفیر هرگز به مرورگر بازگردانده نمی‌شود.
 
 const keeper = require('../lib/session-keeper');
 const { guardApi } = require('../lib/guard');
@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
       const username = String(body.safir_username || '').trim();
       const password = String(body.safir_password || '');
       if (!username || !password) {
-        res.status(400).json({ ok: false, error: 'شناسه و گذرواژه صفیر ریل را وارد کنید.' });
+        res.status(400).json({ ok: false, error: 'شناسه و گذرواژه سفیر ریل را وارد کنید.' });
         return;
       }
       keeper.saveCredentials(user.id, username, password);

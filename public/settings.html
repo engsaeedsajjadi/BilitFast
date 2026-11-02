@@ -5,26 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تنظیمات — Bilit Fast</title>
   <link rel="icon" href="favicon.ico">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#2563eb">
+  <meta name="theme-color" content="#0b1f47">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <div class="brand">
-        <span class="brand-logo">🚆</span>
-        <span class="brand-name">Bilit Fast</span>
-      </div>
-      <nav class="topnav">
+      <a class="brand" href="index.html" aria-label="BilitFast — صفحه اصلی">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><defs><linearGradient id="bfg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2459e8"/><stop offset="1" stop-color="#0b1f47"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#bfg)"/><path d="M13 10.5h14a4 4 0 0 1 4 4V25a4 4 0 0 1-4 4H13a4 4 0 0 1-4-4V14.5a4 4 0 0 1 4-4z" fill="#fff"/><rect x="12" y="14" width="16" height="6.5" rx="2" fill="#2459e8"/><circle cx="14.5" cy="24.6" r="1.7" fill="#ff8a3d"/><circle cx="25.5" cy="24.6" r="1.7" fill="#ff8a3d"/><path d="M14 29l-3 3.5M26 29l3 3.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="brand-text"><span class="brand-name">Bilit<span class="brand-fast">Fast</span></span><span class="brand-sub">رزرو هوشمند بلیت قطار</span></span>
+      </a>
+      <nav class="topnav" aria-label="منوی اصلی">
         <a href="index.html">مسیرها</a>
-        <a href="history.html">تاریخچه</a>
-        <a href="login.html">ورود صفیر ریل</a>
+        <a href="history.html">تاریخچه رزروها</a>
+        <a href="login.html">اتصال سفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
-        <a href="account.html">حساب</a>
-        <a href="privacy.html">حریم خصوصی</a>
+        <a href="account.html">حساب کاربری</a>
       </nav>
     </div>
   </header>
@@ -122,25 +119,23 @@
       <button class="btn" id="btn-test-notify" type="button">ارسال پیام آزمایشی به کانال‌های من</button>
     </section>
 
-    <section class="card">
-      <h2>تنظیمات سامانه</h2>
-      <p class="muted">
-        این مقادیر از فایل <code>config.json</code> خوانده می‌شوند و در زمان استقرار (deploy)
-        همراه با پروژه باندل می‌شوند. برای تغییر باید <code>config.json</code> را در ریپو ویرایش و دوباره دیپلوی کنید.
-      </p>
-      <pre id="config-preview">در حال بارگذاری...</pre>
-    </section>
 
     <section class="card">
-      <h3>حالت توسعه</h3>
-      <p class="muted small">
-        با فعال‌کردن این گزینه، پنل‌های «تشخیص» (جزئیات فنی فرم‌ها و مراحل رزرو)
-        در صفحه مسیر نمایش داده می‌شوند. این اطلاعات برای رفع اشکال مفید است و
-        برای استفاده عادی نیازی به آن نیست.
-      </p>
-      <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-        <input type="checkbox" id="debug-toggle"> نمایش پنل‌های تشخیص (حالت توسعه)
+      <div class="section-head">
+        <h3>حالت توسعه</h3>
+        <p class="muted small">
+          پنل‌های تشخیص فنی را در صفحه مسیر نشان می‌دهد. فقط برای رفع اشکال لازم است.
+        </p>
+      </div>
+      <label class="inline-check">
+        <input type="checkbox" id="debug-toggle"> نمایش پنل‌های تشخیص
       </label>
+      <details class="options-details" id="config-details" style="display:none">
+        <summary><span>پیکربندی فعلی سامانه</span><span class="summary-hint">فقط خواندنی — از فایل config.json</span></summary>
+        <div class="options-body">
+          <pre id="config-preview">در حال بارگذاری...</pre>
+        </div>
+      </details>
     </section>
 
     <section class="card">
@@ -151,7 +146,16 @@
       </p>
     </section>
   </main>
-  <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>BilitFast — رزرو هوشمند بلیت قطار</span>
+      <nav class="footer-links" aria-label="پیوندهای پایین صفحه">
+        <a href="privacy.html">حریم خصوصی</a>
+        <a href="trial.html">وضعیت مجوز</a>
+        <a href="extension-help.html">راهنمای افزونه</a>
+      </nav>
+    </div>
+  </footer>
 
   <script src="secure-store.js"></script>
   <script src="app.js"></script>
@@ -172,7 +176,12 @@
 
   const debugToggle = document.getElementById('debug-toggle');
   debugToggle.checked = BilitFast.isDebugMode();
-  debugToggle.addEventListener('change', () => BilitFast.setDebugMode(debugToggle.checked));
+  // Raw configuration is a developer tool: show it only in development mode.
+  function syncConfigVisibility() {
+    document.getElementById('config-details').style.display = debugToggle.checked ? '' : 'none';
+  }
+  syncConfigVisibility();
+  debugToggle.addEventListener('change', () => { BilitFast.setDebugMode(debugToggle.checked); syncConfigVisibility(); });
 
 
   /* ---------------- بخش اطلاع‌رسانی ---------------- */

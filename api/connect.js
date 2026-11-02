@@ -1,6 +1,6 @@
 // -*- coding: utf-8 -*-
 /**
- * api/connect.js — «اتصال هوشمند» به صفیر ریل با یک دکمه.
+ * api/connect.js — «اتصال هوشمند» به سفیر ریل با یک دکمه.
  *
  * مسئله‌ای که حل می‌کند:
  * تا امروز کاربر با چهار روشِ موازی روبه‌رو بود (ورود مستقیم، افزونه مرورگر،
@@ -63,7 +63,7 @@ async function checkSession(cookies) {
 /**
  * تلاش برای خواندن کوکی از پروفایل مرورگرهای نصب‌شده روی همین سیستم.
  *
- * گزارش را دقیق نگه می‌داریم: قبلاً هر شکستی به «کوکی صفیر ریل یافت نشد»
+ * گزارش را دقیق نگه می‌داریم: قبلاً هر شکستی به «کوکی سفیر ریل یافت نشد»
  * تقلیل پیدا می‌کرد و کاربر نمی‌فهمید مشکل از کجاست — مرورگر پیدا نشد؟
  * کوکی نشست نبود؟ رمزگشایی کروم شکست خورد؟ هر کدام راه‌حل متفاوتی دارد.
  */
@@ -106,16 +106,16 @@ async function readBrowserProfiles() {
 /** توضیح قابل‌فهم از اینکه چرا خواندن مرورگر به نتیجه نرسید. */
 function profileFailureDetail(info) {
   if (info.cookies.length && !info.hasSession) {
-    return 'کوکی صفیر ریل پیدا شد ولی کوکی نشست (ورود) بین آن‌ها نبود — ' +
-      'یعنی در مرورگر وارد حساب صفیر ریل نشده‌اید یا نشست منقضی شده است.';
+    return 'کوکی سفیر ریل پیدا شد ولی کوکی نشست (ورود) بین آن‌ها نبود — ' +
+      'یعنی در مرورگر وارد حساب سفیر ریل نشده‌اید یا نشست منقضی شده است.';
   }
   const noBrowser = (info.perBrowser.firefox === 0 || info.perBrowser.firefox === undefined)
     && (info.perBrowser.chrome === 0 || info.perBrowser.chrome === undefined);
   if (noBrowser && !info.notes.length) {
-    return 'در فایرفاکس و کروم این سیستم، هیچ کوکی‌ای برای صفیر ریل نبود. ' +
+    return 'در فایرفاکس و کروم این سیستم، هیچ کوکی‌ای برای سفیر ریل نبود. ' +
       'اگر با مرورگر دیگری وارد شده‌اید، در همان فایرفاکس یا کروم وارد شوید.';
   }
-  return info.notes.length ? info.notes.join(' | ') : 'کوکی صفیر ریل در مرورگرها یافت نشد';
+  return info.notes.length ? info.notes.join(' | ') : 'کوکی سفیر ریل در مرورگرها یافت نشد';
 }
 
 module.exports = async (req, res) => {
@@ -161,7 +161,7 @@ module.exports = async (req, res) => {
         degraded: v.degraded || undefined,
         message: v.degraded
           ? 'کوکی نشست موجود است. (سرور نسخه قدیمی را در حافظه دارد؛ برای بررسی دقیق، برنامه را ری‌استارت کنید.)'
-          : 'اتصال شما به صفیر ریل برقرار است.',
+          : 'اتصال شما به سفیر ریل برقرار است.',
       });
       return;
     }
@@ -169,7 +169,7 @@ module.exports = async (req, res) => {
     if (v.reason === 'network') {
       res.status(200).json({
         ok: false, reason: 'network', tried,
-        error: 'دسترسی به سامانه صفیر ریل برقرار نشد. ' + core.networkHint(),
+        error: 'دسترسی به سامانه سفیر ریل برقرار نشد. ' + core.networkHint(),
       });
       return;
     }
@@ -203,7 +203,7 @@ module.exports = async (req, res) => {
     record('account', false, 'وارد حساب BilitFast نشده‌اید');
   }
 
-  /* ---- ۳) ورود مستقیم با اطلاعات ذخیره‌شده صفیر ریل ---- */
+  /* ---- ۳) ورود مستقیم با اطلاعات ذخیره‌شده سفیر ریل ---- */
   if (user) {
     try {
       const r = await keeper.refreshUserSession(user.id);
@@ -211,7 +211,7 @@ module.exports = async (req, res) => {
         record('login', true, 'ورود خودکار انجام شد');
         res.status(200).json({
           ok: true, method: 'login', cookies: r.cookies, tried, trace: trace.getEntries(),
-          message: 'با شناسه و گذرواژه ذخیره‌شده، خودکار وارد صفیر ریل شدیم.',
+          message: 'با شناسه و گذرواژه ذخیره‌شده، خودکار وارد سفیر ریل شدیم.',
         });
         return;
       }
@@ -219,7 +219,7 @@ module.exports = async (req, res) => {
         record('login', false, 'سایت کد امنیتی خواست');
         res.status(200).json({
           ok: false, reason: 'captcha_required', tried,
-          error: 'سامانه صفیر ریل هنگام ورود کد امنیتی (کپچا) می‌خواهد، پس ورود خودکار ممکن نیست.',
+          error: 'سامانه سفیر ریل هنگام ورود کد امنیتی (کپچا) می‌خواهد، پس ورود خودکار ممکن نیست.',
           nextStep: isLocalRun() ? 'browser_login' : 'extension',
         });
         return;
@@ -231,7 +231,7 @@ module.exports = async (req, res) => {
   }
 
   /* ---- ۳.۵) ورود خودکار با اعتبارنامه محلی (بدون نیاز به حساب برنامه) ----
-   * چون ورود صفیر ریل کپچا نمی‌خواهد، اگر کاربر یک‌بار در همین برنامه وارد
+   * چون ورود سفیر ریل کپچا نمی‌خواهد، اگر کاربر یک‌بار در همین برنامه وارد
    * شده باشد، اعتبارنامه‌اش رمزشده ذخیره شده و می‌توانیم بی‌صدا دوباره
    * وارد شویم — حتی اگر حساب BilitFast نداشته باشد. */
   if (!user && localCaller && keeper.isLocalMode() &&
@@ -242,7 +242,7 @@ module.exports = async (req, res) => {
         record('login', true, 'ورود خودکار با اطلاعات ذخیره‌شده روی این دستگاه');
         res.status(200).json({
           ok: true, method: 'login', cookies: r.cookies, tried, trace: trace.getEntries(),
-          message: 'به‌صورت خودکار دوباره وارد صفیر ریل شدیم.',
+          message: 'به‌صورت خودکار دوباره وارد سفیر ریل شدیم.',
         });
         return;
       }
@@ -292,7 +292,7 @@ module.exports = async (req, res) => {
     tried,
     trace: trace.getEntries(),
     nextStep: isLocalRun() ? 'browser_login' : 'extension',
-    error: 'هنوز به صفیر ریل متصل نیستید.',
+    error: 'هنوز به سفیر ریل متصل نیستید.',
   });
 };
 

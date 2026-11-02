@@ -95,8 +95,8 @@ module.exports = async (req, res) => {
   const appBound = report.browsers.some((b) => b.errorCode === 'CHROME_APP_BOUND');
 
   if (anySession) {
-    report.findings.push('کوکی نشست صفیر ریل روی این دستگاه پیدا شد.');
-    report.advice.push('همه‌چیز آماده است — دکمه «اتصال به صفیر ریل» باید کار کند.');
+    report.findings.push('کوکی نشست سفیر ریل روی این دستگاه پیدا شد.');
+    report.advice.push('همه‌چیز آماده است — دکمه «اتصال به سفیر ریل» باید کار کند.');
   } else if (!anyProfile) {
     report.findings.push('هیچ پروفایل مرورگری روی این دستگاه پیدا نشد.');
     report.advice.push(
@@ -114,10 +114,10 @@ module.exports = async (req, res) => {
       'یعنی در این مرورگرها تا حالا وارد سایت نشده‌اید. در همان فایرفاکس یا ' +
       'کروم وارد safirrail.ir شوید، سپس دوباره تلاش کنید.');
   } else {
-    report.findings.push('کوکی صفیر ریل پیدا شد، ولی کوکی نشست (ورود) بینشان نبود.');
+    report.findings.push('کوکی سفیر ریل پیدا شد، ولی کوکی نشست (ورود) بینشان نبود.');
     report.advice.push(
       'یعنی سایت را باز کرده‌اید ولی وارد حساب نشده‌اید، یا نشست منقضی شده. ' +
-      'در مرورگر وارد حساب صفیر ریل شوید و دوباره تلاش کنید.');
+      'در مرورگر وارد حساب سفیر ریل شوید و دوباره تلاش کنید.');
   }
 
   res.status(200).json(report);

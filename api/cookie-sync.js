@@ -1,4 +1,4 @@
-// api/cookie-sync.js — همگام‌سازی کوکی صفیر ریل از افزونه مرورگر، به‌صورت امن.
+// api/cookie-sync.js — همگام‌سازی کوکی سفیر ریل از افزونه مرورگر، به‌صورت امن.
 //
 // چرا افزونه؟ کوکی نشست (PHPSESSID) از نوع HttpOnly است؛ فقط افزونه (با مجوز
 // cookies) می‌تواند آن را بخواند.
@@ -243,7 +243,7 @@ module.exports = async (req, res) => {
       }
       const hasSession = cookies.some((c) => /^PHPSESSID=[^\s;]+/i.test(c));
       if (!hasSession) {
-        res.status(422).json({ ok: false, error: 'کوکی نشست صفیر ریل یافت نشد؛ ابتدا وارد حساب سایت شوید.' });
+        res.status(422).json({ ok: false, error: 'کوکی نشست سفیر ریل یافت نشد؛ ابتدا وارد حساب سایت شوید.' });
         return;
       }
       db.update('cookie_sync', rec.id, {

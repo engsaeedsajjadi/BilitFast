@@ -2,7 +2,7 @@
 // نکته: مسیرهای /api هرگز کش نمی‌شوند (داده زنده جستجو/رزرو)؛ فقط فایل‌های
 // استاتیک رابط کاربری به‌صورت شبکه‌اول (network-first) کش می‌شوند تا در صورت
 // قطعی موقت، صفحه باز شود.
-const CACHE = 'bilitfast-selfhost-v3.13.5-single-owner';
+const CACHE = 'bilitfast-selfhost-v3.14.0-single-owner';
 const CORE = [
   'index.html', 'route.html', 'login.html', 'extension-help.html', 'safir-connection.js', 'account.html',
   'history.html', 'settings.html', 'trial.html',
