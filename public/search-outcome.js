@@ -10,6 +10,8 @@
   'use strict';
   function classify(data) {
     if (!data || typeof data !== 'object') return 'unexpected';
+    // BilitFast's own owner login (not the SafirRail session) is missing/expired.
+    if (data.appLoginRequired === true) return 'app_login_required';
     // Explicit upstream blockers win even if an adapter accidentally sets ok.
     if (data.sessionInvalid === true || data.loginRequired === true || data.reason === 'session_required')
       return 'session_required';

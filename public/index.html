@@ -6,94 +6,115 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bilit Fast — مسیرها</title>
   <link rel="icon" href="favicon.ico">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#2563eb">
+  <meta name="theme-color" content="#0b1f47">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <div class="brand">
-        <span class="brand-logo">🚆</span>
-        <span class="brand-name">Bilit Fast</span>
-        <span class="brand-sub">سامانه خرید بلیط قطار</span>
-      </div>
-      <nav class="topnav">
+      <a class="brand" href="index.html" aria-label="BilitFast — صفحه اصلی">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><defs><linearGradient id="bfg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2459e8"/><stop offset="1" stop-color="#0b1f47"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#bfg)"/><path d="M13 10.5h14a4 4 0 0 1 4 4V25a4 4 0 0 1-4 4H13a4 4 0 0 1-4-4V14.5a4 4 0 0 1 4-4z" fill="#fff"/><rect x="12" y="14" width="16" height="6.5" rx="2" fill="#2459e8"/><circle cx="14.5" cy="24.6" r="1.7" fill="#ff8a3d"/><circle cx="25.5" cy="24.6" r="1.7" fill="#ff8a3d"/><path d="M14 29l-3 3.5M26 29l3 3.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="brand-text"><span class="brand-name">Bilit<span class="brand-fast">Fast</span></span><span class="brand-sub">رزرو هوشمند بلیت قطار</span></span>
+      </a>
+      <nav class="topnav" aria-label="منوی اصلی">
         <a href="index.html">مسیرها</a>
-        <a href="history.html">تاریخچه</a>
-        <a href="login.html">ورود صفیر ریل</a>
+        <a href="history.html">تاریخچه رزروها</a>
+        <a href="login.html">اتصال سفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
-        <a href="account.html">حساب</a>
-        <a href="privacy.html">حریم خصوصی</a>
-        <a href="trial.html">وضعیت مجوز</a>
+        <a href="account.html">حساب کاربری</a>
       </nav>
     </div>
   </header>
+  <section class="page-hero">
+    <div class="page-hero-inner">
+      <div class="hero-row">
+        <div>
+          <span class="hero-eyebrow">● پایش خودکار ظرفیت قطار</span>
+          <h1>مسیرهای سفر شما</h1>
+          <p>مسیر و مسافران را یک بار تعریف کنید؛ BilitFast ظرفیت را تا پیدا شدن جای خالی بررسی می‌کند و برای رزرو، شما را به صفحه رسمی سفیر ریل می‌برد.</p>
+        </div>
+        <div class="hero-actions">
+          <button class="btn btn-accent btn-lg" id="btn-add-route">+ افزودن مسیر جدید</button>
+        </div>
+      </div>
+      <div class="hero-meta">
+        <span id="trial-badge" class="badge"></span>
+        <span id="monitor-badge" class="badge"></span>
+      </div>
+    </div>
+  </section>
   <main class="container">
     <!-- راهنمای شروع سریع — با ساخته شدن اولین مسیر، جمع می‌شود -->
     <section class="card quickstart" id="quickstart">
       <div class="qs-head">
-        <h2>🚀 برای شروع</h2>
-        <button class="btn btn-sm" id="qs-hide" title="بستن راهنما">بستن</button>
+        <h2>شروع در چهار قدم</h2>
+        <button class="btn btn-sm btn-ghost" id="qs-hide" title="بستن راهنما">بستن راهنما ✕</button>
       </div>
       <ol class="qs-steps">
         <li id="qs-1"><b>یک مسیر جدید بسازید</b><span class="muted small">مبدا، مقصد و تاریخ سفر را مشخص کنید.</span></li>
         <li id="qs-2"><b>اطلاعات مسافران را وارد کنید</b><span class="muted small">کد ملی و تاریخ تولد برای رزرو لازم است.</span></li>
-        <li id="qs-3"><b>حساب صفیر ریل را متصل کنید</b><span class="muted small">فقط از افزونه BilitFast استفاده کنید. <a href="login.html">اتصال حساب</a></span></li>
-        <li id="qs-4"><b>جستجو را شروع کنید</b><span class="muted small">برنامه تا پیدا شدن ظرفیت خودکار تلاش می‌کند.</span></li>
+        <li id="qs-3"><b>حساب سفیر ریل را متصل کنید</b><span class="muted small">با افزونه BilitFast، از تب رسمی سفیر ریل. <a href="login.html">اتصال حساب</a></span></li>
+        <li id="qs-4"><b>جستجو را شروع کنید</b><span class="muted small">برنامه تا پیدا شدن ظرفیت، خودکار تلاش می‌کند.</span></li>
       </ol>
-    </section>
-
-    <section class="card toolbar">
-      <button class="btn btn-primary" id="btn-add-route">➕ افزودن مسیر جدید</button>
-      <button class="btn btn-primary" id="btn-group-start">▶ شروع پایش گروهی</button>
-      <button class="btn btn-danger" id="btn-close-all">✖ بستن همه مسیرها</button>
-      <span id="monitor-badge" class="badge"></span>
-      <span id="trial-badge" class="badge"></span>
     </section>
 
     <section class="card" id="group-links" style="display:none"></section>
 
     <section class="card">
-      <h2>مسیرهای جستجو</h2>
-      <p class="muted small">
-        برای پایش همزمان، حداکثر ۵ مسیر را تیک بزنید و «شروع پایش گروهی» را بزنید.
-        فاصله درخواست‌ها به نسبت تعداد مسیرهای فعال به‌صورت خودکار زیاد می‌شود تا
-        فشار روی سایت صفیر ریل ثابت بماند و درخواست‌ها محدود نشوند.
-      </p>
+      <div class="card-head">
+        <div class="section-title">
+          <span class="section-icon" aria-hidden="true">🚆</span>
+          <div>
+            <h2>مسیرهای جستجو</h2>
+            <p class="section-sub">برای پایش همزمان، حداکثر ۵ مسیر را انتخاب کنید.</p>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary btn-sm" id="btn-group-start">▶ پایش گروهی انتخاب‌شده‌ها</button>
+          <button class="btn btn-ghost-danger btn-sm" id="btn-close-all">توقف همه جستجوها</button>
+        </div>
+      </div>
       <div class="table-scroll">
-      <table class="table" id="routes-table">
+      <table class="table table-cards" id="routes-table">
         <thead>
           <tr>
-            <th></th>
+            <th style="width:44px"></th>
             <th>شناسه</th>
-            <th>مبدا</th>
-            <th>مقصد</th>
-            <th>تاریخ</th>
+            <th>مسیر</th>
+            <th>تاریخ حرکت</th>
             <th>شماره قطار</th>
-            <th>تعداد مسافر</th>
+            <th>مسافر</th>
             <th>وضعیت</th>
-            <th>عملیات</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          <tr class="empty-row"><td colspan="9">هیچ مسیری تعریف نشده است.</td></tr>
+          <tr class="empty-row"><td colspan="8"></td></tr>
         </tbody>
       </table>
       </div>
+      <p class="muted small" style="margin:12px 0 0">فاصله درخواست‌ها به نسبت تعداد مسیرهای فعال خودکار زیاد می‌شود تا فشار روی سایت سفیر ریل ثابت بماند و درخواست‌ها محدود نشوند.</p>
     </section>
   </main>
-  <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>BilitFast — رزرو هوشمند بلیت قطار</span>
+      <nav class="footer-links" aria-label="پیوندهای پایین صفحه">
+        <a href="privacy.html">حریم خصوصی</a>
+        <a href="trial.html">وضعیت مجوز</a>
+        <a href="extension-help.html">راهنمای افزونه</a>
+      </nav>
+    </div>
+  </footer>
 
   <script src="jalaali.min.js"></script>
   <script src="secure-store.js"></script>
   <script src="app.js"></script>
   <script>
   const STATUS_COLORS = {
-    'gray': '#999', 'black': '#333', 'red': '#c0392b', 'orange': '#e67e22',
-    'green': '#27ae60', 'blue': '#2980b9'
+    'gray': '#94a3b8', 'black': '#33415c', 'red': '#e02d3c', 'orange': '#f59e0b',
+    'green': '#0e9f6e', 'blue': '#2459e8'
   };
 
   function esc(s) {
@@ -108,7 +129,12 @@
     // حفظ تیک‌های انتخاب‌شده هنگام باز رسم جدول (رفرش هر ۳ ثانیه)
     const selectedIds = new Set(selectedRouteIds());
     if (!routes.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">هیچ مسیری تعریف نشده است.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8"><div class="empty-state">' +
+        '<svg class="empty-art" viewBox="0 0 120 84" aria-hidden="true"><rect x="8" y="70" width="104" height="3" rx="1.5" fill="#dce6ff"/><g fill="#cfd7e3"><rect x="14" y="74" width="4" height="6" rx="1"/><rect x="34" y="74" width="4" height="6" rx="1"/><rect x="54" y="74" width="4" height="6" rx="1"/><rect x="74" y="74" width="4" height="6" rx="1"/><rect x="94" y="74" width="4" height="6" rx="1"/></g><rect x="26" y="14" width="68" height="50" rx="14" fill="#2459e8"/><rect x="34" y="22" width="52" height="18" rx="5" fill="#eef3ff"/><circle cx="40" cy="52" r="4" fill="#ff8a3d"/><circle cx="80" cy="52" r="4" fill="#ff8a3d"/><path d="M38 64l-6 7M82 64l6 7" stroke="#0b1f47" stroke-width="3" stroke-linecap="round"/></svg>' +
+        '<h3>هنوز مسیری نساخته‌اید</h3>' +
+        '<p>اولین مسیر را بسازید؛ مبدا، مقصد، تاریخ و مسافران را وارد کنید و جستجوی خودکار را شروع کنید.</p>' +
+        '<button class="btn btn-primary" type="button" onclick="document.getElementById(\'btn-add-route\').click()">+ ساخت اولین مسیر</button>' +
+        '</div></td></tr>';
       return;
     }
     // رندر ستون وضعیت با نقطه رنگی
@@ -120,17 +146,18 @@
       const checked = selectedIds.has(r.id) ? 'checked' : '';
       return `
         <tr data-id="${r.id}">
-          <td style="text-align:center"><input type="checkbox" class="route-check" data-id="${r.id}" ${checked}></td>
-          <td>${esc(r.id)}</td>
-          <td>${esc(r.fields.from_city || '-')}</td>
-          <td>${esc(r.fields.to_city || '-')}</td>
-          <td>${esc(r.fields.date || '-')}</td>
-          <td>${esc(r.fields.train_number || '-')}</td>
-          <td>${esc(cap)}</td>
-          <td><span style="color:${color}">●</span> ${esc(status)}</td>
-          <td>
-            <button class="btn btn-sm" onclick="openRoute(${parseInt(r.id, 10)})" title="بازکردن پنجره مسیر">باز کردن</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteRoute(${parseInt(r.id, 10)})">حذف</button>
+          <td class="cell-check" style="text-align:center"><input type="checkbox" class="route-check" data-id="${r.id}" ${checked} aria-label="انتخاب مسیر ${esc(r.id)}"></td>
+          <td data-label="شناسه"><span class="route-id">${esc(r.id)}</span></td>
+          <td class="cell-route"><span class="route-cell">${esc(r.fields.from_city || '-')} <span class="arrow">←</span> ${esc(r.fields.to_city || '-')}</span></td>
+          <td data-label="تاریخ حرکت">${esc(r.fields.date || '-')}</td>
+          <td data-label="شماره قطار">${esc(r.fields.train_number || 'همه قطارها')}</td>
+          <td data-label="مسافر">${esc(cap || (r.passengers ? r.passengers.length : ''))}</td>
+          <td data-label="وضعیت"><span class="status-pill"><span class="dot" style="background:${color}"></span>${esc(status)}</span></td>
+          <td class="cell-actions">
+            <div class="row-actions">
+              <button class="btn btn-sm btn-primary" onclick="openRoute(${parseInt(r.id, 10)})" title="باز کردن مسیر">باز کردن</button>
+              <button class="btn btn-sm btn-ghost-danger" onclick="deleteRoute(${parseInt(r.id, 10)})">حذف</button>
+            </div>
           </td>
         </tr>`;
     }).join('');
@@ -250,8 +277,15 @@
     await openRoute(id);
   });
 
-  document.getElementById('btn-close-all').addEventListener('click', () => {
+  document.getElementById('btn-close-all').addEventListener('click', async () => {
     const routes = BilitFast.loadRoutes();
+    if (!routes.length) return;
+    const ok = await BilitFast.confirmDialog({
+      title: 'توقف همه جستجوها',
+      message: 'جستجوی همه مسیرها متوقف شود؟ مسیرها حذف نمی‌شوند و می‌توانید دوباره شروعشان کنید.',
+      confirmText: 'توقف همه',
+    });
+    if (!ok) return;
     routes.forEach((r) => { r.running = false; r.status = 'جستجو متوقف شد'; r.statusColor = 'red'; });
     BilitFast.saveRoutes(routes);
     renderRoutes();

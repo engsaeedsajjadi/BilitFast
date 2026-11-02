@@ -5,51 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>حساب کاربری — Bilit Fast</title>
   <link rel="icon" href="favicon.ico">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#2563eb">
+  <meta name="theme-color" content="#0b1f47">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <div class="brand">
-        <span class="brand-logo">🚆</span>
-        <span class="brand-name">Bilit Fast</span>
-      </div>
-      <nav class="topnav">
+      <a class="brand" href="index.html" aria-label="BilitFast — صفحه اصلی">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><defs><linearGradient id="bfg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2459e8"/><stop offset="1" stop-color="#0b1f47"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#bfg)"/><path d="M13 10.5h14a4 4 0 0 1 4 4V25a4 4 0 0 1-4 4H13a4 4 0 0 1-4-4V14.5a4 4 0 0 1 4-4z" fill="#fff"/><rect x="12" y="14" width="16" height="6.5" rx="2" fill="#2459e8"/><circle cx="14.5" cy="24.6" r="1.7" fill="#ff8a3d"/><circle cx="25.5" cy="24.6" r="1.7" fill="#ff8a3d"/><path d="M14 29l-3 3.5M26 29l3 3.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="brand-text"><span class="brand-name">Bilit<span class="brand-fast">Fast</span></span><span class="brand-sub">رزرو هوشمند بلیت قطار</span></span>
+      </a>
+      <nav class="topnav" aria-label="منوی اصلی">
         <a href="index.html">مسیرها</a>
-        <a href="history.html">تاریخچه</a>
-        <a href="login.html">ورود صفیر ریل</a>
+        <a href="history.html">تاریخچه رزروها</a>
+        <a href="login.html">اتصال سفیر ریل</a>
         <a href="settings.html">تنظیمات</a>
-        <a href="account.html">حساب</a>
-        <a href="privacy.html">حریم خصوصی</a>
+        <a href="account.html">حساب کاربری</a>
       </nav>
     </div>
   </header>
   <main class="container">
     <section class="card narrow" id="guest-section" style="display:none">
-      <h2>حساب کاربری</h2>
+      <h2>ورود به BilitFast</h2>
       <p class="muted small">
-        هر لایسنس فقط یک حساب مالک دارد. برای ورود از حسابی که هنگام نصب ساخته شده استفاده کنید.
-        الگوهای مسافر فقط در همین مرورگر و آدرس BilitFast ذخیره می‌شوند.
+        با نام کاربری و گذرواژه‌ای که هنگام نصب ساخته شد وارد شوید. هر نصب فقط یک حساب مالک دارد.
       </p>
-      <div class="tabs" style="display:flex;gap:8px;margin:12px 0">
+      <div class="tabs" hidden>
         <button class="btn btn-primary tab-btn" id="tab-login" type="button">ورود</button>
 
+      </div>
+      <div id="no-owner-note" class="alert" hidden>
+        هنوز حساب مالک برای این نصب ساخته نشده است.
+        <a class="btn btn-primary btn-sm" href="admin.html" style="margin-top:8px">ساخت حساب مالک</a>
       </div>
       <div id="alert" style="display:none"></div>
       <form id="auth-form">
         <div class="field">
-          <label>نام کاربری:</label>
+          <label for="username">نام کاربری</label>
           <input type="text" id="username" required autocomplete="username" style="direction:ltr;text-align:left">
         </div>
         <div class="field">
-          <label>گذرواژه:</label>
+          <label for="password">گذرواژه</label>
           <input type="password" id="password" required autocomplete="current-password" style="direction:ltr;text-align:left">
         </div>
-        <button class="btn btn-primary" type="submit" id="submit-btn">ورود</button>
+        <button class="btn btn-primary btn-block" type="submit" id="submit-btn">ورود</button>
       </form>
       <p class="muted small" style="margin-top:12px" id="import-note"></p>
     </section>
@@ -79,7 +79,16 @@
       </form>
     </section>
   </main>
-  <footer class="footer">Bilit Fast — رزرو سریع بلیت قطار</footer>
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>BilitFast — رزرو هوشمند بلیت قطار</span>
+      <nav class="footer-links" aria-label="پیوندهای پایین صفحه">
+        <a href="privacy.html">حریم خصوصی</a>
+        <a href="trial.html">وضعیت مجوز</a>
+        <a href="extension-help.html">راهنمای افزونه</a>
+      </nav>
+    </div>
+  </footer>
 
   <script src="secure-store.js"></script>
   <script src="app.js"></script>
@@ -135,6 +144,12 @@
     } catch (err) { /* انتقال بهترین تلاش است */ }
 
     showAlert('alert', '✅ وارد شدید.', true);
+    // Return to the page that asked for login (same-origin relative paths only).
+    const back = new URLSearchParams(location.search).get('return') || '';
+    if (/^(index|route|history|settings|login)\.html(\?[\w=&%-]*)?$/.test(back)) {
+      setTimeout(() => { location.href = back; }, 400);
+      return;
+    }
     setTimeout(render, 500);
   });
 
@@ -142,7 +157,7 @@
     /* خروج باید سمت سرور هم انجام شود. پاک کردن توکن از مرورگر کافی نیست:
      * اگر کسی توکن را برداشته باشد، تا ۷ روز معتبر می‌ماند. صدا زدن API
      * آن را واقعاً باطل می‌کند.
-     * توجه: کوکی صفیر ریل عمداً پاک نمی‌شود — حاصل زحمت کاربر است و به
+     * توجه: کوکی سفیر ریل عمداً پاک نمی‌شود — حاصل زحمت کاربر است و به
      * حساب BilitFast ربطی ندارد. */
     try {
       await BilitFast.authFetch('/api/auth', { action: 'logout' });
@@ -178,6 +193,16 @@
     ));
   }
 
+  // No owner yet? Point to admin.html instead of a login form that cannot work.
+  async function showOwnerSetupIfNeeded() {
+    try {
+      const st = await BilitFast.authFetch('/api/admin-users', { action: 'bootstrap-status' });
+      const none = !!(st && st.ok && st.needsBootstrap);
+      document.getElementById('no-owner-note').hidden = !none;
+      document.getElementById('auth-form').hidden = none;
+    } catch (e) { /* keep the login form */ }
+  }
+
   async function render() {
     const guest = document.getElementById('guest-section');
     const userEl = document.getElementById('user-section');
@@ -186,6 +211,7 @@
       userEl.style.display = 'none';
       document.getElementById('import-note').textContent =
         (BilitFast.loadRoutes().length ? '📌 مسیرهای ذخیره‌شده در این مرورگر پس از ورود در دسترس خواهند بود.' : '');
+      showOwnerSetupIfNeeded();
       return;
     }
     const data = await BilitFast.authFetch('/api/auth', { action: 'me' });

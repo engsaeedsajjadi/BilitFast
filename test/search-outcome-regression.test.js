@@ -17,6 +17,12 @@ expect({ok:false,captchaRequired:true}, 'captcha_required');
 expect({ok:false,captchaInvalid:true}, 'captcha_required');
 expect({ok:false,sessionInvalid:true}, 'session_required');
 expect({ok:false,loginRequired:true}, 'session_required');
+// 3.14.1: BilitFast's own login is distinct from the SafirRail session.
+expect({ok:false,loginRequired:true,appLoginRequired:true,error:'x'}, 'app_login_required');
+expect({ok:false,accountBlocked:true,appLoginRequired:true}, 'app_login_required');
+expect({ok:false,reason:'session_required',sessionInvalid:true}, 'session_required');
+assert.match(fs.readFileSync(path.join(__dirname,'../public/route.html'),'utf8'), /outcome === 'app_login_required'/);
+assert.match(fs.readFileSync(path.join(__dirname,'../lib/apiauth.js'),'utf8'), /appLoginRequired: true/);
 expect({ok:false,reason:'invalid_input',fatal:true}, 'blocked');
 expect({ok:false,httpStatus:402,licenseRequired:true}, 'blocked');
 expect({ok:false,httpStatus:429}, 'transport_error');

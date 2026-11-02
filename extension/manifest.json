@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BilitFast — اتصال سفیر ریل",
-  "version": "3.13.3",
+  "version": "3.14.1",
   "description": "انتقال مستقیم نشست با یک کلیک از تب رسمی SafirRail به تب باز BilitFast؛ بدون PIN یا سرور واسط.",
   "permissions": [
     "cookies",
