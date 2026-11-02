@@ -25,8 +25,8 @@
  * می‌شود تا رابط کاربری دقیقاً بگوید کاربر چه کار کند.
  */
 
-const { guardApi } = require('../lib/guard');
-const { getSessionUser } = require('../lib/auth');
+const { guardApi, isLoopbackSocket } = require('../lib/guard');
+const { requireUser } = require('../lib/apiauth');
 const core = require('../lib/core');
 const db = require('../lib/db');
 const keeper = require('../lib/session-keeper');
@@ -127,7 +127,16 @@ module.exports = async (req, res) => {
 
   const body = (typeof req.body === 'string') ? safeParse(req.body) : (req.body || {});
   const browserCookies = Array.isArray(body.cookies) ? body.cookies : [];
-  const user = getSessionUser(req, body);
+  /* 3.13.4 (security): this endpoint returns live SafirRail session cookies,
+   * so it must never answer an anonymous caller. On a self-hosted install
+   * requireUser() always demands the owner session; only a personal install
+   * with no accounts at all falls through with user=null. */
+  const auth = requireUser(req, res, body);
+  if (!auth.ok) return;
+  const user = auth.user;
+  // Machine-local secrets (stored credentials, browser profiles) are only
+  // released to a caller on this same machine, judged by the socket alone.
+  const localCaller = isLoopbackSocket(req);
 
   // گزارش مرحله‌به‌مرحله تا رابط کاربری بتواند صادقانه نشان دهد چه شد.
   const tried = [];
@@ -225,7 +234,8 @@ module.exports = async (req, res) => {
    * چون ورود صفیر ریل کپچا نمی‌خواهد، اگر کاربر یک‌بار در همین برنامه وارد
    * شده باشد، اعتبارنامه‌اش رمزشده ذخیره شده و می‌توانیم بی‌صدا دوباره
    * وارد شویم — حتی اگر حساب BilitFast نداشته باشد. */
-  if (!user && keeper.hasLocalCredentials && keeper.hasLocalCredentials()) {
+  if (!user && localCaller && keeper.isLocalMode() &&
+      keeper.hasLocalCredentials && keeper.hasLocalCredentials()) {
     try {
       const r = await keeper.refreshLocalSession();
       if (r && r.ok && Array.isArray(r.cookies) && r.cookies.length) {
@@ -249,7 +259,7 @@ module.exports = async (req, res) => {
   }
 
   /* ---- ۴) خواندن از پروفایل مرورگر (فقط اجرای محلی) ---- */
-  if (isLocalRun()) {
+  if (isLocalRun() && localCaller) {
     const info = await readBrowserProfiles();
     const { cookies } = info;
     if (cookies.length && !info.hasSession) {

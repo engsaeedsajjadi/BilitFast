@@ -1,6 +1,6 @@
 {
   "name": "bilitfast",
-  "version": "3.13.3",
+  "version": "3.13.5",
   "private": true,
   "description": "BilitFast Web Self-Hosted — single-owner, machine-bound deployment",
   "scripts": {
@@ -8,7 +8,7 @@
     "start:prod": "node selfhost-server.js",
     "start:dev": "node dev-server.js",
     "test:selfhost": "npm run test:official-handoff && node test/web-cookie-handoff.test.js && node test/selfhost-web.test.js && node test/extension-endpoint-discovery.test.js && node test/web-extension-connect.test.js && node test/extension-ui-layout.test.js && node test/single-extension-flow.test.js && node scripts/selfhost-smoke.js",
-    "test": "npm run test:selfhost && node test/security.test.js && node test/account.test.js && node test/multiuser.test.js && node test/city-picker-regression.test.js && npm run test:search-outcome && npm run test:passenger-profiles && npm run test:single-owner",
+    "test": "npm run test:selfhost && node test/security.test.js && node test/account.test.js && node test/multiuser.test.js && node test/city-picker-regression.test.js && npm run test:search-outcome && npm run test:passenger-profiles && npm run test:single-owner && node test/security-3.13.4.test.js",
     "license:seller": "node scripts/license-admin.js",
     "prepare:customer": "node scripts/setup-selfhost.js",
     "preview:web": "node dev-server.js",
@@ -20,10 +20,10 @@
     "test:direct-session": "node test/one-click-cookie-connect.test.js && node test/single-extension-flow.test.js",
     "test:selection-regression": "node test/first-party-selection-regression.test.js && node test/one-click-selection.test.js && node test/one-click-worker.test.js",
     "test:new-tab": "node test/new-tab-booking.test.js && node test/one-click-worker.test.js && node test/first-party-selection-regression.test.js && node test/workspace-tab-return.test.js",
-    "test:search-outcome": "node test/search-outcome-regression.test.js && node test/search-page-validation.test.js && node test/search-inventory-messaging.test.js && node test/browser-route-start-race.test.js",
+    "test:search-outcome": "node test/search-outcome-regression.test.js && node test/search-page-validation.test.js && node test/search-inventory-messaging.test.js && node test/browser-route-start-race.test.js && node test/departed-trains.test.js && node test/departed-trains-search.test.js",
     "test:passenger-profiles": "node test/passenger-profile-persistence.test.js",
     "test:single-owner": "node test/single-owner.test.js",
-    "audit:security": "node test/security.test.js && node test/security-hardening.test.js",
+    "audit:security": "node test/security.test.js && node test/security-hardening.test.js && node test/security-3.13.4.test.js",
     "test:enterprise": "node test/search-page-validation.test.js && node test/machine-license-binding.test.js && node test/seller-key-regression.test.js && npm run test:single-owner && npm run test:search-outcome",
     "check:delivery": "node scripts/delivery-preflight.js",
     "migrate:machine-binding": "node scripts/migrate-machine-binding.js"
@@ -32,13 +32,9 @@
     "node": ">=18.17"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^4.22.0",
-    "@tesseract.js-data/eng": "^1.0.0",
     "cheerio": "^1.0.0",
     "jalaali-js": "^1.2.6",
-    "jimp": "^0.22.12",
     "sql.js": "^1.14.2",
-    "tesseract.js": "^7.0.0",
     "undici": "^6.21.3"
   }
 }

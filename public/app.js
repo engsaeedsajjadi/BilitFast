@@ -743,15 +743,24 @@ const BilitFast = (function (global) {
 
   /* ---------------- API ---------------- */
   function withLicenseTokens(payload) {
+    const token = getSessionToken();
     return Object.assign({
       trialToken: localStorage.getItem(TRIAL_KEY) || '',
       licenseToken: localStorage.getItem(LICENSE_KEY) || '',
-    }, payload || {});
+    }, token ? { sessionToken: token } : {}, payload || {});
+  }
+  /* 3.13.4: search/reserve/login require the owner session on self-hosted
+   * installs; previously these calls sent no token and got 401. */
+  function jsonAuthHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getSessionToken();
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    return headers;
   }
   async function apiSearch(payload) {
     const res = await fetch('/api/search', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: jsonAuthHeaders(),
       body: JSON.stringify(withLicenseTokens(payload)),
     });
     let data;
@@ -770,7 +779,7 @@ const BilitFast = (function (global) {
   async function apiReserve(payload) {
     const res = await fetch('/api/reserve', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: jsonAuthHeaders(),
       body: JSON.stringify(withLicenseTokens(payload)),
     });
     return res.json();
@@ -778,7 +787,7 @@ const BilitFast = (function (global) {
   async function apiLogin(username, password) {
     const res = await fetch('/api/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: jsonAuthHeaders(),
       body: JSON.stringify({ username, password }),
     });
     return res.json();

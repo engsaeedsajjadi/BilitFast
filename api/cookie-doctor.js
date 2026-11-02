@@ -14,11 +14,11 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { guardApi, getClientIp } = require('../lib/guard');
+const { guardApi, isLoopbackSocket } = require('../lib/guard');
 
 function isLocalRequest(req) {
-  const ip = String(getClientIp(req) || '');
-  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+  // 3.13.4: only the real socket address counts; proxy headers are ignored.
+  return isLoopbackSocket(req);
 }
 
 /** آیا این مسیر وجود دارد؟ (بدون افشای محتوا) */

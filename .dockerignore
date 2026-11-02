@@ -10,7 +10,6 @@ data
 test
 train
 samples
-models/*.bin
 docs
 desktop
 extension
