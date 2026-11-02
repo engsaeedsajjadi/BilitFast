@@ -37,6 +37,10 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.ico': 'image/x-icon',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.webmanifest': 'application/manifest+json',
+  '.txt': 'text/plain; charset=utf-8',
   '.jpg': 'image/jpeg',
   '.png': 'image/png',
 };

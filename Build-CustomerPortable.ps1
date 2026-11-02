@@ -31,9 +31,9 @@ try {
   # node -p returns actual node.exe even when PATH resolves a version manager shim.
   $nodeExe = ((& node -p 'process.execPath') | Select-Object -First 1).Trim()
   if (-not (Test-Path -LiteralPath $nodeExe)) { throw 'Actual Node.exe path cannot be found.' }
-  $stage = Join-Path $OutputDir 'BilitFast-3.13.3-Windows-Portable'
+  $stage = Join-Path $OutputDir 'BilitFast-3.14.0-Windows-Portable'
   New-Item -ItemType Directory -Path $stage -Force | Out-Null
-  foreach($folder in @('api','lib','public','models','extension','node_modules')) {
+  foreach($folder in @('api','lib','public','extension','node_modules')) {
     Copy-Item -LiteralPath (Join-Path $root $folder) -Destination $stage -Recurse -Force
   }
   New-Item -ItemType Directory -Path (Join-Path $stage 'config') -Force | Out-Null
@@ -56,7 +56,7 @@ try {
   }
   & (Join-Path $stage 'runtime\node.exe') --check (Join-Path $stage 'scripts\portable-run.js')
   if ($LASTEXITCODE -ne 0) { throw 'Portable launcher syntax validation failed' }
-  $archive = Join-Path $OutputDir 'BilitFast-3.13.3-Windows-Portable.zip'
+  $archive = Join-Path $OutputDir 'BilitFast-3.14.0-Windows-Portable.zip'
   Compress-Archive -LiteralPath $stage -DestinationPath $archive -CompressionLevel Optimal
   if (-not (Test-Path $archive)) { throw 'ZIP was not created.' }
   Write-Host 'READY: ' $archive

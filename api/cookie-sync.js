@@ -1,4 +1,4 @@
-// api/cookie-sync.js — همگام‌سازی کوکی صفیر ریل از افزونه مرورگر، به‌صورت امن.
+// api/cookie-sync.js — همگام‌سازی کوکی سفیر ریل از افزونه مرورگر، به‌صورت امن.
 //
 // چرا افزونه؟ کوکی نشست (PHPSESSID) از نوع HttpOnly است؛ فقط افزونه (با مجوز
 // cookies) می‌تواند آن را بخواند.
@@ -23,7 +23,7 @@
 
 const crypto = require('crypto');
 const db = require('../lib/db');
-const { guardApi, getClientIp } = require('../lib/guard');
+const { guardApi, isLoopbackSocket } = require('../lib/guard');
 const { getSessionUser } = require('../lib/auth');
 const secrets = require('../lib/secrets');
 
@@ -40,8 +40,8 @@ function readBody(req) {
 
 /** آیا درخواست از خود همان دستگاه (اجرای محلی) می‌آید؟ */
 function isLocalRequest(req) {
-  const ip = String(getClientIp(req) || '');
-  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+  // 3.13.4: only the real socket address counts; proxy headers are ignored.
+  return isLoopbackSocket(req);
 }
 
 /** هش کردن nonce تا مقدار خام هرگز در پایگاه‌داده ننشیند. */
@@ -243,7 +243,7 @@ module.exports = async (req, res) => {
       }
       const hasSession = cookies.some((c) => /^PHPSESSID=[^\s;]+/i.test(c));
       if (!hasSession) {
-        res.status(422).json({ ok: false, error: 'کوکی نشست صفیر ریل یافت نشد؛ ابتدا وارد حساب سایت شوید.' });
+        res.status(422).json({ ok: false, error: 'کوکی نشست سفیر ریل یافت نشد؛ ابتدا وارد حساب سایت شوید.' });
         return;
       }
       db.update('cookie_sync', rec.id, {

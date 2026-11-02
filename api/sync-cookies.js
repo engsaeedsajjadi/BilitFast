@@ -3,7 +3,7 @@
 // توجه: این قابلیت فقط در اجرای محلی (دسترسی به فایل‌سیستم کاربر) کار می‌کند.
 const { readFirefoxCookies } = require('../lib/cookies');
 const { readChromeCookies } = require('../lib/chrome-cookies');
-const { guardApi, getClientIp } = require('../lib/guard');
+const { guardApi, isLoopbackSocket } = require('../lib/guard');
 const trace = require('../lib/cookie-trace');
 
 /**
@@ -14,8 +14,8 @@ const trace = require('../lib/cookie-trace');
  * کاربر واردشده باشد.
  */
 function isLocalRequest(req) {
-  const ip = String(getClientIp(req) || '');
-  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+  // 3.13.4: only the real socket address counts; proxy headers are ignored.
+  return isLoopbackSocket(req);
 }
 
 module.exports = async (req, res) => {
@@ -72,7 +72,7 @@ module.exports = async (req, res) => {
       res.status(200).json({
         ok: false,
         trace: trace.getEntries(),
-        error: 'کوکی safirrail.ir یافت نشد. ابتدا در مرورگر (Firefox یا Chrome) وارد سایت صفیر ریل شوید و سپس دوباره همگام‌سازی کنید.' +
+        error: 'کوکی safirrail.ir یافت نشد. ابتدا در مرورگر (Firefox یا Chrome) وارد سایت سفیر ریل شوید و سپس دوباره همگام‌سازی کنید.' +
           (notes.length ? ' نکته: ' + notes.join(' ') : ''),
       });
       return;
@@ -80,7 +80,7 @@ module.exports = async (req, res) => {
 
     /* مهم: «چند کوکی پیدا شد» با «نشست منتقل شد» یکی نیست.
      *
-     * باگی که رفع شد: اگر کاربر در مرورگر وارد صفیر ریل نشده بود، باز هم
+     * باگی که رفع شد: اگر کاربر در مرورگر وارد سفیر ریل نشده بود، باز هم
      * کوکی‌های عمومی سایت (مثل _ga یا cookieconsent) پیدا می‌شد و این
      * endpoint با ok:true برمی‌گشت. رابط کاربری پیام «✅ N کوکی همگام‌سازی
      * و ذخیره شد» نشان می‌داد، ولی هیچ نشست فعالی منتقل نشده بود و جستجو

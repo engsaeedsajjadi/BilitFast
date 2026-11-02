@@ -4,7 +4,6 @@ const {
   submitReservation,
   refreshCaptcha,
   fetchCaptchaImage,
-  solveCaptchaImage,
 } = require('../lib/reserve');
 const { guardApi } = require('../lib/guard');
 const { getSessionUser } = require('../lib/auth');
@@ -111,17 +110,6 @@ module.exports = async (req, res) => {
         passengers: body.passengers,
         phone: body.phone,
       });
-      // حلقه یادگیری: آیا کپچای ارسال‌شده از سد صفیر ریل عبور کرد یا نه؟
-      // پذیرفته‌شده → نمونه آموزشی تأییدشده؛ ردشده → در صف برچسب‌گذاری دستی.
-      // «بهترین تلاش» — هیچ خطایی نباید پاسخ رزرو را تغییر دهد.
-      try {
-        const { markOutcomeBySubmit } = require('../lib/captures');
-        await markOutcomeBySubmit({
-          captureId: body.captchaCaptureId || null,
-          text: body.captcha || '',
-          result,
-        });
-      } catch (e) { /* نادیده بگیر */ }
       return respond(res, result);
     }
 
@@ -135,12 +123,10 @@ module.exports = async (req, res) => {
       return respond(res, result);
     }
 
+    // Automatic CAPTCHA solving was removed in 3.13.4. CAPTCHA codes must be
+    // entered by the human user; never re-add an OCR/ML solver here.
     if (action === 'solve-captcha') {
-      const result = await solveCaptchaImage({
-        captchaImageUrl: body.captchaImageUrl,
-        stateToken: body.stateToken,
-      });
-      return respond(res, result);
+      return respond(res, { ok: false, error: 'حل خودکار کپچا پشتیبانی نمی‌شود؛ کد را خودتان وارد کنید.' }, 410);
     }
 
     return respond(res, { ok: false, error: 'action ناشناخته: ' + action });

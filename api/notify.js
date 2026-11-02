@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
       if (!notify.telegramToken()) {
         return res.status(200).json({ ok: false, error: 'ربات تلگرام روی این استقرار پیکربندی نشده است (TELEGRAM_BOT_TOKEN).' });
       }
-      const code = notify.makeConnectCode(user);
+      const code = notify.makeConnectCode(user, 'telegram');
       return res.status(200).json({
         ok: true,
         code,
@@ -103,7 +103,7 @@ module.exports = async (req, res) => {
       if (!notify.baleToken()) {
         return res.status(200).json({ ok: false, error: 'توکن ربات بله روی سرور تنظیم نشده است (در فایل .env خط BALE_BOT_TOKEN).' });
       }
-      const code = notify.makeConnectCode(user);
+      const code = notify.makeConnectCode(user, 'bale');
       return res.status(200).json({ ok: true, code, hint: 'این کد را در چت ربات بلهٔ خود بفرستید تا حساب متصل شود.' });
     }
 
@@ -116,7 +116,7 @@ module.exports = async (req, res) => {
       if (!notify.eitaaToken()) {
         return res.status(200).json({ ok: false, error: 'توکن ربات ایتا روی سرور تنظیم نشده است (در فایل .env خط EITAA_BOT_TOKEN).' });
       }
-      const code = notify.makeConnectCode(user);
+      const code = notify.makeConnectCode(user, 'eitaa');
       return res.status(200).json({ ok: true, code, hint: 'این کد را در چت ربات ایتای خود بفرستید تا حساب متصل شود.' });
     }
 
