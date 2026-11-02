@@ -35,6 +35,10 @@
         <button class="btn btn-primary tab-btn" id="tab-login" type="button">ورود</button>
 
       </div>
+      <div id="no-owner-note" class="alert" hidden>
+        هنوز حساب مالک برای این نصب ساخته نشده است.
+        <a class="btn btn-primary btn-sm" href="admin.html" style="margin-top:8px">ساخت حساب مالک</a>
+      </div>
       <div id="alert" style="display:none"></div>
       <form id="auth-form">
         <div class="field">
@@ -189,6 +193,16 @@
     ));
   }
 
+  // No owner yet? Point to admin.html instead of a login form that cannot work.
+  async function showOwnerSetupIfNeeded() {
+    try {
+      const st = await BilitFast.authFetch('/api/admin-users', { action: 'bootstrap-status' });
+      const none = !!(st && st.ok && st.needsBootstrap);
+      document.getElementById('no-owner-note').hidden = !none;
+      document.getElementById('auth-form').hidden = none;
+    } catch (e) { /* keep the login form */ }
+  }
+
   async function render() {
     const guest = document.getElementById('guest-section');
     const userEl = document.getElementById('user-section');
@@ -197,6 +211,7 @@
       userEl.style.display = 'none';
       document.getElementById('import-note').textContent =
         (BilitFast.loadRoutes().length ? '📌 مسیرهای ذخیره‌شده در این مرورگر پس از ورود در دسترس خواهند بود.' : '');
+      showOwnerSetupIfNeeded();
       return;
     }
     const data = await BilitFast.authFetch('/api/auth', { action: 'me' });

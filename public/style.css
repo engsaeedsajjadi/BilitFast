@@ -919,3 +919,4 @@ body.page-leave { animation: page-leave .18s ease both; }
   display: inline-flex; align-items: center; justify-content: center; margin-top: 1px;
   background: var(--primary-50); color: var(--primary); font-weight: 700; font-size: 13.5px;
 }
+[hidden] { display: none !important; }
