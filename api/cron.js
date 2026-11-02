@@ -12,7 +12,7 @@
 // امنیت: بدون راز درست، درخواست رد می‌شود تا کسی نتواند با فراخوانی مکرر
 // به سایت صفیر فشار بیاورد.
 //   Authorization: Bearer <BILITFAST_CRON_SECRET>
-//   یا هدر x-cron-secret، یا ?secret= در کوئری
+//   یا هدر x-cron-secret
 
 const crypto = require('crypto');
 const monitor = require('../lib/monitor');
@@ -37,10 +37,9 @@ function authorized(req) {
   const bearer = auth.replace(/^Bearer\s+/i, '');
   if (timingEqual(bearer, secret)) return true;
   if (timingEqual((req.headers && req.headers['x-cron-secret']) || '', secret)) return true;
-  try {
-    const url = new URL(req.url, 'http://localhost');
-    if (timingEqual(url.searchParams.get('secret') || '', secret)) return true;
-  } catch (e) { /* ignore */ }
+  // 3.13.4: the ?secret= query form was removed. It never worked with the
+  // bundled server (req.url was not passed) and secrets in URLs end up in
+  // proxy/access logs. Use the Authorization or x-cron-secret header.
   return false;
 }
 

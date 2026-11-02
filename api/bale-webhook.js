@@ -1,5 +1,5 @@
 // api/bale-webhook.js — وب‌هوک ربات بله برای اتصال خودکار Chat ID.
-// کاربر کد اتصال BF-XXXXXX را برای ربات بله می‌فرستد؛ این هندلر آن را به
+// کاربر کد اتصال BF-… را برای ربات بله می‌فرستد؛ این هندلر آن را به
 // حساب کاربر متصل می‌کند (در payment_notify هم فعال می‌شود) و پاسخ می‌دهد.
 const db = require('../lib/db');
 const { guardApi } = require('../lib/guard');
@@ -19,18 +19,25 @@ module.exports = async (req, res) => {
   }
   if (!guardApi(req, res, { name: 'bale-webhook', limit: 300, windowMs: 60000 })) return;
 
+  // 3.13.4: only accept updates carrying the per-channel secret that was
+  // registered with setWebhook. Re-run «برقراری وب‌هوک» after upgrading.
+  if (!notify.verifyWebhook(req, 'bale')) {
+    res.status(401).json({ ok: false });
+    return;
+  }
+
   const update = readBody(req);
   const msg = update && update.message;
   const chatId = msg && (msg.chat && msg.chat.id);
   const text = String((msg && msg.text) || '').trim();
-  const reply = (t) => { notify.baleApi('sendMessage', { chat_id: String(chatId), text }).catch(() => {}); };
+  const reply = (t) => { notify.baleApi('sendMessage', { chat_id: String(chatId), text: t }).catch(() => {}); };
 
   if (!chatId) {
     return res.status(200).json({ ok: true, ignored: true });
   }
 
-  if (/^\/start/i.test(text) || !/BF-[0-9A-Fa-f]{6}/.test(text)) {
-    reply('به ربات بیلیت فست خوش آمدید. برای اتصال حساب، «کد اتصال بله» را از صفحه تنظیمات برنامه همین‌جا ارسال کنید (شبیه BF-A1B2C3).');
+  if (/^\/start/i.test(text) || !notify.CONNECT_CODE_RE.test(text)) {
+    reply('به ربات بیلیت فست خوش آمدید. برای اتصال حساب، «کد اتصال بله» را از صفحه تنظیمات برنامه همین‌جا ارسال کنید (کدی که با BF- شروع می‌شود).');
     return res.status(200).json({ ok: true });
   }
 
@@ -38,9 +45,9 @@ module.exports = async (req, res) => {
   if (r.ok) {
     reply('✅ حساب بیلیت فست (' + r.username + ') به این چت بله متصل شد. از این پس لینک پرداخت و اطلاعیه‌ها همین‌جا ارسال می‌شود.');
   } else if (r.type === 'invalid_code') {
-    reply('❌ کد اتصال معتبر نیست یا قبلاً استفاده شده است. از صفحه تنظیمات کد تازه بگیرید.');
+    reply('❌ کد اتصال معتبر نیست، منقضی شده (۱۵ دقیقه) یا قبلاً استفاده شده است. از صفحه تنظیمات کد تازه بگیرید.');
   } else {
-    reply('کد اتصال پیدا نشد. کدی شبیه BF-XXXXXX را از صفحه تنظیمات بفرستید.');
+    reply('کد اتصال پیدا نشد. کد اتصال تازه (BF-…) را از صفحه تنظیمات بفرستید.');
   }
   return res.status(200).json({ ok: true });
 };

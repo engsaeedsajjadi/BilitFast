@@ -23,7 +23,7 @@
 
 const crypto = require('crypto');
 const db = require('../lib/db');
-const { guardApi, getClientIp } = require('../lib/guard');
+const { guardApi, isLoopbackSocket } = require('../lib/guard');
 const { getSessionUser } = require('../lib/auth');
 const secrets = require('../lib/secrets');
 
@@ -40,8 +40,8 @@ function readBody(req) {
 
 /** آیا درخواست از خود همان دستگاه (اجرای محلی) می‌آید؟ */
 function isLocalRequest(req) {
-  const ip = String(getClientIp(req) || '');
-  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+  // 3.13.4: only the real socket address counts; proxy headers are ignored.
+  return isLoopbackSocket(req);
 }
 
 /** هش کردن nonce تا مقدار خام هرگز در پایگاه‌داده ننشیند. */

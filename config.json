@@ -64,27 +64,10 @@
   },
 
   "captcha": {
-    "auto_solve": true,
+    "auto_solve": false,
     "max_attempts": 5,
     "auto_solve_max_total": 0,
-    "min_confidence": 30,
     "min_length": 5,
-    "max_length": 5,
-    "whitelist": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-    "psm": 7,
-    "force_digits": false,
-
-    "use_custom_model": true,
-    "model_path": "models/captcha-model.json",
-    "model_min_char_conf": 0.2,
-    "use_prototypes": true,
-    "prototype_max_distance": 0.3,
-
-    "advanced_preprocess": true,
-    "max_variants": 5,
-    "max_ocr_passes": 10,
-    "early_exit_confidence": 75,
-    "deskew": true,
-    "segmentation": true
+    "max_length": 5
   }
 }
