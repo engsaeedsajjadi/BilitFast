@@ -63,6 +63,7 @@
     "wagon_field": "wagon"
   },
 
+  "departed_buffer_minutes": 0,
   "captcha": {
     "auto_solve": false,
     "max_attempts": 5,

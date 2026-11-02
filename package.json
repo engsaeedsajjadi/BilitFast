@@ -1,6 +1,6 @@
 {
   "name": "bilitfast",
-  "version": "3.13.4",
+  "version": "3.13.5",
   "private": true,
   "description": "BilitFast Web Self-Hosted — single-owner, machine-bound deployment",
   "scripts": {
@@ -20,7 +20,7 @@
     "test:direct-session": "node test/one-click-cookie-connect.test.js && node test/single-extension-flow.test.js",
     "test:selection-regression": "node test/first-party-selection-regression.test.js && node test/one-click-selection.test.js && node test/one-click-worker.test.js",
     "test:new-tab": "node test/new-tab-booking.test.js && node test/one-click-worker.test.js && node test/first-party-selection-regression.test.js && node test/workspace-tab-return.test.js",
-    "test:search-outcome": "node test/search-outcome-regression.test.js && node test/search-page-validation.test.js && node test/search-inventory-messaging.test.js && node test/browser-route-start-race.test.js",
+    "test:search-outcome": "node test/search-outcome-regression.test.js && node test/search-page-validation.test.js && node test/search-inventory-messaging.test.js && node test/browser-route-start-race.test.js && node test/departed-trains.test.js && node test/departed-trains-search.test.js",
     "test:passenger-profiles": "node test/passenger-profile-persistence.test.js",
     "test:single-owner": "node test/single-owner.test.js",
     "audit:security": "node test/security.test.js && node test/security-hardening.test.js && node test/security-3.13.4.test.js",
